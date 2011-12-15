@@ -30,8 +30,16 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <pthread.h>
+
+#define u32 uint32_t
+#define USING_MALI200
+#include "mali_200_regs.h"
+#include "mali_ioctl.h"
 
 static int mali_ioctl(int request, void *data);
+
+static pthread_mutex_t serializer[1] = { PTHREAD_MUTEX_INITIALIZER };
 
 /*
  * First up, wrap around the libc calls that are crucial for capturing our
@@ -84,6 +92,8 @@ open(const char* path, int flags, ...)
 	mode_t mode = 0;
 	int ret;
 
+	pthread_mutex_lock(serializer);
+
 	if (!orig_open)
 		orig_open = libc_dlsym(__func__);
 
@@ -101,9 +111,11 @@ open(const char* path, int flags, ...)
 
 		if ((ret != -1) && !strcmp(path, "/dev/mali")) {
 			dev_mali_fd = ret;
-			printf("OPEN %d\n", ret);
+			printf("OPEN;\n");
 		}
 	}
+
+	pthread_mutex_unlock(serializer);
 
 	return ret;
 }
@@ -116,15 +128,23 @@ static int (*orig_close)(int fd);
 int
 close(int fd)
 {
+	int ret;
+
+	pthread_mutex_lock(serializer);
+
 	if (!orig_close)
 		orig_close = libc_dlsym(__func__);
 
 	if (fd == dev_mali_fd) {
-		printf("CLOSE");
+		printf("CLOSE;");
 		dev_mali_fd = -1;
 	}
 
-	return orig_close(fd);
+	ret = orig_close(fd);
+
+	pthread_mutex_unlock(serializer);
+
+	return ret;
 }
 
 /*
@@ -136,6 +156,10 @@ int
 ioctl(int fd, int request, ...)
 {
 	int ioc_size = _IOC_SIZE(request);
+	int ret;
+	int yield = 0;
+
+	pthread_mutex_lock(serializer);
 
 	if (!orig_ioctl)
 		orig_ioctl = libc_dlsym(__func__);
@@ -148,16 +172,26 @@ ioctl(int fd, int request, ...)
 		ptr = va_arg(args, void *);
 		va_end(args);
 
-		if (fd == dev_mali_fd)
-			return mali_ioctl(request, ptr);
-		else
-			return orig_ioctl(fd, request, ptr);
+		if (fd == dev_mali_fd) {
+			if (request == MALI_IOC_WAIT_FOR_NOTIFICATION)
+				yield = 1;
+
+			ret = mali_ioctl(request, ptr);
+		} else
+			ret = orig_ioctl(fd, request, ptr);
 	} else {
 		if (fd == dev_mali_fd)
-			return mali_ioctl(request, NULL);
+			ret = mali_ioctl(request, NULL);
 		else
-			return orig_ioctl(fd, request);
+			ret = orig_ioctl(fd, request);
 	}
+
+	pthread_mutex_unlock(serializer);
+
+	if (yield)
+		sched_yield();
+
+	return ret;
 }
 
 /*
@@ -171,13 +205,17 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
 	void *ret;
 
+	pthread_mutex_lock(serializer);
+
 	if (!orig_mmap)
 		orig_mmap = libc_dlsym(__func__);
 
         ret = orig_mmap(addr, length, prot, flags, fd, offset);
 
 	if (fd == dev_mali_fd)
-		printf("MMAP 0x%08lx (0x%08x) = %p\n", offset, length, ret);
+		printf("MMAP 0x%08lx (0x%08x) = %p;\n", offset, length, ret);
+
+	pthread_mutex_unlock(serializer);
 
 	return ret;
 }
@@ -190,10 +228,24 @@ int (*orig_munmap)(void *addr, size_t length);
 int
 munmap(void *addr, size_t length)
 {
+	int ret;
+
+	pthread_mutex_lock(serializer);
+
 	if (!orig_munmap)
 		orig_munmap = libc_dlsym(__func__);
 
-	return orig_munmap(addr, length);
+	ret = orig_munmap(addr, length);
+
+	/* leave printing until we have address tracking */
+#if 0
+	if (fd == dev_mali_fd)
+		printf("MUNMAP %p (0x%08x);\n", addr, length);
+#endif
+
+	pthread_mutex_unlock(serializer);
+
+	return ret;
 }
 
 /*
@@ -217,10 +269,276 @@ ioctl_dir_string(int request)
 	}
 }
 
-#define u32 uint32_t
-#define USING_MALI200
-#include "mali_200_regs.h"
-#include "mali_ioctl.h"
+static void
+dev_mali_get_api_version_pre(void *data)
+{
+	_mali_uk_get_api_version_s *version = data;
+
+	printf("IOCTL MALI_IOC_GET_API_VERSION IN = {\n");
+	printf("\t.version = 0x%08x,\n", version->version);
+	printf("};\n");
+}
+
+static void
+dev_mali_get_api_version_post(void *data)
+{
+	_mali_uk_get_api_version_s *version = data;
+
+	printf("IOCTL MALI_IOC_GET_API_VERSION OUT = {\n");
+	printf("\t.version = 0x%08x,\n", version->version);
+	printf("\t.compatible = %d,\n", version->compatible);
+	printf("};\n");
+}
+
+static void
+dev_mali_get_system_info_size_post(void *data)
+{
+	_mali_uk_get_system_info_size_s *size = data;
+
+	printf("IOCTL MALI_IOC_GET_SYSTEM_INFO_SIZE OUT = {\n");
+	printf("\t.size = 0x%x,\n", size->size);
+	printf("};\n");
+}
+
+static void
+dev_mali_get_system_info_pre(void *data)
+{
+	_mali_uk_get_system_info_s *info = data;
+
+	printf("IOCTL MALI_IOC_GET_SYSTEM_INFO IN = {\n");
+	printf("\t.size = 0x%x,\n", info->size);
+	printf("\t.system_info = <malloced, above size>,\n");
+	printf("\t.ukk_private = 0x%x,\n", info->ukk_private);
+	printf("};\n");
+}
+
+static void
+dev_mali_get_system_info_post(void *data)
+{
+	_mali_uk_get_system_info_s *info = data;
+	struct _mali_core_info *core;
+	struct _mali_mem_info *mem;
+
+	printf("IOCTL MALI_IOC_GET_SYSTEM_INFO OUT = {\n");
+	printf("\t.system_info = {\n");
+
+	core = info->system_info->core_info;
+	while (core) {
+		printf("\t\t.core_info = {\n");
+		printf("\t\t\t.type = 0x%x,\n", core->type);
+		printf("\t\t\t.version = 0x%x,\n", core->version);
+		printf("\t\t\t.reg_address = 0x%x,\n", core->reg_address);
+		printf("\t\t\t.core_nr = 0x%x,\n", core->core_nr);
+		printf("\t\t\t.flags = 0x%x,\n", core->flags);
+		printf("\t\t},\n");
+		core = core->next;
+	}
+
+	mem = info->system_info->mem_info;
+	while (mem) {
+		printf("\t\t.mem_info = {\n");
+		printf("\t\t\t.size = 0x%x,\n", mem->size);
+		printf("\t\t\t.flags = 0x%x,\n", mem->flags);
+		printf("\t\t\t.maximum_order_supported = 0x%x,\n", mem->maximum_order_supported);
+		printf("\t\t\t.identifier = 0x%x,\n", mem->identifier);
+		printf("\t\t},\n");
+		mem = mem->next;
+	}
+
+	printf("\t\t.has_mmu = %d,\n", info->system_info->has_mmu);
+	printf("\t\t.drivermode = 0x%x,\n", info->system_info->drivermode);
+	printf("\t},\n");
+	printf("};\n");
+}
+
+static void
+dev_mali_memory_init_mem_post(void *data)
+{
+	_mali_uk_init_mem_s *mem = data;
+
+	printf("IOCTL MALI_IOC_MEM_INIT OUT = {\n");
+	printf("\t.mali_address_base = 0x%x,\n", mem->mali_address_base);
+	printf("\t.memory_size = 0x%x,\n", mem->memory_size);
+	printf("};\n");
+}
+
+static void
+dev_mali_pp_core_version_post(void *data)
+{
+	_mali_uk_get_pp_core_version_s *version = data;
+
+	printf("IOCTL MALI_IOC_PP_CORE_VERSION_GET OUT = {\n");
+	printf("\t.version = 0x%x,\n", version->version);
+	printf("};\n");
+}
+
+static void
+dev_mali_wait_for_notification_pre(void *data)
+{
+	_mali_uk_wait_for_notification_s *notification = data;
+
+	printf("IOCTL MALI_IOC_WAIT_FOR_NOTIFICATION IN = {\n");
+	printf("\t.code.timeout = 0x%x,\n", notification->code.timeout);
+	printf("};\n");
+}
+
+/*
+ * At this point, we do not care about the performance counters.
+ */
+static void
+dev_mali_wait_for_notification_post(void *data)
+{
+	_mali_uk_wait_for_notification_s *notification = data;
+
+	printf("IOCTL MALI_IOC_WAIT_FOR_NOTIFICATION OUT = {\n");
+	printf("\t.code.type = 0x%x,\n", notification->code.type);
+
+	switch (notification->code.type) {
+	case _MALI_NOTIFICATION_GP_FINISHED:
+		{
+			_mali_uk_gp_job_finished_s *info =
+				&notification->data.gp_job_finished;
+
+			printf("\t.data.gp_job_finished = {\n");
+
+			printf("\t\t.user_job_ptr = 0x%x,\n", info->user_job_ptr);
+			printf("\t\t.status = 0x%x,\n", info->status);
+			printf("\t\t.irq_status = 0x%x,\n", info->irq_status);
+			printf("\t\t.status_reg_on_stop = 0x%x,\n",
+			       info->status_reg_on_stop);
+			printf("\t\t.vscl_stop_addr = 0x%x,\n",
+			       info->vscl_stop_addr);
+			printf("\t\t.plbcl_stop_addr = 0x%x,\n",
+			       info->plbcl_stop_addr);
+			printf("\t\t.heap_current_addr = 0x%x,\n",
+			       info->heap_current_addr);
+			printf("\t\t.render_time = 0x%x,\n", info->render_time);
+
+			printf("\t},\n");
+		}
+		break;
+	case _MALI_NOTIFICATION_PP_FINISHED:
+		{
+			_mali_uk_pp_job_finished_s *info =
+				&notification->data.pp_job_finished;
+
+			printf("\t.data.pp_job_finished = {\n");
+
+			printf("\t\t.user_job_ptr = 0x%x,\n", info->user_job_ptr);
+			printf("\t\t.status = 0x%x,\n", info->status);
+			printf("\t\t.irq_status = 0x%x,\n", info->irq_status);
+			printf("\t\t.last_tile_list_addr = 0x%x,\n",
+			       info->last_tile_list_addr);
+			printf("\t\t.render_time = 0x%x,\n", info->render_time);
+
+			printf("\t},\n");
+		}
+		break;
+	case _MALI_NOTIFICATION_GP_STALLED:
+		{
+			_mali_uk_gp_job_suspended_s *info =
+				&notification->data.gp_job_suspended;
+
+			printf("\t.data.gp_job_suspended = {\n");
+			printf("\t\t.user_job_ptr = 0x%x,\n", info->user_job_ptr);
+			printf("\t\t.reason = 0x%x,\n", info->reason);
+			printf("\t\t.cookie = 0x%x,\n", info->cookie);
+			printf("\t},\n");
+		}
+		break;
+	default:
+		break;
+	}
+	printf("};\n");
+}
+
+static void
+dev_mali_gp_start_job_pre(void *data)
+{
+	_mali_uk_gp_start_job_s *job = data;
+	int i;
+
+	printf("IOCTL MALI_IOC_GP2_START_JOB IN = {\n");
+
+	printf("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
+	printf("\t.priority = 0x%x,\n", job->priority);
+	printf("\t.watchdog_msecs = 0x%x,\n", job->watchdog_msecs);
+
+	printf("\t.frame_registers = {\n");
+	for (i = 0; i < MALIGP2_NUM_REGS_FRAME; i++)
+		printf("\t\t0x%08x,\n", job->frame_registers[i]);
+	printf("\t},\n");
+
+	printf("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
+
+	printf("};\n");
+}
+
+static void
+dev_mali_gp_start_job_post(void *data)
+{
+	_mali_uk_gp_start_job_s *job = data;
+
+	printf("IOCTL MALI_IOC_GP2_START_JOB OUT = {\n");
+
+	printf("\t.returned_user_job_ptr = 0x%x,\n",
+	       job->returned_user_job_ptr);
+	printf("\t.status = 0x%x,\n", job->status);
+
+	printf("};\n");
+}
+
+static void
+dev_mali_pp_start_job_pre(void *data)
+{
+	_mali_uk_pp_start_job_s *job = data;
+	int i;
+
+	printf("IOCTL MALI_IOC_PP_START_JOB IN = {\n");
+
+	printf("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
+	printf("\t.priority = 0x%x,\n", job->priority);
+	printf("\t.watchdog_msecs = 0x%x,\n", job->watchdog_msecs);
+
+	printf("\t.frame_registers = {\n");
+	for (i = 0; i < MALI200_NUM_REGS_FRAME; i++)
+		printf("\t\t0x%08x,\n", job->frame_registers[i]);
+	printf("\t},\n");
+
+	printf("\t.wb0_registers = {\n");
+	for (i = 0; i < MALI200_NUM_REGS_WBx; i++)
+		printf("\t\t0x%08x,\n", job->wb0_registers[i]);
+	printf("\t},\n");
+
+	printf("\t.wb1_registers = {\n");
+	for (i = 0; i < MALI200_NUM_REGS_WBx; i++)
+		printf("\t\t0x%08x,\n", job->wb1_registers[i]);
+	printf("\t},\n");
+
+	printf("\t.wb2_registers = {\n");
+	for (i = 0; i < MALI200_NUM_REGS_WBx; i++)
+		printf("\t\t0x%08x,\n", job->wb2_registers[i]);
+	printf("\t},\n");
+
+
+	printf("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
+
+	printf("};\n");
+}
+
+static void
+dev_mali_pp_start_job_post(void *data)
+{
+	_mali_uk_pp_start_job_s *job = data;
+
+	printf("IOCTL MALI_IOC_PP_START_JOB OUT = {\n");
+
+	printf("\t.returned_user_job_ptr = 0x%x,\n",
+	       job->returned_user_job_ptr);
+	printf("\t.status = 0x%x,\n", job->status);
+
+	printf("};\n");
+}
 
 static struct dev_mali_ioctl_table {
 	int type;
@@ -231,14 +549,22 @@ static struct dev_mali_ioctl_table {
 } dev_mali_ioctls[] = {
 	{MALI_IOC_CORE_BASE, _MALI_UK_OPEN, "CORE, OPEN", NULL, NULL},
 	{MALI_IOC_CORE_BASE, _MALI_UK_CLOSE, "CORE, CLOSE", NULL, NULL},
-	{MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO_SIZE, "CORE, GET_SYSTEM_INFO_SIZE", NULL, NULL},
-	{MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO, "CORE, GET_SYSTEM_INFO", NULL, NULL},
-	{MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION, "CORE, WAIT_FOR_NOTIFICATION", NULL, NULL},
-	{MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION, "CORE, GET_API_VERSION", NULL, NULL},
-	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM", NULL, NULL},
-	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB", NULL, NULL},
-	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION, "PP, GET_CORE_VERSION", NULL, NULL},
-	{MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, "GP, START_JOB", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO_SIZE, "CORE, GET_SYSTEM_INFO_SIZE",
+	 NULL, dev_mali_get_system_info_size_post},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO, "CORE, GET_SYSTEM_INFO",
+	 dev_mali_get_system_info_pre, dev_mali_get_system_info_post},
+	{MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION, "CORE, WAIT_FOR_NOTIFICATION",
+	 dev_mali_wait_for_notification_pre, dev_mali_wait_for_notification_post},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION, "CORE, GET_API_VERSION",
+	 dev_mali_get_api_version_pre, dev_mali_get_api_version_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM",
+	 NULL, dev_mali_memory_init_mem_post},
+	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB",
+	 dev_mali_pp_start_job_pre, dev_mali_pp_start_job_post},
+	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION, "PP, GET_CORE_VERSION",
+	 NULL, dev_mali_pp_core_version_post},
+	{MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, "GP, START_JOB",
+	 dev_mali_gp_start_job_pre, dev_mali_gp_start_job_post},
 
 	{ 0, 0, NULL, NULL, NULL}
 };
@@ -273,17 +599,17 @@ mali_ioctl(int request, void *data)
 	else
 		ret = orig_ioctl(dev_mali_fd, request);
 
-	if (ioctl) {
+	if (ioctl && !ioctl->pre && !ioctl->post) {
 		if (data)
 			printf("IOCTL %s(%s) %p = %d\n",
 			       ioc_string, ioctl->name, data, ret);
 		else
 			printf("IOCTL %s(%s) = %d\n",
 			       ioc_string, ioctl->name, ret);
-
-		if (ioctl->post)
-			ioctl->post(data);
 	}
+
+	if (ioctl && ioctl->post)
+		ioctl->post(data);
 
 	return ret;
 }
