@@ -38,6 +38,9 @@
 #include "mali_ioctl.h"
 
 static int mali_ioctl(int request, void *data);
+static int mali_address_add(void *address, unsigned int size,
+			    unsigned int physical);
+static int mali_address_remove(void *address, int size);
 
 static pthread_mutex_t serializer[1] = { PTHREAD_MUTEX_INITIALIZER };
 
@@ -212,8 +215,10 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 
         ret = orig_mmap(addr, length, prot, flags, fd, offset);
 
-	if (fd == dev_mali_fd)
+	if (fd == dev_mali_fd) {
 		printf("MMAP 0x%08lx (0x%08x) = %p;\n", offset, length, ret);
+		mali_address_add(ret, length, offset);
+	}
 
 	pthread_mutex_unlock(serializer);
 
@@ -237,11 +242,8 @@ munmap(void *addr, size_t length)
 
 	ret = orig_munmap(addr, length);
 
-	/* leave printing until we have address tracking */
-#if 0
-	if (fd == dev_mali_fd)
+	if (!mali_address_remove(addr, length))
 		printf("MUNMAP %p (0x%08x);\n", addr, length);
-#endif
 
 	pthread_mutex_unlock(serializer);
 
@@ -612,4 +614,63 @@ mali_ioctl(int request, void *data)
 		ioctl->post(data);
 
 	return ret;
+}
+
+/*
+ *
+ * Memory dumper.
+ *
+ */
+#define MALI_ADDRESSES 0x10
+
+static struct mali_address {
+	void *address; /* mapped address */
+	unsigned int size;
+	unsigned int physical; /* actual address */
+} mali_addresses[MALI_ADDRESSES];
+
+static int
+mali_address_add(void *address, unsigned int size, unsigned int physical)
+{
+	int i;
+
+	for (i = 0; i < MALI_ADDRESSES; i++) {
+		if ((mali_addresses[i].address >= address) &&
+		    (mali_addresses[i].address < (address + size)) &&
+		    ((mali_addresses[i].address + size) > address) &&
+		    ((mali_addresses[i].address + size) <= (address + size))) {
+			printf("Error: Address %p (0x%x) is already taken!\n",
+			       address, size);
+			return -1;
+		}
+	}
+
+	for (i = 0; i < MALI_ADDRESSES; i++)
+		if (!mali_addresses[i].address) {
+			mali_addresses[i].address = address;
+			mali_addresses[i].size = size;
+			mali_addresses[i].physical = physical;
+			return 0;
+		}
+
+	printf("Error: No more free memory slots for %p (0x%x)!\n",
+	       address, size);
+	return -1;
+}
+
+static int
+mali_address_remove(void *address, int size)
+{
+	int i;
+
+	for (i = 0; i < MALI_ADDRESSES; i++)
+		if ((mali_addresses[i].address == address) &&
+		    (mali_addresses[i].size == size)) {
+			mali_addresses[i].address = NULL;
+			mali_addresses[i].size = 0;
+			mali_addresses[i].physical = 0;
+			return 0;
+		}
+
+	return -1;
 }
