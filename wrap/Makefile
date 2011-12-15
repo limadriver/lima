@@ -3,13 +3,13 @@ include ../Makefile.inc
 all: libMali_wrap.so
 
 
-
+wrap.o: wrap.c
 
 clean:
 	rm -f *.o
 	rm -f *.so
 
-libMali_wrap.so:
+libMali_wrap.so: wrap.o
 	$(CC) -shared -Wl -o $@ $^ -ldl
 
 install: $(SDK)/platform-tools/adb libMali_wrap.so
