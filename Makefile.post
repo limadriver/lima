@@ -1,0 +1,2 @@
+remount: $(SDK)/platform-tools/adb
+	 $(SDK)/platform-tools/adb remount
