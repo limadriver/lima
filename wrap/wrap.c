@@ -29,6 +29,9 @@
 #include <sys/mman.h>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <inttypes.h>
+
+static int mali_ioctl(int request, void *data);
 
 /*
  * First up, wrap around the libc calls that are crucial for capturing our
@@ -137,9 +140,6 @@ ioctl(int fd, int request, ...)
 	if (!orig_ioctl)
 		orig_ioctl = libc_dlsym(__func__);
 
-	if (fd == dev_mali_fd)
-		printf("IOCTL 0x%08X\n", request);
-
 	if (ioc_size) {
 		va_list args;
 		void *ptr;
@@ -148,9 +148,16 @@ ioctl(int fd, int request, ...)
 		ptr = va_arg(args, void *);
 		va_end(args);
 
-		return orig_ioctl(fd, request, ptr);
-	} else
-		return orig_ioctl(fd, request);
+		if (fd == dev_mali_fd)
+			return mali_ioctl(request, ptr);
+		else
+			return orig_ioctl(fd, request, ptr);
+	} else {
+		if (fd == dev_mali_fd)
+			return mali_ioctl(request, NULL);
+		else
+			return orig_ioctl(fd, request);
+	}
 }
 
 /*
@@ -187,4 +194,96 @@ munmap(void *addr, size_t length)
 		orig_munmap = libc_dlsym(__func__);
 
 	return orig_munmap(addr, length);
+}
+
+/*
+ *
+ * Now the mali specific ioctl parsing.
+ *
+ */
+char *
+ioctl_dir_string(int request)
+{
+	switch (_IOC_DIR(request)) {
+	default: /* cannot happen */
+	case 0x00:
+		return "_IO";
+	case 0x01:
+		return "_IOW";
+	case 0x02:
+		return "_IOR";
+	case 0x03:
+		return "_IOWR";
+	}
+}
+
+#define u32 uint32_t
+#define USING_MALI200
+#include "mali_200_regs.h"
+#include "mali_ioctl.h"
+
+static struct dev_mali_ioctl_table {
+	int type;
+	int nr;
+	char *name;
+	void (*pre)(void *data);
+	void (*post)(void *data);
+} dev_mali_ioctls[] = {
+	{MALI_IOC_CORE_BASE, _MALI_UK_OPEN, "CORE, OPEN", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_CLOSE, "CORE, CLOSE", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO_SIZE, "CORE, GET_SYSTEM_INFO_SIZE", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO, "CORE, GET_SYSTEM_INFO", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION, "CORE, WAIT_FOR_NOTIFICATION", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION, "CORE, GET_API_VERSION", NULL, NULL},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM", NULL, NULL},
+	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB", NULL, NULL},
+	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION, "PP, GET_CORE_VERSION", NULL, NULL},
+	{MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, "GP, START_JOB", NULL, NULL},
+
+	{ 0, 0, NULL, NULL, NULL}
+};
+
+static int
+mali_ioctl(int request, void *data)
+{
+	struct dev_mali_ioctl_table *ioctl = NULL;
+	int ioc_type = _IOC_TYPE(request);
+	int ioc_nr = _IOC_NR(request);
+	char *ioc_string = ioctl_dir_string(request);
+	int i;
+	int ret;
+
+	for (i = 0; dev_mali_ioctls[i].name; i++) {
+		if ((dev_mali_ioctls[i].type == ioc_type) &&
+		    (dev_mali_ioctls[i].nr == ioc_nr)) {
+			ioctl = &dev_mali_ioctls[i];
+			break;
+		}
+	}
+
+	if (!ioctl)
+		printf("Error: No mali ioctl wrapping implemented for %02X:%02X\n",
+		       ioc_type, ioc_nr);
+
+	if (ioctl && ioctl->pre)
+		ioctl->pre(data);
+
+	if (data)
+		ret = orig_ioctl(dev_mali_fd, request, data);
+	else
+		ret = orig_ioctl(dev_mali_fd, request);
+
+	if (ioctl) {
+		if (data)
+			printf("IOCTL %s(%s) %p = %d\n",
+			       ioc_string, ioctl->name, data, ret);
+		else
+			printf("IOCTL %s(%s) = %d\n",
+			       ioc_string, ioctl->name, ret);
+
+		if (ioctl->post)
+			ioctl->post(data);
+	}
+
+	return ret;
 }

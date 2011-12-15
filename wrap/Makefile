@@ -2,7 +2,6 @@ include ../Makefile.inc
 
 all: libMali_wrap.so
 
-
 wrap.o: wrap.c
 
 clean:
