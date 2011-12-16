@@ -14,8 +14,10 @@ static EGLint const config_attribute_list[] = {
 };
 
 static EGLint const pbuffer_attribute_list[] = {
-	EGL_WIDTH, 1024,
-	EGL_HEIGHT, 768,
+//	EGL_WIDTH, 1024,
+//	EGL_HEIGHT, 768,
+	EGL_WIDTH, 384,
+	EGL_HEIGHT, 256,
 	EGL_LARGEST_PBUFFER, EGL_TRUE,
     EGL_NONE
 };
@@ -242,9 +244,11 @@ main(int argc, char *argv[])
 	glFlush();
 #endif
 
-	usleep(100000);
+	usleep(1000000);
 
-	printf("The End!\n");
+	//printf("The End!\n");
+
+	fflush(stdout);
 
 	return 0;
 }

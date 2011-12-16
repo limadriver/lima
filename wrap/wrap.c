@@ -41,6 +41,7 @@ static int mali_ioctl(int request, void *data);
 static int mali_address_add(void *address, unsigned int size,
 			    unsigned int physical);
 static int mali_address_remove(void *address, int size);
+static void mali_memory_dump(void);
 
 static pthread_mutex_t serializer[1] = { PTHREAD_MUTEX_INITIALIZER };
 
@@ -218,6 +219,7 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 	if (fd == dev_mali_fd) {
 		printf("MMAP 0x%08lx (0x%08x) = %p;\n", offset, length, ret);
 		mali_address_add(ret, length, offset);
+		memset(ret, 0, length);
 	}
 
 	pthread_mutex_unlock(serializer);
@@ -244,6 +246,25 @@ munmap(void *addr, size_t length)
 
 	if (!mali_address_remove(addr, length))
 		printf("MUNMAP %p (0x%08x);\n", addr, length);
+
+	pthread_mutex_unlock(serializer);
+
+	return ret;
+}
+
+int (*orig_fflush)(FILE *stream);
+
+int
+fflush(FILE *stream)
+{
+	int ret;
+
+	pthread_mutex_lock(serializer);
+
+	if (!orig_fflush)
+		orig_fflush = libc_dlsym(__func__);
+
+	ret = orig_fflush(stream);
 
 	pthread_mutex_unlock(serializer);
 
@@ -417,6 +438,8 @@ dev_mali_wait_for_notification_post(void *data)
 			printf("\t\t.render_time = 0x%x,\n", info->render_time);
 
 			printf("\t},\n");
+
+			mali_memory_dump();
 		}
 		break;
 	case _MALI_NOTIFICATION_PP_FINISHED:
@@ -434,6 +457,8 @@ dev_mali_wait_for_notification_post(void *data)
 			printf("\t\t.render_time = 0x%x,\n", info->render_time);
 
 			printf("\t},\n");
+
+			mali_memory_dump();
 		}
 		break;
 	case _MALI_NOTIFICATION_GP_STALLED:
@@ -474,6 +499,8 @@ dev_mali_gp_start_job_pre(void *data)
 	printf("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
 
 	printf("};\n");
+
+	mali_memory_dump();
 }
 
 static void
@@ -526,6 +553,8 @@ dev_mali_pp_start_job_pre(void *data)
 	printf("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
 
 	printf("};\n");
+
+	mali_memory_dump();
 }
 
 static void
@@ -673,4 +702,65 @@ mali_address_remove(void *address, int size)
 		}
 
 	return -1;
+}
+
+static void
+mali_memory_dump_block(unsigned int *address, int start, int stop)
+{
+	int i;
+
+	printf("\t{ 0x%08x, 0x%08x, \n", 4 * start, 4 * (stop - start));
+	printf("\t\t{\n");
+
+	for (i = start; i < stop; i += 4)
+		printf("\t\t\t0x%08x, 0x%08x, 0x%08x, 0x%08x, /* 0x%08X */\n",
+		       address[i + 0], address[i + 1],
+		       address[i + 2], address[i + 3], 4 * i);
+
+	printf("\t\t}\n");
+	printf("\t},\n");
+}
+
+static void
+mali_memory_dump_address(unsigned int *address, unsigned int size,
+			 unsigned int physical)
+{
+	int i, start = -1, stop = -1;
+
+	printf("MEM_0x%08x[] = { /* 0x%08x */\n", physical, 4 * size);
+
+	for (i = 0; i < size; i += 4) {
+		if (start == -1) {
+			if (address[i + 0] || address[i + 1] ||
+			    address[i + 2] || address[i + 3])
+				start = i;
+		} else if (stop == -1) {
+			if (!address[i + 0] && !address[i + 1] &&
+			    !address[i + 2] && !address[i + 3])
+				stop = i;
+		} else {
+			if (address[i + 0] || address[i + 1] ||
+			    address[i + 2] || address[i + 3]) {
+				if ((stop + 2) < i) {
+					mali_memory_dump_block(address, start, stop);
+					start = -1;
+				}
+				stop = -1;
+			}
+		}
+	}
+
+	printf("};\n");
+}
+
+static void
+mali_memory_dump(void)
+{
+	int i;
+
+	for (i = 0; i < MALI_ADDRESSES; i++)
+		if (mali_addresses[i].address)
+			mali_memory_dump_address(mali_addresses[i].address,
+						 mali_addresses[i].size / 4,
+						 mali_addresses[i].physical);
 }
