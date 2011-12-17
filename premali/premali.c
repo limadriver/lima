@@ -32,6 +32,8 @@
 #include <errno.h>
 #include <pthread.h>
 
+#include "bmp.h"
+
 #define u32 uint32_t
 #define USING_MALI200
 #include "mali_200_regs.h"
@@ -183,6 +185,8 @@ main(int argc, char *argv[])
 	pthread_mutex_lock(&wait_mutex);
 
 	fflush(stdout);
+
+	bmp_dump(mem_0x40080000.address, 256 * 384 * 4, 384, 256, "/sdcard/premali.bmp");
 
 	return 0;
 }
