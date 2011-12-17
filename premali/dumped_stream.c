@@ -5,59 +5,59 @@
  *
  */
 _mali_uk_gp_start_job_s gp_job = {
-	.user_job_ptr = 0x18018,
+	.user_job_ptr = NULL,
 	.priority = 0x1,
 	.watchdog_msecs = 0x0,
 	.frame_registers = {
-		0x400fdcc0,
-		0x400fdd18,
-		0x400fbcc0,
-		0x400fbe20,
-		0x40100000,
-		0x40150000,
+		0x400fdcc0, /* 0x00: VS commands start */
+		0x400fdd18, /* 0x01: VS commands end */
+		0x400fbcc0, /* 0x02: PLBU commands start */
+		0x400fbe20, /* 0x03: PLBU commands end */
+		0x40100000, /* 0x04: Tile Heap start - stays empty in this dump. */
+		0x40150000, /* 0x05: Tile Heap end */
 	},
 	.abort_id = 0x0,
 };
 
 _mali_uk_pp_start_job_s pp_job = {
-	.user_job_ptr = 0x1a828,
+	.user_job_ptr = NULL,
 	.priority = 0x1,
 	.watchdog_msecs = 0x0,
 	.frame_registers = {
-		0x400f82c0,
-		0x400e01c0,
-		0x00000000,
-		0x00000022,
-		0x00ffffff,
-		0x00000000,
-		0xff000000,
-		0xff000000,
-		0xff000000,
-		0xff000000,
-		0x00000000,
-		0x00000000,
-		0x40034400,
-		0x00010001,
-		0x00000000,
-		0x00000000,
-		0x00000001,
-		0x000001ff,
-		0x00000077,
-		0x00000001,
+		0x400f82c0, /* 0x00: Tile stream start address. */
+		0x400e01c0, /* 0x01: Address, 0x4000 large, only partly dumped though */
+		0x00000000, /* 0x02: unused */
+		0x00000022, /* 0x03: flags */
+		0x00ffffff, /* 0x04: clear value 1 */
+		0x00000000, /* 0x05: clear value 2 */
+		0xff000000, /* 0x06: mangled clear value 0 */
+		0xff000000, /* 0x07: -> frame[0x06] */
+		0xff000000, /* 0x08: -> frame[0x06] */
+		0xff000000, /* 0x09: -> frame[0x06] */
+		0x00000000, /* 0x0A: width - 1 */
+		0x00000000, /* 0x0B: height - 1 */
+		0x40034400, /* 0x0C: fragment stack address, empty in this dump. */
+		0x00010001, /* 0x0D: (fragment stack start) << 16 | (fragment stack end) */
+		0x00000000, /* 0x0E: unused */
+		0x00000000, /* 0x0F: unused */
+		0x00000001, /* 0x10: always set to 1 */
+		0x000001ff, /* 0x11: if (frame[0x13] == 1) then ((height << supersample scale factor) - 1) else 1 */
+		0x00000077, /* 0x12: always set to 0x77 */
+		0x00000001, /* 0x13: set to 1 */
 	},
 	.wb0_registers = {
-		0x00000002,
-		0x40080000,
-		0x00000003,
-		0x00000000,
-		0x00000000,
-		0x000000c0,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
+		0x00000002, /* 0: type */
+		0x40080000, /* 1: address */
+		0x00000003, /* 2: pixel format */
+		0x00000000, /* 3: downsample factor */
+		0x00000000, /* 4: pixel layout */
+		0x000000c0, /* 5: pitch / 8 */
+		0x00000000, /* 6: Multiple Render Target flags: bits 0-3 */
+		0x00000000, /* 7: MRT offset */
+		0x00000000, /* 8: zeroed */
+		0x00000000, /* padding? */
+		0x00000000, /* padding? */
+		0x00000000, /* padding? */
 	},
 	.wb1_registers = {
 		0x00000000,
@@ -215,6 +215,8 @@ struct mali_dumped_mem_content mem_0x40080000_0x00000003 = {
 			0xbf000000, 0x00000000, 0x3f000000, 0xbf000000, /* 0x00068510 */
 	}
 };
+
+/* Tile stream */
 struct mali_dumped_mem_content mem_0x40080000_0x00000004 = {
 	0x000782c0,
 	0x00001810,
@@ -1105,6 +1107,8 @@ struct mali_dumped_mem_content mem_0x40080000_0x00000007 = {
 			0x40033c00, 0x40033e00, 0x40034000, 0x40034200, /* 0x0007BAF0 */
 	}
 };
+
+/* PLBU commands */
 struct mali_dumped_mem_content mem_0x40080000_0x00000008 = {
 	0x0007bcc0,
 	0x00000160,
@@ -1133,6 +1137,8 @@ struct mali_dumped_mem_content mem_0x40080000_0x00000008 = {
 			0x00000000, 0xd0000000, 0x00000000, 0x50000000, /* 0x0007BE10 */
 	}
 };
+
+/* VS commands */
 struct mali_dumped_mem_content mem_0x40080000_0x00000009 = {
 	0x0007dcc0,
 	0x00000060,
@@ -1163,6 +1169,8 @@ struct mali_dumped_mem_block mem_0x40080000 = {
 		&mem_0x40080000_0x00000009,
 	},
 };
+
+/* Tile Heap -- Empty. */
 struct mali_dumped_mem_block mem_0x40100000 = {
 	NULL,
 	0x40100000,
@@ -1171,6 +1179,7 @@ struct mali_dumped_mem_block mem_0x40100000 = {
 	{
 	},
 };
+
 struct mali_dumped_mem_block mem_0x40180000 = {
 	NULL,
 	0x40180000,
@@ -1179,6 +1188,7 @@ struct mali_dumped_mem_block mem_0x40180000 = {
 	{
 	},
 };
+
 struct mali_dumped_mem dumped_mem = {
 	0x00000004,
 	{

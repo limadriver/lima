@@ -162,6 +162,7 @@ main(int argc, char *argv[])
 	}
 
 	gp_job.ctx = (void *) dev_mali_fd;
+	gp_job.user_job_ptr = &gp_job;
 	ret = ioctl(dev_mali_fd, MALI_IOC_GP2_START_JOB, &gp_job);
 	if (ret == -1) {
 		printf("Error: ioctl MALI_IOC_GP2_START_JOB failed: %s\n",
@@ -175,6 +176,7 @@ main(int argc, char *argv[])
 	wait_for_notification_start();
 
 	pp_job.ctx = (void *) dev_mali_fd;
+	pp_job.user_job_ptr = &pp_job;
 	ret = ioctl(dev_mali_fd, MALI_IOC_PP_START_JOB, &pp_job);
 	if (ret == -1) {
 		printf("Error: ioctl MALI_IOC_PP_START_JOB failed: %s\n",
