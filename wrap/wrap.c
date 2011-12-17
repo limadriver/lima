@@ -439,7 +439,7 @@ dev_mali_wait_for_notification_post(void *data)
 
 			printf("\t},\n");
 
-			mali_memory_dump();
+			//mali_memory_dump();
 		}
 		break;
 	case _MALI_NOTIFICATION_PP_FINISHED:
@@ -705,29 +705,32 @@ mali_address_remove(void *address, int size)
 }
 
 static void
-mali_memory_dump_block(unsigned int *address, int start, int stop)
+mali_memory_dump_block(unsigned int *address, int start, int stop,
+		       unsigned physical, int count)
 {
 	int i;
 
-	printf("\t{ 0x%08x, 0x%08x, \n", 4 * start, 4 * (stop - start));
-	printf("\t\t{\n");
+	printf("struct mali_dumped_mem_content mem_0x%08x_0x%08x = {\n",
+	       physical, count);
+
+	printf("\t0x%08x,\n", 4 * start);
+	printf("\t0x%08x,\n", 4 * (stop - start));
+	printf("\t{\n");
 
 	for (i = start; i < stop; i += 4)
 		printf("\t\t\t0x%08x, 0x%08x, 0x%08x, 0x%08x, /* 0x%08X */\n",
 		       address[i + 0], address[i + 1],
 		       address[i + 2], address[i + 3], 4 * i);
 
-	printf("\t\t}\n");
-	printf("\t},\n");
+	printf("\t}\n");
+	printf("};\n");
 }
 
 static void
 mali_memory_dump_address(unsigned int *address, unsigned int size,
 			 unsigned int physical)
 {
-	int i, start = -1, stop = -1;
-
-	printf("MEM_0x%08x[] = { /* 0x%08x */\n", physical, 4 * size);
+	int i, start = -1, stop = -1, count = 0;
 
 	for (i = 0; i < size; i += 4) {
 		if (start == -1) {
@@ -738,29 +741,59 @@ mali_memory_dump_address(unsigned int *address, unsigned int size,
 			if (!address[i + 0] && !address[i + 1] &&
 			    !address[i + 2] && !address[i + 3])
 				stop = i;
-		} else {
-			if (address[i + 0] || address[i + 1] ||
-			    address[i + 2] || address[i + 3]) {
-				if ((stop + 2) < i) {
-					mali_memory_dump_block(address, start, stop);
-					start = -1;
-				}
+		} else if (!address[i + 0] && !address[i + 1] &&
+			   !address[i + 2] && !address[i + 3]) {
+			if (i > (stop + 2)) {
+				mali_memory_dump_block(address, start, stop,
+						       physical, count);
+				count++;
+				start = -1;
 				stop = -1;
 			}
-		}
+		} else
+			stop = -1;
 	}
 
+	if ((start != -1) && (stop == -1)) {
+		mali_memory_dump_block(address, start, size, physical, count);
+		count++;
+	}
+
+	printf("struct mali_dumped_mem_block mem_0x%08x = {\n", physical);
+	printf("\tNULL,\n");
+	printf("\t0x%08x,\n", physical);
+	printf("\t0x%08x,\n", 4 * size);
+	printf("\t0x%08x,\n", count);
+	printf("\t{\n");
+
+	for (i = 0; i < count; i++)
+		printf("\t\t&mem_0x%08x_0x%08x,\n", physical, i);
+
+	printf("\t},\n");
 	printf("};\n");
 }
 
 static void
 mali_memory_dump(void)
 {
-	int i;
+	int i, count = 0;
 
 	for (i = 0; i < MALI_ADDRESSES; i++)
-		if (mali_addresses[i].address)
+		if (mali_addresses[i].address) {
 			mali_memory_dump_address(mali_addresses[i].address,
 						 mali_addresses[i].size / 4,
 						 mali_addresses[i].physical);
+			count++;
+		}
+
+	printf("struct mali_dumped_mem dumped_mem = {\n");
+	printf("\t0x%08x,\n", count);
+	printf("\t{\n");
+
+	for (i = 0; i < MALI_ADDRESSES; i++)
+		if (mali_addresses[i].address)
+			printf("\t\t&mem_0x%08x,\n", mali_addresses[i].physical);
+
+	printf("\t},\n");
+	printf("};\n");
 }

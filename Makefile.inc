@@ -5,7 +5,7 @@ CC = $(TOOLCHAIN)/bin/arm-linux-androideabi-gcc
 LD = $(TOOLCHAIN)/bin/arm-linux-androideabi-ld
 SYSROOT = $(TOOLCHAIN)/sysroot/
 
-CFLAGS += -O0 -g -Wall
+CFLAGS += -O0 -g -Wall -I../include/
 
 SYSTEM = android
 ARCH = arm
