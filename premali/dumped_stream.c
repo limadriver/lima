@@ -4,10 +4,11 @@
  * test.c program, as submitted at GP job start time.
  *
  */
+
+#define RENDER_WIDTH  384
+#define RENDER_HEIGHT 256
+
 _mali_uk_gp_start_job_s gp_job = {
-	.user_job_ptr = NULL,
-	.priority = 0x1,
-	.watchdog_msecs = 0x0,
 	.frame_registers = {
 		0x400fdcc0, /* 0x00: VS commands start */
 		0x400fdd18, /* 0x01: VS commands end */
@@ -16,21 +17,17 @@ _mali_uk_gp_start_job_s gp_job = {
 		0x40100000, /* 0x04: Tile Heap start - stays empty in this dump. */
 		0x40150000, /* 0x05: Tile Heap end */
 	},
-	.abort_id = 0x0,
 };
 
 _mali_uk_pp_start_job_s pp_job = {
-	.user_job_ptr = NULL,
-	.priority = 0x1,
-	.watchdog_msecs = 0x0,
 	.frame_registers = {
 		0x400f82c0, /* 0x00: Tile stream start address. */
 		0x400e01c0, /* 0x01: Address, 0x4000 large, only partly dumped though */
 		0x00000000, /* 0x02: unused */
 		0x00000022, /* 0x03: flags */
-		0x00ffffff, /* 0x04: clear value 1 */
-		0x00000000, /* 0x05: clear value 2 */
-		0xff000000, /* 0x06: mangled clear value 0 */
+		0x00ffffff, /* 0x04: clear value depth */
+		0x00000000, /* 0x05: clear value stencil */
+		0xff000000, /* 0x06: clear value color */
 		0xff000000, /* 0x07: -> frame[0x06] */
 		0xff000000, /* 0x08: -> frame[0x06] */
 		0xff000000, /* 0x09: -> frame[0x06] */
@@ -55,39 +52,7 @@ _mali_uk_pp_start_job_s pp_job = {
 		0x00000000, /* 6: Multiple Render Target flags: bits 0-3 */
 		0x00000000, /* 7: MRT offset */
 		0x00000000, /* 8: zeroed */
-		0x00000000, /* padding? */
-		0x00000000, /* padding? */
-		0x00000000, /* padding? */
 	},
-	.wb1_registers = {
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-	},
-	.wb2_registers = {
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-		0x00000000,
-	},
-	.abort_id = 0x0,
 };
 
 struct mali_dumped_mem_content mem_0x40000000_0x00000000 = {
