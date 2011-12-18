@@ -80,6 +80,60 @@ mali_dumped_mem_content_load(void *address,
 	}
 }
 
+int
+tile_stream_create(unsigned int address, unsigned int *stream,
+		   int width, int height, int step_x, int step_y,
+		   int block_size)
+{
+	int x, y, i, j, index;
+	int offset;
+
+	width >>= 4;
+	height >>= 4;
+
+	offset = 0;
+	index = 0;
+
+	for (y = 0; y < height; y += step_y) {
+		for (x = 0; x < width; x += step_x) {
+			for (j = 0; j < step_y; j++) {
+				for (i = 0; i < step_x; i++) {
+					stream[index + 0] = 0;
+					stream[index + 1] = 0xB8000000 | (x + i) | ((y + j) << 8);
+					stream[index + 2] = 0xE0000002 | (((address + offset) >> 3) & ~0xE0000003);
+					stream[index + 3] = 0xB0000000;
+
+					index += 4;
+				}
+			}
+
+			offset += block_size;
+		}
+	}
+
+	stream[index + 0] = 0;
+	stream[index + 1] = 0xBC000000;
+
+	return 0;
+}
+
+int
+tile_stream_address_create(unsigned int address, unsigned int *stream,
+			   int width, int height, int step_x, int step_y,
+			   int block_size)
+{
+#if 1
+	int i, size = (width * height >> 8) / (step_x * step_y);
+
+	for (i = 0; i < size; i++)
+		stream[i] = address + (i * block_size);
+#endif
+
+	printf("%s: done!\n", __func__);
+
+	return 0;
+}
+
 _mali_uk_wait_for_notification_s wait;
 pthread_mutex_t wait_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -157,6 +211,12 @@ main(int argc, char *argv[])
 		mali_dumped_mem_content_load(block->address, block->contents,
 					     block->count);
 	}
+
+	/* for GP */
+	tile_stream_address_create(0x40004400, mem_0x40080000.address + 0x79b00,
+				   384, 256, 2, 1, 0x200);
+	/* for PP */
+	tile_stream_create(0x40004400, mem_0x40080000.address + 0x782c0, 384, 256, 2, 1, 0x200);
 
 	gp_job.ctx = (void *) dev_mali_fd;
 	gp_job.user_job_ptr = (u32) &gp_job;
