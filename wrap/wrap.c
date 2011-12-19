@@ -31,11 +31,14 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include <ctype.h>
 
 #define u32 uint32_t
 #define USING_MALI200
 #include "mali_200_regs.h"
 #include "mali_ioctl.h"
+
+#include "compiler.h"
 
 static int mali_ioctl(int request, void *data);
 static int mali_address_add(void *address, unsigned int size,
@@ -796,4 +799,164 @@ mali_memory_dump(void)
 
 	printf("\t},\n");
 	printf("};\n");
+}
+
+/*
+ *
+ * Wrapper for __mali_compile_essl_shader
+ *
+ */
+static void *libmali_dl;
+
+static int
+libmali_dlopen(void)
+{
+	libmali_dl = dlopen("libMali.so", RTLD_LAZY);
+	if (!libmali_dl) {
+		printf("Failed to dlopen %s: %s\n",
+		       "libMali.so", dlerror());
+		exit(-1);
+	}
+
+	return 0;
+}
+
+static void *
+libmali_dlsym(const char *name)
+{
+	void *func;
+
+	if (!libmali_dl)
+		libmali_dlopen();
+
+	func = dlsym(libmali_dl, name);
+
+	if (!func) {
+		printf("Failed to find %s in %s: %s\n",
+		       name, "libMali.so", dlerror());
+		exit(-1);
+	}
+
+	return func;
+}
+
+void
+hexdump(const void *data, int size)
+{
+	unsigned char *buf = (void *) data;
+	char alpha[17];
+	int i;
+
+	for (i = 0; i < size; i++) {
+		if (!(i % 16))
+			printf("\t\t%08X", (unsigned int) buf + i);
+
+		if (((void *) (buf + i)) < ((void *) data)) {
+			printf("   ");
+			alpha[i % 16] = '.';
+		} else {
+			printf(" %02X", buf[i]);
+
+			if (isprint(buf[i]))
+				alpha[i % 16] = buf[i];
+			else
+				alpha[i % 16] = '.';
+		}
+
+		if ((i % 16) == 15) {
+			alpha[16] = 0;
+			printf("\t|%s|\n", alpha);
+		}
+	}
+
+	if (i % 16) {
+		for (i %= 16; i < 16; i++) {
+			printf("   ");
+			alpha[i] = '.';
+
+			if (i == 15) {
+				alpha[16] = 0;
+				printf("\t|%s|\n", alpha);
+			}
+		}
+	}
+}
+
+int (*orig__mali_compile_essl_shader)(struct mali_shader_binary *binary, int type,
+				      char *source, int *length, int count);
+
+int
+__mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
+			   char *source, int *length, int count)
+{
+	int ret;
+	int i, offset = 0;
+
+	pthread_mutex_lock(serializer);
+
+	if (!orig__mali_compile_essl_shader)
+		orig__mali_compile_essl_shader = libmali_dlsym(__func__);
+
+	for (i = 0, offset = 0; i < count; i++) {
+		printf("%s shader source %d:\n",
+		       (type == 0x8B31) ? "Vertex" : "Fragment", i);
+		printf("\"%s\"\n", &source[offset]);
+		offset += length[i];
+	}
+
+	ret = orig__mali_compile_essl_shader(binary, type, source, length, count);
+
+	printf("struct mali_shader_binary %p = {\n", binary);
+	printf("\t.compile_status = %d,\n", binary->compile_status);
+	printf("\t.error_log = \"%s\",\n", binary->error_log);
+	printf("\t.shader = {\n");
+	hexdump(binary->shader, binary->shader_size);
+	printf("\t},\n");
+	printf("\t.shader_size = 0x%x,\n", binary->shader_size);
+	printf("\t.varying_stream = {\n");
+	hexdump(binary->varying_stream, binary->varying_stream_size);
+	printf("\t},\n");
+	printf("\t.varying_stream_size = 0x%x,\n", binary->uniform_stream_size);
+	printf("\t.uniform_stream = {\n");
+	hexdump(binary->uniform_stream, binary->uniform_stream_size);
+	printf("\t},\n");
+	printf("\t.uniform_stream_size = 0x%x,\n", binary->uniform_stream_size);
+	printf("\t.attribute_stream = {\n");
+	hexdump(binary->attribute_stream, binary->attribute_stream_size);
+	printf("\t},\n");
+	printf("\t.attribute_stream_size = 0x%x,\n", binary->attribute_stream_size);
+
+	if (type == 0x8B31) {
+		printf("\t.parameters (vertex) = {\n");
+		printf("\t\t.unknown00 = 0x%x,\n", binary->parameters.vertex.unknown00);
+		printf("\t\t.unknown04 = 0x%x,\n", binary->parameters.vertex.unknown04);
+		printf("\t\t.unknown08 = 0x%x,\n", binary->parameters.vertex.unknown08);
+		printf("\t\t.unknown0C = 0x%x,\n", binary->parameters.vertex.unknown0C);
+		printf("\t\t.unknown10 = 0x%x,\n", binary->parameters.vertex.unknown10);
+		printf("\t\t.unknown14 = 0x%x,\n", binary->parameters.vertex.unknown14);
+		printf("\t\t.unknown18 = 0x%x,\n", binary->parameters.vertex.unknown18);
+		printf("\t\t.unknown1C = 0x%x,\n", binary->parameters.vertex.unknown1C);
+		printf("\t\t.unknown20 = 0x%x,\n", binary->parameters.vertex.unknown20);
+		printf("\t},\n");
+	} else {
+		printf("\t.parameters (fragment) = {\n");
+		printf("\t\t.unknown00 = 0x%x,\n", binary->parameters.fragment.unknown00);
+		printf("\t\t.unknown04 = 0x%x,\n", binary->parameters.fragment.unknown04);
+		printf("\t\t.unknown08 = 0x%x,\n", binary->parameters.fragment.unknown08);
+		printf("\t\t.unknown0C = 0x%x,\n", binary->parameters.fragment.unknown0C);
+		printf("\t\t.unknown10 = 0x%x,\n", binary->parameters.fragment.unknown10);
+		printf("\t\t.unknown14 = 0x%x,\n", binary->parameters.fragment.unknown14);
+		printf("\t\t.unknown18 = 0x%x,\n", binary->parameters.fragment.unknown18);
+		printf("\t\t.unknown1C = 0x%x,\n", binary->parameters.fragment.unknown1C);
+		printf("\t\t.unknown20 = 0x%x,\n", binary->parameters.fragment.unknown20);
+		printf("\t\t.unknown24 = 0x%x,\n", binary->parameters.fragment.unknown24);
+		printf("\t\t.unknown28 = 0x%x,\n", binary->parameters.fragment.unknown28);
+		printf("\t\t.unknown2C = 0x%x,\n", binary->parameters.fragment.unknown2C);
+		printf("\t}\n");
+	}
+	printf("}\n");
+
+	pthread_mutex_unlock(serializer);
+
+	return ret;
 }
