@@ -36,6 +36,12 @@
 #include "mali_200_regs.h"
 #include "mali_ioctl.h"
 
+static inline unsigned int
+from_float(float x)
+{
+	return *((unsigned int *) &x);
+}
+
 int dev_mali_fd;
 
 /*
@@ -122,16 +128,141 @@ tile_stream_address_create(unsigned int address, unsigned int *stream,
 			   int width, int height, int step_x, int step_y,
 			   int block_size)
 {
-#if 1
 	int i, size = (width * height >> 8) / (step_x * step_y);
 
 	for (i = 0; i < size; i++)
 		stream[i] = address + (i * block_size);
-#endif
-
-	printf("%s: done!\n", __func__);
 
 	return 0;
+}
+
+struct mali_cmd {
+	unsigned int val;
+	unsigned int cmd;
+};
+
+#include "plbu.h"
+
+void
+plbu_commands_create(struct mali_cmd *cmds)
+{
+	int i = 0;
+
+	cmds[i].val = 0x00000001;
+	cmds[i].cmd = MALI_PLBU_CMD_BLOCK_STEP;
+	i++;
+
+	cmds[i].val = 0x17000f00;
+	cmds[i].cmd = MALI_PLBU_CMD_TILED_DIMENSIONS;
+	i++;
+
+	cmds[i].val = 0x0000000c;
+	cmds[i].cmd = MALI_PLBU_CMD_PLBU_BLOCK_STRIDE;
+	i++;
+
+	cmds[i].val = 0x400f9b00;
+	cmds[i].cmd = MALI_PLBU_CMD_PLBU_ARRAY_ADDRESS;
+	i++;
+
+	cmds[i].val = 0x40100000;
+	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_START;
+	i++;
+
+	cmds[i].val = 0x40150000;
+	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_END;
+	i++;
+
+	cmds[i].val = from_float(0.0);
+	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_Y;
+	i++;
+
+	cmds[i].val = from_float(256.0);
+	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_H;
+	i++;
+
+	cmds[i].val = from_float(0.0);
+	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_X;
+	i++;
+
+	cmds[i].val = from_float(384.0);
+	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_W;
+	i++;
+
+	/*
+	 *
+	 */
+	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN;
+	cmds[i].cmd = MALI_PLBU_CMD_ARRAYS_SEMAPHORE;
+	i++;
+
+	cmds[i].val = 0x00002200;
+	cmds[i].cmd = MALI_PLBU_CMD_PRIMITIVE_SETUP;
+	i++;
+
+	cmds[i].val = 0x400e8340;
+	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY | (0x400e82c0 >> 4);
+	i++;
+
+	cmds[i].val = 0x00000000;
+	cmds[i].cmd = 0x1000010a;
+	i++;
+
+	cmds[i].val = from_float(0.0);
+	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_NEAR;
+	i++;
+
+	cmds[i].val = from_float(1.0);
+	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_FAR;
+	i++;
+
+	/* could this be some sort of delay or wait? */
+	cmds[i].val = 0x03000000;
+	cmds[i].cmd = 0x00040000;
+	i++;
+
+	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_END;
+	cmds[i].cmd = MALI_PLBU_CMD_ARRAYS_SEMAPHORE;
+	i++;
+
+	/*
+	 * Some inter-frame communication apparently.
+	 */
+#if 0
+	cmds[i].val = 0x400e41c0;
+	cmds[i].cmd = 0xa0000103;
+	i++;
+
+	cmds[i].val = 0x400e41c4;
+	cmds[i].cmd = 0xa0000104;
+	i++;
+
+	cmds[i].val = 0x400e41c8;
+	cmds[i].cmd = 0xa0000107;
+	i++;
+
+	cmds[i].val = 0x400e41cc;
+	cmds[i].cmd = 0xa0000108;
+	i++;
+
+	cmds[i].val = 0x400e41d0;
+	cmds[i].cmd = 0xa0000105;
+	i++;
+
+	cmds[i].val = 0x400e41d4;
+	cmds[i].cmd = 0xa0000106;
+	i++;
+#endif
+
+	cmds[i].val = 0x00000000;
+	cmds[i].cmd = 0xd0000000;
+	i++;
+
+	cmds[i].val = 0x00000000;
+	cmds[i].cmd = 0xd0000000;
+	i++;
+
+	cmds[i].val = 0;
+	cmds[i].cmd = MALI_PLBU_CMD_END;
 }
 
 _mali_uk_wait_for_notification_s wait;
@@ -217,6 +348,8 @@ main(int argc, char *argv[])
 				   384, 256, 2, 1, 0x200);
 	/* for PP */
 	tile_stream_create(0x40004400, mem_0x40080000.address + 0x782c0, 384, 256, 2, 1, 0x200);
+
+	plbu_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7bcc0));
 
 	gp_job.ctx = (void *) dev_mali_fd;
 	gp_job.user_job_ptr = (u32) &gp_job;

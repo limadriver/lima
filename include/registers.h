@@ -36,7 +36,7 @@
 /*
  * PP Frame registers.
  */
-#define MALI_PP_FRAME_TILE_STREAM_ADDRESS	0x00
+#define MALI_PP_PLBU_ARRAY_ADDRESS		0x00
 #define MALI_PP_FRAME_SOMETHING_ADDRESS		0x01 /* No idea yet. */
 #define MALI_PP_FRAME_UNUSED_0			0x02
 #define MALI_PP_FRAME_FLAGS_16BITS			0x01 /* Set when 16 bits per channel */
