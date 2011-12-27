@@ -438,5 +438,7 @@ main(int argc, char *argv[])
 
 	bmp_dump(mem_0x40080000.address, 256 * 384 * 4, 384, 256, "/sdcard/premali.bmp");
 
+	fb_dump(mem_0x40080000.address, 256 * 384 * 4, 384, 256);
+
 	return 0;
 }

@@ -8,10 +8,12 @@ clean:
 
 bmp.o: bmp.c bmp.h
 
+fb.o: fb.c fb.h
+
 premali.o: premali.c dumped_stream.c bmp.h
 	$(CC) $(CFLAGS) -c -o $@ premali.c
 
-premali: bmp.o premali.o
+premali: bmp.o fb.o premali.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 install: $(SDK)/platform-tools/adb premali
@@ -23,7 +25,6 @@ wrap: $(SDK)/platform-tools/adb
 	$(SDK)/platform-tools/adb shell "LD_PRELOAD=libMali_wrap.so REMALI_WRAP_LOG=/sdcard/premali.wrap.log premali"
 	$(SDK)/platform-tools/adb pull /sdcard/premali.bmp
 	$(SDK)/platform-tools/adb pull /sdcard/premali.wrap.log
-	
 
 run:	$(SDK)/platform-tools/adb
 	$(SDK)/platform-tools/adb shell "rm /sdcard/premali.bmp"
