@@ -141,6 +141,57 @@ struct mali_cmd {
 	unsigned int cmd;
 };
 
+#include "vs.h"
+
+void
+vs_commands_create(struct mali_cmd *cmds)
+{
+	int i = 0;
+
+	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
+	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
+	i++;
+
+	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_2;
+	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
+	i++;
+
+	cmds[i].val = 0x40004240;
+	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (7 << 16);
+	i++;
+
+	cmds[i].val = 0x00401800;
+	cmds[i].cmd = 0x10000040;
+	i++;
+
+	cmds[i].val = 0x01000100;
+	cmds[i].cmd = 0x10000042;
+	i++;
+
+	cmds[i].val = 0x400e8380;
+	cmds[i].cmd = 0x30030000;
+	i++;
+
+	cmds[i].val = 0x400e83c0;
+	cmds[i].cmd = 0x20400000;
+	i++;
+
+	cmds[i].val = 0x00000003;
+	cmds[i].cmd = 0x10000041;
+	i++;
+
+	cmds[i].val = 0x03000000;
+	cmds[i].cmd = 0x00000000;
+	i++;
+
+	cmds[i].val = 0x00000000;
+	cmds[i].cmd = 0x60000000;
+	i++;
+
+	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_END;
+	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
+}
+
 #include "plbu.h"
 
 void
@@ -349,6 +400,7 @@ main(int argc, char *argv[])
 	/* for PP */
 	tile_stream_create(0x40004400, mem_0x40080000.address + 0x782c0, 384, 256, 2, 1, 0x200);
 
+	vs_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7dcc0));
 	plbu_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7bcc0));
 
 	gp_job.ctx = (void *) dev_mali_fd;

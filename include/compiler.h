@@ -29,7 +29,7 @@ struct mali_shader_binary_vertex_parameters { /* 0x24 */
 	int unknown10; /* 0x10 */
 	int unknown14; /* 0x14 */
 	int unknown18; /* 0x18 */
-	int unknown1C; /* 0x1C */
+	int size; /* 0x1C, commands are in 4 dwords */
 	int unknown20; /* 0x20 */
 };
 

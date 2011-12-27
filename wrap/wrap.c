@@ -928,6 +928,18 @@ hexdump(const void *data, int size)
 	}
 }
 
+void
+wrap_dump_shader(unsigned int *shader, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i += 4)
+		wrap_log("\t\t0x%08x, 0x%08x, 0x%08x, 0x%08x, /* 0x%08x */\n",
+			 shader[i + 0], shader[i + 1], shader[i + 2], shader[i + 3],
+			 4 * i);
+
+}
+
 int (*orig__mali_compile_essl_shader)(struct mali_shader_binary *binary, int type,
 				      char *source, int *length, int count);
 
@@ -956,7 +968,7 @@ __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
 	wrap_log("\t.compile_status = %d,\n", binary->compile_status);
 	wrap_log("\t.error_log = \"%s\",\n", binary->error_log);
 	wrap_log("\t.shader = {\n");
-	hexdump(binary->shader, binary->shader_size);
+	wrap_dump_shader(binary->shader, binary->shader_size / 4);
 	wrap_log("\t},\n");
 	wrap_log("\t.shader_size = 0x%x,\n", binary->shader_size);
 	wrap_log("\t.varying_stream = {\n");
@@ -981,7 +993,7 @@ __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
 		wrap_log("\t\t.unknown10 = 0x%x,\n", binary->parameters.vertex.unknown10);
 		wrap_log("\t\t.unknown14 = 0x%x,\n", binary->parameters.vertex.unknown14);
 		wrap_log("\t\t.unknown18 = 0x%x,\n", binary->parameters.vertex.unknown18);
-		wrap_log("\t\t.unknown1C = 0x%x,\n", binary->parameters.vertex.unknown1C);
+		wrap_log("\t\t.size = 0x%x,\n", binary->parameters.vertex.size);
 		wrap_log("\t\t.unknown20 = 0x%x,\n", binary->parameters.vertex.unknown20);
 		wrap_log("\t},\n");
 	} else {
