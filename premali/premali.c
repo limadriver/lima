@@ -27,6 +27,7 @@
 #include <pthread.h>
 
 #include "bmp.h"
+#include "fb.h"
 
 #include "formats.h"
 #include "registers.h"
@@ -156,8 +157,8 @@ vs_commands_create(struct mali_cmd *cmds)
 	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
-	cmds[i].val = 0x40004240;
-	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (7 << 16);
+	cmds[i].val = 0x40004240; /* vs shader address */
+	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (7 << 16); /* vs shader size */
 	i++;
 
 	cmds[i].val = 0x00401800;
@@ -168,12 +169,13 @@ vs_commands_create(struct mali_cmd *cmds)
 	cmds[i].cmd = 0x10000042;
 	i++;
 
-	cmds[i].val = 0x400e8380;
-	cmds[i].cmd = 0x30030000;
+	/* start of _gles_gb_vs_setup */
+	cmds[i].val = 0x400e8380; /* uniforms address */
+	cmds[i].cmd = MALI_VS_CMD_UNIFORMS_ADDRESS | (3 << 16); /* ALIGN(uniforms_size, 4) / 4 */
 	i++;
 
-	cmds[i].val = 0x400e83c0;
-	cmds[i].cmd = 0x20400000;
+	cmds[i].val = 0x400e83c0; /* shared address space for attributes and varyings, half/half */
+	cmds[i].cmd = MALI_VS_CMD_COMMON_ADDRESS | (0x40 << 16); /* (guessing) common size / 4 */
 	i++;
 
 	cmds[i].val = 0x00000003;
@@ -250,8 +252,8 @@ plbu_commands_create(struct mali_cmd *cmds)
 	cmds[i].cmd = MALI_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
-	cmds[i].val = 0x400e8340;
-	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY | (0x400e82c0 >> 4);
+	cmds[i].val = 0x400e8340; /* RSW address */
+	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY | (0x400e82c0 >> 4); /* vertex array address */
 	i++;
 
 	cmds[i].val = 0x00000000;
