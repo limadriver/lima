@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -43,8 +43,12 @@ from_float(float x)
 	return *((unsigned int *) &x);
 }
 
+#define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
+
 int dev_mali_fd;
 void *image_address;
+#define WIDTH 288
+#define HEIGHT 256
 
 /*
  *
@@ -88,16 +92,37 @@ mali_dumped_mem_content_load(void *address,
 	}
 }
 
+/* limit the amount of plb's the pp has to chew through */
+void
+plb_stream_calculate(int width, int height, int *step_x, int *step_y)
+{
+	width = ALIGN(width, 16) >> 4;
+	height = ALIGN(height, 16) >> 4;
+
+	*step_x = 1;
+	*step_y = 1;
+
+	while ((width * height) > 300) {
+		if (width >= height) {
+			width = (width + 1) >> 1;
+			(*step_x)++;
+		} else {
+			height = (height + 1) >> 1;
+			(*step_y)++;
+		}
+	}
+}
+
 int
-tile_stream_create(unsigned int address, unsigned int *stream,
+plb_stream_create(unsigned int address, unsigned int *stream,
 		   int width, int height, int step_x, int step_y,
 		   int block_size)
 {
 	int x, y, i, j, index;
 	int offset;
 
-	width >>= 4;
-	height >>= 4;
+	width = ALIGN(width, 16 * step_x) >> 4;
+	height = ALIGN(height, 16 * step_y) >> 4;
 
 	offset = 0;
 	index = 0;
@@ -126,11 +151,18 @@ tile_stream_create(unsigned int address, unsigned int *stream,
 }
 
 int
-tile_stream_address_create(unsigned int address, unsigned int *stream,
+plb_stream_address_create(unsigned int address, unsigned int *stream,
 			   int width, int height, int step_x, int step_y,
 			   int block_size)
 {
-	int i, size = (width * height >> 8) / (step_x * step_y);
+	int i, size;
+
+	width = ALIGN(width, 16 * step_x) >> 4;
+	height = ALIGN(height, 16 * step_y) >> 4;
+
+	size = width * height;
+
+	printf("%s: (%dx%d) @ (%dx%d)\n", __func__, width, height, step_x, step_y);
 
 	for (i = 0; i < size; i++)
 		stream[i] = address + (i * block_size);
@@ -198,19 +230,21 @@ vs_commands_create(struct mali_cmd *cmds)
 #include "plbu.h"
 
 void
-plbu_commands_create(struct mali_cmd *cmds)
+plbu_commands_create(struct mali_cmd *cmds, int width, int height, int step_x, int step_y)
 {
 	int i = 0;
+	int block_width = ALIGN(width, 16 * step_x) >> 4;
+	int block_height = ALIGN(height, 16 * step_y) >> 4;
 
-	cmds[i].val = 0x00000001;
+	cmds[i].val = (step_x - 1) | ((step_y - 1) << 16);
 	cmds[i].cmd = MALI_PLBU_CMD_BLOCK_STEP;
 	i++;
 
-	cmds[i].val = 0x17000f00;
+	cmds[i].val = ((block_width - 1) << 24) | ((block_height - 1) << 8);
 	cmds[i].cmd = MALI_PLBU_CMD_TILED_DIMENSIONS;
 	i++;
 
-	cmds[i].val = 0x0000000c;
+	cmds[i].val = (block_width / step_x);
 	cmds[i].cmd = MALI_PLBU_CMD_PLBU_BLOCK_STRIDE;
 	i++;
 
@@ -230,7 +264,7 @@ plbu_commands_create(struct mali_cmd *cmds)
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_Y;
 	i++;
 
-	cmds[i].val = from_float(256.0);
+	cmds[i].val = from_float(height);
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_H;
 	i++;
 
@@ -238,7 +272,7 @@ plbu_commands_create(struct mali_cmd *cmds)
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_X;
 	i++;
 
-	cmds[i].val = from_float(384.0);
+	cmds[i].val = from_float(width);
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_W;
 	i++;
 
@@ -323,7 +357,7 @@ void
 mali_uniforms_create(unsigned int *uniforms, int size)
 {
 	{ 	/* gl_mali_ViewportTransform */
-		float x0 = 0, x1 = 384, y0 = 0, y1 = 256;
+		float x0 = 0, x1 = WIDTH, y0 = 0, y1 = HEIGHT;
 		float depth_near = 0, depth_far = 1;
 
 		uniforms[0] = from_float(x1 / 2);
@@ -384,6 +418,7 @@ main(int argc, char *argv[])
 {
 	_mali_uk_init_mem_s mem_init;
 	int ret, i;
+	int step_x = 0, step_y = 0;
 
 	dev_mali_fd = open("/dev/mali", O_RDWR);
 	if (dev_mali_fd == -1) {
@@ -424,14 +459,26 @@ main(int argc, char *argv[])
 
 	mali_uniforms_create(mem_0x40080000.address, 12);
 
+	plb_stream_calculate(WIDTH, HEIGHT, &step_x, &step_y);
+
+	/*
+	 * The PLB is stored at 0x40004400 (0x18000), which is 192 * 0x200.
+	 * The subsequent spot is the same size, and unused, so we have
+	 * 384 * 0x200 available.
+ 	 */
+
 	/* for GP */
-	tile_stream_address_create(0x40004400, mem_0x40080000.address + 0x79b00,
-				   384, 256, 2, 1, 0x200);
+	/* 0x400f9b00 (0x4c0) = 301 addresses */
+	plb_stream_address_create(0x40080100, mem_0x40080000.address + 0x79b00,
+				  WIDTH, HEIGHT, step_x, step_y, 0x200);
 	/* for PP */
-	tile_stream_create(0x40004400, mem_0x40080000.address + 0x782c0, 384, 256, 2, 1, 0x200);
+	/* 0x400f82c0 (0x1840) = 388 entries*/
+	plb_stream_create(0x40080100, mem_0x40080000.address + 0x782c0,
+			  WIDTH, HEIGHT, step_x, step_y, 0x200);
 
 	vs_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7dcc0));
-	plbu_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7bcc0));
+	plbu_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7bcc0),
+			     WIDTH, HEIGHT, step_x, step_y);
 
 	gp_job.ctx = (void *) dev_mali_fd;
 	gp_job.user_job_ptr = (u32) &gp_job;
@@ -448,21 +495,21 @@ main(int argc, char *argv[])
 	pthread_mutex_lock(&wait_mutex);
 	pthread_mutex_unlock(&wait_mutex);
 
-	image_address = mmap(NULL, 384*256*4, PROT_READ | PROT_WRITE,
+	image_address = mmap(NULL, WIDTH*HEIGHT*4, PROT_READ | PROT_WRITE,
 					   MAP_SHARED, dev_mali_fd, 0x40200000);
 
 	/* create a new space for our final image */
 	if (image_address == MAP_FAILED) {
 		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
-		       0x40200000, 384*256*4, strerror(errno));
+		       0x40200000, WIDTH*HEIGHT*4, strerror(errno));
 		return errno;
 	} else
 		printf("Mapped 0x%x (0x%x) to %p\n",
-		       0x40200000, 384*256*4, image_address);
+		       0x40200000, WIDTH*HEIGHT*4, image_address);
 
-	pp_job.frame_registers[0x11] = 256 - 1;
+	pp_job.frame_registers[0x11] = HEIGHT - 1;
 	pp_job.wb0_registers[1] = 0x40200000;
-	pp_job.wb0_registers[5] = (384 * 4) / 8;
+	pp_job.wb0_registers[5] = (WIDTH * 4) / 8;
 
 	wait_for_notification_start();
 
@@ -482,9 +529,9 @@ main(int argc, char *argv[])
 
 	fflush(stdout);
 
-	bmp_dump(image_address, 256 * 384 * 4, 384, 256, "/sdcard/premali.bmp");
+	bmp_dump(image_address, WIDTH * HEIGHT * 4, WIDTH, HEIGHT, "/sdcard/premali.bmp");
 
-	fb_dump(image_address, 256 * 384 * 4, 384, 256);
+	fb_dump(image_address, WIDTH * HEIGHT * 4, WIDTH, HEIGHT);
 
 	return 0;
 }

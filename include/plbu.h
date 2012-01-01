@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -46,7 +46,7 @@
 /* Determines how to map tiles to blocks, in shifted values.
  *
  * 0x00020001 translates to:
- * ((1 << 1) tiles horizontally) * ((1 << 2) tiles vertically) per block.
+ * ((1 << 2) tiles horizontally) * ((1 << 3) tiles vertically) per block.
  */
 #define MALI_PLBU_CMD_BLOCK_STEP         0x1000010C
 

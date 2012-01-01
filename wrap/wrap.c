@@ -507,7 +507,7 @@ dev_mali_wait_for_notification_post(void *data)
 
 			wrap_log("\t},\n");
 
-			mali_memory_dump();
+			//mali_memory_dump();
 		}
 		break;
 	case _MALI_NOTIFICATION_GP_STALLED:
