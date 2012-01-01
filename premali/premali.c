@@ -44,6 +44,7 @@ from_float(float x)
 }
 
 int dev_mali_fd;
+void *image_address;
 
 /*
  *
@@ -420,6 +421,20 @@ main(int argc, char *argv[])
 	pthread_mutex_lock(&wait_mutex);
 	pthread_mutex_unlock(&wait_mutex);
 
+	image_address = mmap(NULL, 384*256*4, PROT_READ | PROT_WRITE,
+					   MAP_SHARED, dev_mali_fd, 0x40200000);
+
+	/* create a new space for our final image */
+	if (image_address == MAP_FAILED) {
+		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
+		       0x40200000, 384*256*4, strerror(errno));
+		return errno;
+	} else
+		printf("Mapped 0x%x (0x%x) to %p\n",
+		       0x40200000, 384*256*4, image_address);
+
+	pp_job.wb0_registers[1] = 0x40200000;
+
 	wait_for_notification_start();
 
 	pp_job.ctx = (void *) dev_mali_fd;
@@ -438,9 +453,9 @@ main(int argc, char *argv[])
 
 	fflush(stdout);
 
-	bmp_dump(mem_0x40080000.address, 256 * 384 * 4, 384, 256, "/sdcard/premali.bmp");
+	bmp_dump(image_address, 256 * 384 * 4, 384, 256, "/sdcard/premali.bmp");
 
-	fb_dump(mem_0x40080000.address, 256 * 384 * 4, 384, 256);
+	fb_dump(image_address, 256 * 384 * 4, 384, 256);
 
 	return 0;
 }
