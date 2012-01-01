@@ -38,17 +38,17 @@ _mali_uk_pp_start_job_s pp_job = {
 		0x00000000, /* 0x0E: unused */
 		0x00000000, /* 0x0F: unused */
 		0x00000001, /* 0x10: always set to 1 */
-		0x000001ff, /* 0x11: if (frame[0x13] == 1) then ((height << supersample scale factor) - 1) else 1 */
+		0, /* 0x11: if (frame[0x13] == 1) then ((height << supersample scale factor) - 1) else 1 */
 		0x00000077, /* 0x12: always set to 0x77 */
 		0x00000001, /* 0x13: set to 1 */
 	},
 	.wb0_registers = {
 		0x00000002, /* 0: type */
-		0x40080000, /* 1: address */
+		0, /* 1: address */
 		0x00000003, /* 2: pixel format */
 		0x00000000, /* 3: downsample factor */
 		0x00000000, /* 4: pixel layout */
-		0x000000c0, /* 5: pitch / 8 */
+		0, /* 5: pitch / 8 */
 		0x00000000, /* 6: Multiple Render Target flags: bits 0-3 */
 		0x00000000, /* 7: MRT offset */
 		0x00000000, /* 8: zeroed */

@@ -460,7 +460,9 @@ main(int argc, char *argv[])
 		printf("Mapped 0x%x (0x%x) to %p\n",
 		       0x40200000, 384*256*4, image_address);
 
+	pp_job.frame_registers[0x11] = 256 - 1;
 	pp_job.wb0_registers[1] = 0x40200000;
+	pp_job.wb0_registers[5] = (384 * 4) / 8;
 
 	wait_for_notification_start();
 
