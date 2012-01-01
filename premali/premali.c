@@ -171,7 +171,7 @@ vs_commands_create(struct mali_cmd *cmds)
 	i++;
 
 	/* start of _gles_gb_vs_setup */
-	cmds[i].val = 0x400e8380; /* uniforms address */
+	cmds[i].val = 0x40080000; /* uniforms address */
 	cmds[i].cmd = MALI_VS_CMD_UNIFORMS_ADDRESS | (3 << 16); /* ALIGN(uniforms_size, 4) / 4 */
 	i++;
 
@@ -319,6 +319,31 @@ plbu_commands_create(struct mali_cmd *cmds)
 	cmds[i].cmd = MALI_PLBU_CMD_END;
 }
 
+void
+mali_uniforms_create(unsigned int *uniforms, int size)
+{
+	{ 	/* gl_mali_ViewportTransform */
+		float x0 = 0, x1 = 384, y0 = 0, y1 = 256;
+		float depth_near = 0, depth_far = 1;
+
+		uniforms[0] = from_float(x1 / 2);
+		uniforms[1] = from_float(y1 / 2);
+		uniforms[2] = from_float((depth_far - depth_near) / 2);
+		uniforms[3] = from_float(depth_far);
+		uniforms[4] = from_float((x0 + x1) / 2);
+		uniforms[5] = from_float((y0 + y1) / 2);
+		uniforms[6] = from_float((depth_near + depth_far) / 2);
+		uniforms[7] = from_float(depth_near);
+	}
+
+	{	/* __maligp2_constant_000 */
+		uniforms[8] = from_float(-1e+10);
+		uniforms[9] = from_float(1e+10);
+		uniforms[10] = 0;
+		uniforms[11] = 0;
+	}
+}
+
 _mali_uk_wait_for_notification_s wait;
 pthread_mutex_t wait_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -396,6 +421,8 @@ main(int argc, char *argv[])
 		mali_dumped_mem_content_load(block->address, block->contents,
 					     block->count);
 	}
+
+	mali_uniforms_create(mem_0x40080000.address, 12);
 
 	/* for GP */
 	tile_stream_address_create(0x40004400, mem_0x40080000.address + 0x79b00,
