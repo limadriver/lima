@@ -12,12 +12,14 @@ fb.o: fb.c fb.h
 
 plb.o: plb.c plb.h premali.h
 
-jobs.o: jobs.c jobs.h
+jobs.o: jobs.c jobs.h premali.h
 
-premali.o: premali.c dumped_stream.c bmp.h fb.h plb.h premali.h
+dump.o: dump.c dump.h premali.h
+
+premali.o: premali.c dumped_stream.c bmp.h fb.h plb.h dump.h jobs.h premali.h
 	$(CC) $(CFLAGS) -c -o $@ premali.c
 
-premali: bmp.o fb.o plb.o jobs.o premali.o
+premali: bmp.o fb.o plb.o jobs.o dump.o premali.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 install: $(SDK)/platform-tools/adb premali

@@ -174,6 +174,7 @@ struct mali_dumped_mem_content rsw = {
 		0xffff0000, 0x00000007, 0x00000007, 0x00000000, /* 0x00000010 */
 		/*              \/ fragment shader address | size */
 		0x0000f807, 0x40000083, 0x00000002, 0x00000000, /* 0x00000020 */
+		/*                                    \/ varyings address */
 		0x00000000, 0x00000301, 0x00002000, 0x40000180, /* 0x00000030 */
 	}
 };

@@ -38,53 +38,14 @@
 #include "plb.h"
 #include "premali.h"
 #include "jobs.h"
+#include "dump.h"
 
 int dev_mali_fd;
 void *image_address;
 #define WIDTH 800
 #define HEIGHT 480
 
-/*
- *
- * Replay a dump of mali ioctls and memory.
- *
- */
-
-struct mali_dumped_mem_content {
-	unsigned int offset;
-	unsigned int size;
-	unsigned int memory[];
-};
-
-struct mali_dumped_mem_block {
-	void *address;
-	unsigned int physical;
-	unsigned int size;
-	int count;
-	struct mali_dumped_mem_content *contents[];
-};
-
-struct mali_dumped_mem {
-	int count;
-	struct mali_dumped_mem_block *blocks[];
-};
-
 #include "dumped_stream.c"
-
-void
-mali_dumped_mem_content_load(void *address,
-			     struct mali_dumped_mem_content *contents[],
-			     int count)
-{
-	int i;
-
-	for (i = 0; i < count; i++) {
-		struct mali_dumped_mem_content *content = contents[i];
-
-		memcpy(address + content->offset,
-		       content->memory, content->size);
-	}
-}
 
 struct mali_cmd {
 	unsigned int val;
@@ -298,7 +259,7 @@ int
 main(int argc, char *argv[])
 {
 	_mali_uk_init_mem_s mem_init;
-	int ret, i;
+	int ret;
 	struct plb *plb;
 
 	dev_mali_fd = open("/dev/mali", O_RDWR);
@@ -318,22 +279,9 @@ main(int argc, char *argv[])
 		return errno;
 	}
 
-	for (i = 0; i < dumped_mem.count; i++) {
-		struct mali_dumped_mem_block *block = dumped_mem.blocks[i];
-
-		block->address = mmap(NULL, block->size, PROT_READ | PROT_WRITE,
-				      MAP_SHARED, dev_mali_fd, block->physical);
-		if (block->address == MAP_FAILED) {
-			printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
-			       block->physical, block->size, strerror(errno));
-			return errno;
-		} else
-			printf("Mapped 0x%x (0x%x) to %p\n", block->physical,
-			       block->size, block->address);
-
-		mali_dumped_mem_content_load(block->address, block->contents,
-					     block->count);
-	}
+	ret = dumped_mem_load(&dumped_mem);
+	if (ret)
+		return ret;
 
 	mali_uniforms_create(mem_0x40000000.address + 0x240, 12);
 
