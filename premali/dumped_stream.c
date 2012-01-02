@@ -18,7 +18,7 @@ _mali_uk_gp_start_job_s gp_job = {
 
 _mali_uk_pp_start_job_s pp_job = {
 	.frame_registers = {
-		0x401A0000, /* 0x00: Primitive list block stream address. */
+		0, /* 0x00: Primitive list block stream address. */
 		0x40000100, /* 0x01: Address, 0x4000 large, only partly dumped though */
 		0x00000000, /* 0x02: unused */
 		0x00000022, /* 0x03: flags */

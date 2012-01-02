@@ -55,9 +55,10 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 		return;
 	}
 
-	if ((info.xres == width) && (info.yres == height))
-		memcpy(fb, buffer, width * height * 4);
-	else if ((info.xres >= width) && (info.yres >= height)) {
+	if ((info.xres == width) && (info.yres == height)) {
+		//memcpy(fb, buffer, width * height * 4);
+		memcpy(fb + 4 * info.xres * info.yres, buffer, width * height * 4);
+	} else if ((info.xres >= width) && (info.yres >= height)) {
 		int fb_offset, buf_offset;
 
 		/* landscape */
@@ -70,7 +71,7 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 
 		memset(fb + fb_offset, 0xFF, 4 * (info.xres * (info.yres - height)));
 
-#if 0
+#if 1
 		/* portrait */
 		for (i = 0, fb_offset = 4 * info.xres * info.yres, buf_offset = 0;
 		     i < height;
