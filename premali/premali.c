@@ -193,7 +193,7 @@ vs_commands_create(struct mali_cmd *cmds)
 	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
-	cmds[i].val = 0x40004240; /* vs shader address */
+	cmds[i].val = 0x40000000; /* vs shader address */
 	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (7 << 16); /* vs shader size */
 	i++;
 
@@ -206,11 +206,11 @@ vs_commands_create(struct mali_cmd *cmds)
 	i++;
 
 	/* start of _gles_gb_vs_setup */
-	cmds[i].val = 0x40080000; /* uniforms address */
+	cmds[i].val = 0x40000240; /* uniforms address */
 	cmds[i].cmd = MALI_VS_CMD_UNIFORMS_ADDRESS | (3 << 16); /* ALIGN(uniforms_size, 4) / 4 */
 	i++;
 
-	cmds[i].val = 0x400e83c0; /* shared address space for attributes and varyings, half/half */
+	cmds[i].val = 0x40000300; /* shared address space for attributes and varyings, half/half */
 	cmds[i].cmd = MALI_VS_CMD_COMMON_ADDRESS | (0x40 << 16); /* (guessing) common size / 4 */
 	i++;
 
@@ -292,8 +292,8 @@ plbu_commands_create(struct mali_cmd *cmds, int width, int height, int shift_x, 
 	cmds[i].cmd = MALI_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
-	cmds[i].val = 0x400e8340; /* RSW address */
-	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY | (0x400e82c0 >> 4); /* vertex array address */
+	cmds[i].val = 0x40000280; /* RSW address */
+	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY | (0x40000140 >> 4); /* vertex array address */
 	i++;
 
 	cmds[i].val = 0x00000000;
@@ -462,7 +462,7 @@ main(int argc, char *argv[])
 					     block->count);
 	}
 
-	mali_uniforms_create(mem_0x40000000.address + 0x80000, 12);
+	mali_uniforms_create(mem_0x40000000.address + 0x240, 12);
 
 	plb_stream_calculate(WIDTH, HEIGHT, &shift_x, &shift_y);
 
@@ -481,8 +481,8 @@ main(int argc, char *argv[])
 	plb_stream_create(0x40080100, mem_0x40000000.address + 0x1A0000,
 			  WIDTH, HEIGHT, shift_x, shift_y, 0x200);
 
-	vs_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0xfdcc0));
-	plbu_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0xfbcc0),
+	vs_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0x400));
+	plbu_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0x500),
 			     WIDTH, HEIGHT, shift_x, shift_y);
 
 	gp_job.ctx = (void *) dev_mali_fd;
