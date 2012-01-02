@@ -74,7 +74,7 @@ unsigned int unlinked[] = {
 
 
 /* vertex shader */
-struct mali_dumped_mem_content mem_0x40000000_0x00000001 = {
+struct mali_dumped_mem_content mem_0x40000000_0x00000000 = {
 	0x00004240, /* 0x40004240 */
 	0x00000070,
 	{
@@ -89,7 +89,7 @@ struct mali_dumped_mem_content mem_0x40000000_0x00000001 = {
 };
 
 /* fragment shader */
-struct mali_dumped_mem_content mem_0x40000000_0x00000002 = {
+struct mali_dumped_mem_content mem_0x40000000_0x00000001 = {
 	0x000042C0, /* 0x400042C0 */
 	0x0000000C,
 	{
@@ -97,20 +97,9 @@ struct mali_dumped_mem_content mem_0x40000000_0x00000002 = {
 	}
 };
 
-struct mali_dumped_mem_block mem_0x40000000 = {
-	NULL,
-	0x40000000,
-	0x00040000,
-	2,
-	{
-		&mem_0x40000000_0x00000001,
-		&mem_0x40000000_0x00000002,
-	},
-};
-
 /* dummy quad */
-struct mali_dumped_mem_content mem_0x40080000_0x00000000 = { /* 0x40 */
-	0x00060000, /* 0x400e0000 */
+struct mali_dumped_mem_content mem_0x40000000_0x00000002 = { /* 0x40 */
+	0x000E0000, /* 0x400e0000 */
 	0x00000014,
 	{
 		0x00020425, 0x0000000c, 0x01e007cf, 0xb0000000, /* 0x00060000 */
@@ -118,8 +107,8 @@ struct mali_dumped_mem_content mem_0x40080000_0x00000000 = { /* 0x40 */
 	}
 };
 
-struct mali_dumped_mem_content mem_0x40080000_0x00000002 = {
-	0x000601c0, /* 0x400e01c0 */
+struct mali_dumped_mem_content mem_0x40000000_0x00000003 = {
+	0x000E01c0, /* 0x400e01c0 */
 	0x00000040, /* of 0x4000 */
 	{
 		0x00000000, 0x00000000, 0x00000000, 0x00000000, /* 0x000601C0 */
@@ -130,8 +119,8 @@ struct mali_dumped_mem_content mem_0x40080000_0x00000002 = {
 	}
 };
 
-struct mali_dumped_mem_content mem_0x40080000_0x00000003 = {
-	0x00068340, /* 0x400e8340, starts at 0x400e82c0 */
+struct mali_dumped_mem_content mem_0x40000000_0x00000004 = {
+	0x000E8340, /* 0x400e8340, starts at 0x400e82c0 */
 	0x000001e4, /* of 0x10000 */
 	{
 		/* RSW */
@@ -177,43 +166,23 @@ struct mali_dumped_mem_content mem_0x40080000_0x00000003 = {
 	}
 };
 
-struct mali_dumped_mem_block mem_0x40080000 = {
+struct mali_dumped_mem_block mem_0x40000000 = {
 	NULL,
-	0x40080000,
-	0x00080000,
-	3,
+	0x40000000,
+	0x00200000,
+	5,
 	{
-		&mem_0x40080000_0x00000000,
-		&mem_0x40080000_0x00000002,
-		&mem_0x40080000_0x00000003,
-	},
-};
-
-/* Tile Heap -- Empty. */
-struct mali_dumped_mem_block mem_0x40100000 = {
-	NULL,
-	0x40100000,
-	0x00080000,
-	0x00000000,
-	{
-	},
-};
-
-struct mali_dumped_mem_block mem_0x40180000 = {
-	NULL,
-	0x40180000,
-	0x00080000,
-	0x00000000,
-	{
+		&mem_0x40000000_0x00000000,
+		&mem_0x40000000_0x00000001,
+		&mem_0x40000000_0x00000002,
+		&mem_0x40000000_0x00000003,
+		&mem_0x40000000_0x00000004,
 	},
 };
 
 struct mali_dumped_mem dumped_mem = {
-	0x00000004,
+	0x00000001,
 	{
 		&mem_0x40000000,
-		&mem_0x40080000,
-		&mem_0x40100000,
-		&mem_0x40180000,
 	},
 };

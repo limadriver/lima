@@ -460,7 +460,7 @@ main(int argc, char *argv[])
 					     block->count);
 	}
 
-	mali_uniforms_create(mem_0x40080000.address, 12);
+	mali_uniforms_create(mem_0x40000000.address + 0x80000, 12);
 
 	plb_stream_calculate(WIDTH, HEIGHT, &shift_x, &shift_y);
 
@@ -472,15 +472,15 @@ main(int argc, char *argv[])
 
 	/* for GP */
 	/* 0x400f9b00 (0x4c0) = 301 addresses */
-	plb_stream_address_create(0x40080100, mem_0x40180000.address,
+	plb_stream_address_create(0x40080100, mem_0x40000000.address + 0x180000,
 				  WIDTH, HEIGHT, shift_x, shift_y, 0x200);
 	/* for PP */
 	/* 0x400f82c0 (0x1840) = 388 entries*/
-	plb_stream_create(0x40080100, mem_0x40180000.address + 0x20000,
+	plb_stream_create(0x40080100, mem_0x40000000.address + 0x1A0000,
 			  WIDTH, HEIGHT, shift_x, shift_y, 0x200);
 
-	vs_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7dcc0));
-	plbu_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7bcc0),
+	vs_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0xfdcc0));
+	plbu_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0xfbcc0),
 			     WIDTH, HEIGHT, shift_x, shift_y);
 
 	gp_job.ctx = (void *) dev_mali_fd;
