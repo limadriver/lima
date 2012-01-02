@@ -255,6 +255,7 @@ plbu_commands_create(struct mali_cmd *cmds, int width, int height, int shift_x, 
 	cmds[i].cmd = MALI_PLBU_CMD_PLBU_ARRAY_ADDRESS;
 	i++;
 
+#if 0
 	cmds[i].val = 0x40100000;
 	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_START;
 	i++;
@@ -262,6 +263,7 @@ plbu_commands_create(struct mali_cmd *cmds, int width, int height, int shift_x, 
 	cmds[i].val = 0x40150000;
 	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_END;
 	i++;
+#endif
 
 	cmds[i].val = from_float(0.0);
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_Y;
