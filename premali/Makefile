@@ -10,10 +10,14 @@ bmp.o: bmp.c bmp.h
 
 fb.o: fb.c fb.h
 
-premali.o: premali.c dumped_stream.c bmp.h fb.h
+plb.o: plb.c plb.h premali.h
+
+jobs.o: jobs.c jobs.h
+
+premali.o: premali.c dumped_stream.c bmp.h fb.h plb.h premali.h
 	$(CC) $(CFLAGS) -c -o $@ premali.c
 
-premali: bmp.o fb.o premali.o
+premali: bmp.o fb.o plb.o jobs.o premali.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 install: $(SDK)/platform-tools/adb premali

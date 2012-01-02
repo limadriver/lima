@@ -24,10 +24,6 @@
 #include <inttypes.h>
 #include <string.h>
 #include <errno.h>
-#include <pthread.h>
-
-#include "bmp.h"
-#include "fb.h"
 
 #include "formats.h"
 #include "registers.h"
@@ -37,13 +33,11 @@
 #include "mali_200_regs.h"
 #include "mali_ioctl.h"
 
-static inline unsigned int
-from_float(float x)
-{
-	return *((unsigned int *) &x);
-}
-
-#define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
+#include "bmp.h"
+#include "fb.h"
+#include "plb.h"
+#include "premali.h"
+#include "jobs.h"
 
 int dev_mali_fd;
 void *image_address;
@@ -90,118 +84,6 @@ mali_dumped_mem_content_load(void *address,
 		memcpy(address + content->offset,
 		       content->memory, content->size);
 	}
-}
-
-struct plb {
-	int block_size; /* 0x200 */
-
-	int width; /* aligned already */
-	int height;
-
-	int shift_w;
-	int shift_h;
-
-	/* holds the actual primitives */
-	int plb_offset;
-	int plb_size; /* 0x200 * (width >> (shift_w - 1)) * (height >> (shift_h - 1))) */
-
-	/* holds the addresses so the plbu knows where to store the primitives */
-	int plbu_offset;
-	int plbu_size; /* 4 * width * height */
-
-	/* holds the coordinates and addresses of the primitives for the PP */
-	int pp_offset;
-	int pp_size; /* 16 * (width * height + 1) */
-
-	void *mem_address;
-	int mem_physical;
-	int mem_size;
-};
-
-struct plb *
-plb_create(int width, int height)
-{
-	struct plb *plb = calloc(1, sizeof(struct plb));
-
-	width = ALIGN(width, 16) >> 4;
-	height = ALIGN(height, 16) >> 4;
-
-	/* limit the amount of plb's the pp has to chew through */
-	while ((width * height) > 320) {
-		if (width >= height) {
-			width = (width + 1) >> 1;
-			plb->shift_w++;
-		} else {
-			height = (height + 1) >> 1;
-			plb->shift_h++;
-		}
-	}
-
-	plb->block_size = 0x200;
-
-	plb->width = width << plb->shift_w;
-	plb->height = height << plb->shift_h;
-
-	printf("%s: (%dx%d) == (%d << %d, %d << %d);\n", __func__,
-	       plb->width, plb->height, width, plb->shift_w, height, plb->shift_h);
-
-	plb->plb_size = plb->block_size * width * height;
-	plb->plb_offset = 0;
-
-	plb->plbu_size = 4 * plb->width * plb->height;
-	plb->plbu_offset = ALIGN(plb->plb_size, 0x40);
-
-	plb->pp_size = 16 * (plb->width * plb->height + 1);
-	plb->pp_offset = ALIGN(plb->plbu_offset + plb->plbu_size, 0x40);
-
-	plb->mem_address = mem_0x40000000.address + 0x80000;
-	plb->mem_physical = 0x40080000;
-	/* just align to page size for convenience */
-	plb->mem_size = ALIGN(plb->pp_offset + plb->pp_size, 0x1000);
-
-	return plb;
-}
-
-void
-plb_pp_stream_create(struct plb *plb)
-{
-	int x, y, i, j;
-	int offset = 0, index = 0;
-	int step_x = 1 << plb->shift_w;
-	int step_y = 1 << plb->shift_h;
-	unsigned int address = plb->mem_physical + plb->plb_offset;
-	unsigned int *stream = plb->mem_address + plb->pp_offset;
-
-	for (y = 0; y < plb->height; y += step_y) {
-		for (x = 0; x < plb->width; x += step_x) {
-			for (j = 0; j < step_y; j++) {
-				for (i = 0; i < step_x; i++) {
-					stream[index + 0] = 0;
-					stream[index + 1] = 0xB8000000 | (x + i) | ((y + j) << 8);
-					stream[index + 2] = 0xE0000002 | (((address + offset) >> 3) & ~0xE0000003);
-					stream[index + 3] = 0xB0000000;
-
-					index += 4;
-				}
-			}
-
-			offset += plb->block_size;
-		}
-	}
-
-	stream[index + 0] = 0;
-	stream[index + 1] = 0xBC000000;
-}
-
-void
-plb_plbu_stream_create(struct plb *plb)
-{
-	int i, size = plb->width * plb->height;
-	unsigned int address = plb->mem_physical + plb->plb_offset;
-	unsigned int *stream = plb->mem_address + plb->plbu_offset;
-
-	for (i = 0; i < size; i++)
-		stream[i] = address + (i * plb->block_size);
 }
 
 struct mali_cmd {
@@ -412,41 +294,6 @@ mali_uniforms_create(unsigned int *uniforms, int size)
 	}
 }
 
-_mali_uk_wait_for_notification_s wait;
-pthread_mutex_t wait_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void *
-wait_for_notification(void *ignored)
-{
-	int ret;
-
-	pthread_mutex_lock(&wait_mutex);
-
-	do {
-		wait.code.timeout = 25;
-		ret = ioctl(dev_mali_fd, MALI_IOC_WAIT_FOR_NOTIFICATION, &wait);
-		if (ret == -1) {
-			printf("Error: ioctl MALI_IOC_WAIT_FOR_NOTIFICATION failed: %s\n",
-			       strerror(errno));
-			exit(-1);
-		}
-
-		sched_yield();
-	} while (wait.code.type == _MALI_NOTIFICATION_CORE_TIMEOUT);
-
-	pthread_mutex_unlock(&wait_mutex);
-
-	return NULL;
-}
-
-void
-wait_for_notification_start(void)
-{
-	pthread_t thread;
-
-	pthread_create(&thread, NULL, wait_for_notification, NULL);
-}
-
 int
 main(int argc, char *argv[])
 {
@@ -471,9 +318,6 @@ main(int argc, char *argv[])
 		return errno;
 	}
 
-	/* blink, and it's gone! */
-	wait_for_notification_start();
-
 	for (i = 0; i < dumped_mem.count; i++) {
 		struct mali_dumped_mem_block *block = dumped_mem.blocks[i];
 
@@ -493,9 +337,10 @@ main(int argc, char *argv[])
 
 	mali_uniforms_create(mem_0x40000000.address + 0x240, 12);
 
-	plb = plb_create(WIDTH, HEIGHT);
-	plb_plbu_stream_create(plb);
-	plb_pp_stream_create(plb);
+	plb = plb_create(WIDTH, HEIGHT, 0x40000000, mem_0x40000000.address,
+			 0x80000, 0x80000);
+	if (!plb)
+		return -1;
 
 	vs_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0x400));
 	plbu_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0x500),
@@ -503,21 +348,9 @@ main(int argc, char *argv[])
 
 	pp_job.frame_registers[0x00] = plb->mem_physical + plb->pp_offset;
 
-
-	gp_job.ctx = (void *) dev_mali_fd;
-	gp_job.user_job_ptr = (u32) &gp_job;
-	gp_job.priority = 1;
-	gp_job.watchdog_msecs = 0;
-	gp_job.abort_id = 0;
-	ret = ioctl(dev_mali_fd, MALI_IOC_GP2_START_JOB, &gp_job);
-	if (ret == -1) {
-		printf("Error: ioctl MALI_IOC_GP2_START_JOB failed: %s\n",
-		       strerror(errno));
-		return errno;
-	}
-
-	pthread_mutex_lock(&wait_mutex);
-	pthread_mutex_unlock(&wait_mutex);
+	ret = premali_gp_job_start(&gp_job);
+	if (ret)
+		return ret;
 
 	image_address = mmap(NULL, WIDTH*HEIGHT*4, PROT_READ | PROT_WRITE,
 					   MAP_SHARED, dev_mali_fd, 0x40200000);
@@ -536,21 +369,11 @@ main(int argc, char *argv[])
 	pp_job.wb0_registers[1] = 0x40200000;
 	pp_job.wb0_registers[5] = (WIDTH * 4) / 8;
 
-	wait_for_notification_start();
+	ret = premali_pp_job_start(&pp_job);
+	if (ret)
+		return ret;
 
-	pp_job.ctx = (void *) dev_mali_fd;
-	pp_job.user_job_ptr = (u32) &pp_job;
-	pp_job.priority = 1;
-	pp_job.watchdog_msecs = 0;
-	pp_job.abort_id = 0;
-	ret = ioctl(dev_mali_fd, MALI_IOC_PP_START_JOB, &pp_job);
-	if (ret == -1) {
-		printf("Error: ioctl MALI_IOC_PP_START_JOB failed: %s\n",
-		       strerror(errno));
-		return errno;
-	}
-
-	pthread_mutex_lock(&wait_mutex);
+	premali_jobs_wait();
 
 	fflush(stdout);
 
