@@ -39,9 +39,10 @@
 #include "premali.h"
 #include "jobs.h"
 #include "dump.h"
+#include "pp.h"
 
 int dev_mali_fd;
-void *image_address;
+
 #define WIDTH 800
 #define HEIGHT 480
 
@@ -261,6 +262,7 @@ main(int argc, char *argv[])
 	_mali_uk_init_mem_s mem_init;
 	int ret;
 	struct plb *plb;
+	struct pp_info *pp_info;
 
 	dev_mali_fd = open("/dev/mali", O_RDWR);
 	if (dev_mali_fd == -1) {
@@ -294,40 +296,29 @@ main(int argc, char *argv[])
 	plbu_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0x500),
 			     WIDTH, HEIGHT, plb);
 
-	pp_job.frame_registers[0x00] = plb->mem_physical + plb->pp_offset;
-
 	ret = premali_gp_job_start(&gp_job);
 	if (ret)
 		return ret;
 
-	image_address = mmap(NULL, WIDTH*HEIGHT*4, PROT_READ | PROT_WRITE,
-					   MAP_SHARED, dev_mali_fd, 0x40200000);
+	fb_clear();
 
-	/* create a new space for our final image */
-	if (image_address == MAP_FAILED) {
-		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
-		       0x40200000, WIDTH*HEIGHT*4, strerror(errno));
-		return errno;
-	}
+	pp_info = pp_info_create(WIDTH, HEIGHT, 0xFF505050, plb,
+				 mem_0x40000000.address + 0x1000,
+				 0x40001000, 0x1000, 0x40200000);
 
-	printf("Mapped 0x%x (0x%x) to %p\n",
-	       0x40200000, WIDTH*HEIGHT*4, image_address);
-
-	pp_job.frame_registers[0x11] = HEIGHT - 1;
-	pp_job.wb0_registers[1] = 0x40200000;
-	pp_job.wb0_registers[5] = (WIDTH * 4) / 8;
-
-	ret = premali_pp_job_start(&pp_job);
+	ret = premali_pp_job_start(pp_info->job);
 	if (ret)
 		return ret;
 
 	premali_jobs_wait();
 
+	bmp_dump(pp_info->frame_address, pp_info->frame_size,
+		 pp_info->width, pp_info->height, "/sdcard/premali.bmp");
+
+	fb_dump(pp_info->frame_address, pp_info->frame_size,
+		pp_info->width, pp_info->height);
+
 	fflush(stdout);
-
-	bmp_dump(image_address, WIDTH * HEIGHT * 4, WIDTH, HEIGHT, "/sdcard/premali.bmp");
-
-	fb_dump(image_address, WIDTH * HEIGHT * 4, WIDTH, HEIGHT);
 
 	return 0;
 }

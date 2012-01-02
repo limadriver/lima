@@ -603,7 +603,7 @@ dev_mali_pp_start_job_pre(void *data)
 
 	wrap_log("};\n");
 
-	mali_memory_dump();
+	//mali_memory_dump();
 }
 
 static void

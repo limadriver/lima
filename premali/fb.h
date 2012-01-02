@@ -18,6 +18,7 @@
 #ifndef PREMALI_FB_H
 #define PREMALI_FB_H 1
 
+void fb_clear(void);
 void fb_dump(unsigned char *buffer, int size, int width, int height);
 
 #endif /* PREMALI_FB_H */

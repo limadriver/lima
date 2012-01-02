@@ -26,6 +26,41 @@
 #include "fb.h"
 
 void
+fb_clear(void)
+{
+	int fd = open("/dev/graphics/fb0", O_RDWR);
+	struct fb_var_screeninfo info;
+	unsigned char *fb;
+
+	if (fd == -1) {
+		fprintf(stderr, "Error: failed to open %s: %s\n",
+			"/dev/graphics/fb0", strerror(errno));
+		return;
+	}
+
+	if (ioctl(fd, FBIOGET_VSCREENINFO, &info)) {
+		fprintf(stderr, "Error: failed to run ioctl on %s: %s\n",
+			"/dev/graphics/fb0", strerror(errno));
+		close(fd);
+		return;
+	}
+
+	fb = mmap(0, 2 * info.xres * info.yres * 4, PROT_READ | PROT_WRITE,
+		  MAP_SHARED, fd, 0);
+	if (!fb) {
+		fprintf(stderr, "Error: failed to run mmap on %s: %s\n",
+			"/dev/graphics/fb0", strerror(errno));
+		close(fd);
+		return;
+	}
+
+	memset(fb, 0xFF, 2 * info.xres * info.yres * 4);
+
+	close(fd);
+	return;
+}
+
+void
 fb_dump(unsigned char *buffer, int size, int width, int height)
 {
 	int fd = open("/dev/graphics/fb0", O_RDWR);
@@ -56,7 +91,7 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 	}
 
 	if ((info.xres == width) && (info.yres == height)) {
-		//memcpy(fb, buffer, width * height * 4);
+		memcpy(fb, buffer, width * height * 4);
 		memcpy(fb + 4 * info.xres * info.yres, buffer, width * height * 4);
 	} else if ((info.xres >= width) && (info.yres >= height)) {
 		int fb_offset, buf_offset;
