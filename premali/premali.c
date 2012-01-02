@@ -47,8 +47,8 @@ from_float(float x)
 
 int dev_mali_fd;
 void *image_address;
-#define WIDTH 288
-#define HEIGHT 256
+#define WIDTH 800
+#define HEIGHT 480
 
 /*
  *
@@ -94,35 +94,38 @@ mali_dumped_mem_content_load(void *address,
 
 /* limit the amount of plb's the pp has to chew through */
 void
-plb_stream_calculate(int width, int height, int *step_x, int *step_y)
+plb_stream_calculate(int width, int height, int *shift_x, int *shift_y)
 {
 	width = ALIGN(width, 16) >> 4;
 	height = ALIGN(height, 16) >> 4;
 
-	*step_x = 1;
-	*step_y = 1;
+	*shift_x = 1;
+	*shift_y = 1;
 
-	while ((width * height) > 300) {
+	while ((width * height) > 320) {
 		if (width >= height) {
 			width = (width + 1) >> 1;
-			(*step_x)++;
+			(*shift_x)++;
 		} else {
 			height = (height + 1) >> 1;
-			(*step_y)++;
+			(*shift_y)++;
 		}
 	}
 }
 
 int
 plb_stream_create(unsigned int address, unsigned int *stream,
-		   int width, int height, int step_x, int step_y,
+		   int width, int height, int shift_x, int shift_y,
 		   int block_size)
 {
-	int x, y, i, j, index;
+	int x, y, i, j, index, step_x, step_y;
 	int offset;
 
-	width = ALIGN(width, 16 * step_x) >> 4;
-	height = ALIGN(height, 16 * step_y) >> 4;
+	step_x = 1 << (shift_x - 1);
+	step_y = 1 << (shift_y - 1);
+
+	width = ALIGN(width, 8 <<  shift_x) >> 4;
+	height = ALIGN(height, 8 << shift_y) >> 4;
 
 	offset = 0;
 	index = 0;
@@ -152,17 +155,17 @@ plb_stream_create(unsigned int address, unsigned int *stream,
 
 int
 plb_stream_address_create(unsigned int address, unsigned int *stream,
-			   int width, int height, int step_x, int step_y,
+			   int width, int height, int shift_x, int shift_y,
 			   int block_size)
 {
 	int i, size;
 
-	width = ALIGN(width, 16 * step_x) >> 4;
-	height = ALIGN(height, 16 * step_y) >> 4;
+	width = ALIGN(width, 8 << shift_x) >> 4;
+	height = ALIGN(height, 8 << shift_y) >> 4;
 
 	size = width * height;
 
-	printf("%s: (%dx%d) @ (%dx%d)\n", __func__, width, height, step_x, step_y);
+	printf("%s: (%dx%d) >> (%dx%d)\n", __func__, width, height, shift_x, shift_y);
 
 	for (i = 0; i < size; i++)
 		stream[i] = address + (i * block_size);
@@ -230,13 +233,13 @@ vs_commands_create(struct mali_cmd *cmds)
 #include "plbu.h"
 
 void
-plbu_commands_create(struct mali_cmd *cmds, int width, int height, int step_x, int step_y)
+plbu_commands_create(struct mali_cmd *cmds, int width, int height, int shift_x, int shift_y)
 {
 	int i = 0;
-	int block_width = ALIGN(width, 16 * step_x) >> 4;
-	int block_height = ALIGN(height, 16 * step_y) >> 4;
+	int block_width = ALIGN(width, 8 << shift_x) >> 4;
+	int block_height = ALIGN(height, 8 << shift_y) >> 4;
 
-	cmds[i].val = (step_x - 1) | ((step_y - 1) << 16);
+	cmds[i].val = (shift_x - 1) | ((shift_y - 1) << 16);
 	cmds[i].cmd = MALI_PLBU_CMD_BLOCK_STEP;
 	i++;
 
@@ -244,11 +247,11 @@ plbu_commands_create(struct mali_cmd *cmds, int width, int height, int step_x, i
 	cmds[i].cmd = MALI_PLBU_CMD_TILED_DIMENSIONS;
 	i++;
 
-	cmds[i].val = (block_width / step_x);
+	cmds[i].val = (block_width >> (shift_x - 1));
 	cmds[i].cmd = MALI_PLBU_CMD_PLBU_BLOCK_STRIDE;
 	i++;
 
-	cmds[i].val = 0x400f9b00;
+	cmds[i].val = 0x40180000;
 	cmds[i].cmd = MALI_PLBU_CMD_PLBU_ARRAY_ADDRESS;
 	i++;
 
@@ -418,7 +421,7 @@ main(int argc, char *argv[])
 {
 	_mali_uk_init_mem_s mem_init;
 	int ret, i;
-	int step_x = 0, step_y = 0;
+	int shift_x = 0, shift_y = 0;
 
 	dev_mali_fd = open("/dev/mali", O_RDWR);
 	if (dev_mali_fd == -1) {
@@ -459,7 +462,7 @@ main(int argc, char *argv[])
 
 	mali_uniforms_create(mem_0x40080000.address, 12);
 
-	plb_stream_calculate(WIDTH, HEIGHT, &step_x, &step_y);
+	plb_stream_calculate(WIDTH, HEIGHT, &shift_x, &shift_y);
 
 	/*
 	 * The PLB is stored at 0x40004400 (0x18000), which is 192 * 0x200.
@@ -469,16 +472,16 @@ main(int argc, char *argv[])
 
 	/* for GP */
 	/* 0x400f9b00 (0x4c0) = 301 addresses */
-	plb_stream_address_create(0x40080100, mem_0x40080000.address + 0x79b00,
-				  WIDTH, HEIGHT, step_x, step_y, 0x200);
+	plb_stream_address_create(0x40080100, mem_0x40180000.address,
+				  WIDTH, HEIGHT, shift_x, shift_y, 0x200);
 	/* for PP */
 	/* 0x400f82c0 (0x1840) = 388 entries*/
-	plb_stream_create(0x40080100, mem_0x40080000.address + 0x782c0,
-			  WIDTH, HEIGHT, step_x, step_y, 0x200);
+	plb_stream_create(0x40080100, mem_0x40180000.address + 0x20000,
+			  WIDTH, HEIGHT, shift_x, shift_y, 0x200);
 
 	vs_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7dcc0));
 	plbu_commands_create((struct mali_cmd *) (mem_0x40080000.address + 0x7bcc0),
-			     WIDTH, HEIGHT, step_x, step_y);
+			     WIDTH, HEIGHT, shift_x, shift_y);
 
 	gp_job.ctx = (void *) dev_mali_fd;
 	gp_job.user_job_ptr = (u32) &gp_job;

@@ -10,7 +10,7 @@ bmp.o: bmp.c bmp.h
 
 fb.o: fb.c fb.h
 
-premali.o: premali.c dumped_stream.c bmp.h
+premali.o: premali.c dumped_stream.c bmp.h fb.h
 	$(CC) $(CFLAGS) -c -o $@ premali.c
 
 premali: bmp.o fb.o premali.o

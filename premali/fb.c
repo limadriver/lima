@@ -60,6 +60,7 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 	else if ((info.xres >= width) && (info.yres >= height)) {
 		int fb_offset, buf_offset;
 
+		/* landscape */
 		for (i = 0, fb_offset = 0, buf_offset = 0;
 		     i < height;
 		     i++, fb_offset += 4 * info.xres, buf_offset += 4 * width) {
@@ -69,6 +70,8 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 
 		memset(fb + fb_offset, 0xFF, 4 * (info.xres * (info.yres - height)));
 
+#if 0
+		/* portrait */
 		for (i = 0, fb_offset = 4 * info.xres * info.yres, buf_offset = 0;
 		     i < height;
 		     i++, fb_offset += 4 * info.xres, buf_offset += 4 * width) {
@@ -77,6 +80,7 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 		}
 
 		memset(fb + fb_offset, 0xFF, 4 * (info.xres * (info.yres - height)));
+#endif
 	} else
 		printf("%s: dimensions not implemented\n", __func__);
 

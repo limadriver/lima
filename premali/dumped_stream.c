@@ -5,9 +5,6 @@
  *
  */
 
-#define RENDER_WIDTH  384
-#define RENDER_HEIGHT 256
-
 _mali_uk_gp_start_job_s gp_job = {
 	.frame_registers = {
 		0x400fdcc0, /* 0x00: VS commands start */
@@ -21,7 +18,7 @@ _mali_uk_gp_start_job_s gp_job = {
 
 _mali_uk_pp_start_job_s pp_job = {
 	.frame_registers = {
-		0x400f82c0, /* 0x00: Primitive list block stream address. */
+		0x401A0000, /* 0x00: Primitive list block stream address. */
 		0x400e01c0, /* 0x01: Address, 0x4000 large, only partly dumped though */
 		0x00000000, /* 0x02: unused */
 		0x00000022, /* 0x03: flags */
