@@ -231,29 +231,168 @@ plbu_commands_create(struct mali_cmd *cmds, int width, int height,
 	cmds[i].cmd = MALI_PLBU_CMD_END;
 }
 
-void
-mali_uniforms_create(unsigned int *uniforms, int size)
+enum symbol_type {
+	SYMBOL_UNIFORM,
+	SYMBOL_ATTRIBUTE,
+	SYMBOL_VARYING,
+};
+
+struct symbol {
+	/* as referenced by the shaders and shader compiler binary streams */
+	const char *name;
+
+	enum symbol_type type;
+
+	int element_size;
+	int element_count;
+
+	void *data;
+};
+
+struct symbol *
+symbol_create(const char *name, enum symbol_type type, int element_size,
+	      int count, void *data, int copy)
 {
-	{ 	/* gl_mali_ViewportTransform */
-		float x0 = 0, x1 = WIDTH, y0 = 0, y1 = HEIGHT;
-		float depth_near = 0, depth_far = 1;
+	struct symbol *symbol;
 
-		uniforms[0] = from_float(x1 / 2);
-		uniforms[1] = from_float(y1 / 2);
-		uniforms[2] = from_float((depth_far - depth_near) / 2);
-		uniforms[3] = from_float(depth_far);
-		uniforms[4] = from_float((x0 + x1) / 2);
-		uniforms[5] = from_float((y0 + y1) / 2);
-		uniforms[6] = from_float((depth_near + depth_far) / 2);
-		uniforms[7] = from_float(depth_near);
+	if (copy)
+		symbol = calloc(1, sizeof(struct symbol) + element_size * count);
+	else
+		symbol = calloc(1, sizeof(struct symbol));
+	if (!symbol) {
+		printf("%s: failed to allocate: %s\n", __func__, strerror(errno));
+		return NULL;
 	}
 
-	{	/* __maligp2_constant_000 */
-		uniforms[8] = from_float(-1e+10);
-		uniforms[9] = from_float(1e+10);
-		uniforms[10] = 0;
-		uniforms[11] = 0;
+	symbol->name = name;
+	symbol->type = type;
+
+	symbol->element_size = element_size;
+	symbol->element_count = count;
+
+	if (copy) {
+		symbol->data = &symbol[1];
+		memcpy(symbol->data, data, element_size * count);
+	} else
+		symbol->data = data;
+
+	return symbol;
+}
+
+struct symbol *
+uniform_gl_mali_ViewPortTransform(float x0, float y0, float x1, float y1,
+				  float depth_near, float depth_far)
+{
+	float viewport[8];
+
+	viewport[0] = x1 / 2;
+	viewport[1] = y1 / 2;
+	viewport[2] = (depth_far - depth_near) / 2;
+	viewport[3] = depth_far;
+	viewport[4] = (x0 + x1) / 2;
+	viewport[5] = (y0 + y1) / 2;
+	viewport[6] = (depth_near + depth_far) / 2;
+	viewport[7] = depth_near;
+
+	return symbol_create("gl_mali_ViewportTransform", SYMBOL_UNIFORM,
+			     4, 8, viewport, 1);
+}
+
+struct symbol *
+uniform___maligp2_constant_000(void)
+{
+	float constant[] = {-1e+10, 1e+10, 0.0, 0.0};
+
+	return symbol_create("__maligp2_constant_000", SYMBOL_UNIFORM,
+			     4, 4, constant, 1);
+}
+
+void
+mali_gp_uniforms_create(void *uniforms)
+{
+	struct symbol *viewport =
+		uniform_gl_mali_ViewPortTransform(0.0, 0.0, WIDTH, HEIGHT, 0.0, 1.0);
+	struct symbol *constant = uniform___maligp2_constant_000();
+	int offset = 0, size;
+
+	size = viewport->element_size * viewport->element_count;
+	memcpy(uniforms + offset, viewport->data, size);
+
+	offset += size;
+	size = constant->element_size * constant->element_count;
+	memcpy(uniforms + offset, constant->data, size);
+}
+
+struct gp_common_entry {
+	unsigned int physical;
+	int size; /* (element_size << 11) | (element_count - 1) */
+};
+
+struct gp_common {
+	struct gp_common_entry attributes[0x10];
+	struct gp_common_entry varyings[0x10];
+};
+
+void
+mali_gp_common_attributes_init(struct gp_common *common, void *address, int physical)
+{
+	float vertices[] = { 0.0,  0.5, 0.0,
+			    -0.5, -0.5, 0.0,
+			     0.5, -0.5, 0.0};
+	struct symbol *aVertices =
+		symbol_create("aVertices", SYMBOL_ATTRIBUTE, 12, 3, vertices, 0);
+	float colors[] = {1.0, 0.0, 0.0, 1.0,
+			  0.0, 1.0, 0.0, 1.0,
+			  0.0, 0.0, 1.0, 1.0};
+	struct symbol *aColors =
+		symbol_create("aColors", SYMBOL_ATTRIBUTE, 16, 3, colors, 0);
+	int i;
+
+	for (i = 0; i < 0x10; i++) {
+		common->attributes[i].physical = 0;
+		common->attributes[i].size = 0x3F;
 	}
+
+	memcpy(address + 0x1C0, aVertices->data,
+	       aVertices->element_size * aVertices->element_count);
+	memcpy(address + 0x200, aColors->data,
+	       aColors->element_size * aColors->element_count);
+
+	for (i = 0; i < 0x10; i++) {
+		common->attributes[i].physical = 0;
+		common->attributes[i].size = 0x3F;
+	}
+
+	common->attributes[0].physical = physical + 0x1C0; /* aVertices address */
+	common->attributes[0].size =
+		(aVertices->element_size << 11) | (aVertices->element_count - 1);
+
+	common->attributes[1].physical = physical + 0x200; /* aColors address */
+	common->attributes[1].size =
+		(aColors->element_size << 11) | (aColors->element_count - 1);
+}
+
+void
+mali_gp_common_varyings_init(struct gp_common *common, int physical)
+{
+	int i;
+
+	for (i = 0; i < 0x10; i++) {
+		common->varyings[i].physical = 0;
+		common->varyings[i].size = 0x3F;
+	}
+
+	/* varyings */
+	common->varyings[0].physical = physical + 0x180;
+	/*
+	 * this is probably (element_size << 11) | (element_count - 1)
+	 * but this is twice the size of the area reserved...
+	 */
+	common->varyings[0].size = 0x400f;
+
+	/* vertex_array */
+	common->varyings[1].physical = physical + 0x140;
+	common->varyings[1].size = 0x8020;
 }
 
 int
@@ -285,7 +424,10 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	mali_uniforms_create(mem_0x40000000.address + 0x240, 12);
+	mali_gp_uniforms_create(mem_0x40000000.address + 0x240);
+	mali_gp_common_attributes_init(mem_0x40000000.address + 0x300,
+				       mem_0x40000000.address, 0x40000000);
+	mali_gp_common_varyings_init(mem_0x40000000.address + 0x300, 0x40000000);
 
 	plb = plb_create(WIDTH, HEIGHT, 0x40000000, mem_0x40000000.address,
 			 0x80000, 0x80000);
