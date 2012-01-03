@@ -49,11 +49,6 @@ int dev_mali_fd;
 
 #include "dumped_stream.c"
 
-struct mali_cmd {
-	unsigned int val;
-	unsigned int cmd;
-};
-
 #include "vs.h"
 
 struct vs_info {
@@ -374,19 +369,35 @@ vs_info_finalize(struct vs_info *info)
 		info->mem_physical + info->vertex_array_offset;
 	info->common->varyings[i].size = (16 << 11) | (1 - 1) | 0x20;
 
-	/* hardcode until plbu is complete */
-	info->common->varyings[i].physical = 0x40000140;
-	info->common->varyings[i].size = 0x8020;
-
 	vs_commands_create(info);
 }
+
+struct plbu_info {
+	void *mem_address;
+	int mem_physical;
+	int mem_used;
+	int mem_size;
+
+	struct mali_cmd *commands;
+	int commands_offset;
+	int commands_size;
+
+	unsigned int *render_state;
+	int render_state_offset;
+	int render_state_size;
+
+	unsigned int *shader;
+	int shader_offset;
+	int shader_size;
+};
 
 #include "plbu.h"
 
 void
-plbu_commands_create(struct mali_cmd *cmds, int width, int height,
-		     struct plb *plb)
+plbu_commands_create(struct plbu_info *info, int width, int height,
+		     struct plb *plb, struct vs_info *vs)
 {
+	struct mali_cmd *cmds = info->commands;
 	int i = 0;
 
 	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
@@ -442,8 +453,9 @@ plbu_commands_create(struct mali_cmd *cmds, int width, int height,
 	cmds[i].cmd = MALI_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
-	cmds[i].val = 0x40000280; /* RSW address */
-	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY | (0x40000140 >> 4); /* vertex array address */
+	cmds[i].val = info->mem_physical + info->render_state_offset;
+	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY |
+		((vs->mem_physical + vs->vertex_array_offset) >> 4);
 	i++;
 
 	cmds[i].val = 0x00000000;
@@ -506,6 +518,136 @@ plbu_commands_create(struct mali_cmd *cmds, int width, int height,
 
 	cmds[i].val = 0;
 	cmds[i].cmd = MALI_PLBU_CMD_END;
+	i++;
+
+	/* update our size so we can set the gp job properly */
+	info->commands_size = i * sizeof(struct mali_cmd);
+}
+
+struct plbu_info *
+plbu_info_create(void *address, int physical, int size)
+{
+	struct plbu_info *info;
+
+	info = calloc(1, sizeof(struct plbu_info));
+	if (!info) {
+		printf("%s: Error allocating structure: %s\n",
+		       __func__, strerror(errno));
+		return NULL;
+	}
+
+	info->mem_address = address;
+	info->mem_physical = physical;
+	info->mem_size = size;
+
+	info->commands = info->mem_address + info->mem_used;
+	info->commands_offset = info->mem_used;
+	info->commands_size = 0x20 * sizeof(struct mali_cmd);
+	info->mem_used += ALIGN(info->commands_size, 0x40);
+
+	/* leave the rest empty for now */
+
+	if (info->mem_used > info->mem_size) {
+		printf("%s: Not enough memory\n", __func__);
+		free(info);
+		return NULL;
+	}
+
+	return info;
+}
+
+int
+plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size)
+{
+	int mem_size;
+
+	if (info->shader != NULL) {
+		printf("%s: shader already assigned\n", __func__);
+		return -1;
+	}
+
+	mem_size = ALIGN(size * 4, 0x40);
+	if (mem_size > (info->mem_size - info->mem_used)) {
+		printf("%s: no more space\n", __func__);
+		return -2;
+	}
+
+	info->shader = info->mem_address + info->mem_used;
+	info->shader_offset = info->mem_used;
+	info->shader_size = size;
+	info->mem_used += mem_size;
+
+	memcpy(info->shader, shader, 4 * size);
+
+	return 0;
+}
+
+int
+plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
+{
+	int size;
+
+	if (info->render_state) {
+		printf("%s: render_state already assigned\n", __func__);
+		return -1;
+	}
+
+	size = ALIGN(0x10 * 4, 0x40);
+	if (size > (info->mem_size - info->mem_used)) {
+		printf("%s: no more space\n", __func__);
+		return -2;
+	}
+
+	if (!info->shader) {
+		printf("%s: no shader attached yet!\n", __func__);
+		return -3;
+	}
+
+	info->render_state = info->mem_address + info->mem_used;
+	info->render_state_offset = info->mem_used;
+	info->render_state_size = size;
+	info->mem_used += size;
+
+	/* this bit still needs some figuring out :) */
+	info->render_state[0x00] = 0;
+	info->render_state[0x01] = 0;
+	info->render_state[0x02] = 0xfc3b1ad2;
+	info->render_state[0x03] = 0x3E;
+	info->render_state[0x04] = 0xFFFF0000;
+	info->render_state[0x05] = 7;
+	info->render_state[0x06] = 7;
+	info->render_state[0x07] = 0;
+	info->render_state[0x08] = 0xF807;
+	info->render_state[0x09] = info->mem_physical + info->shader_offset +
+		info->shader_size;
+	info->render_state[0x0A] = 0x00000002;
+	info->render_state[0x0B] = 0x00000000;
+
+	info->render_state[0x0C] = 0;
+	info->render_state[0x0D] = 0x301;
+	info->render_state[0x0E] = 0x2000;
+
+	info->render_state[0x0F] = vs->varyings[0]->physical;
+
+	return 0;
+}
+
+int
+plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs)
+{
+	if (!info->render_state) {
+		printf("%s: Missing render_state\n", __func__);
+		return -1;
+	}
+
+	if (!info->shader) {
+		printf("%s: Missing shader\n", __func__);
+		return -1;
+	}
+
+	plbu_commands_create(info, WIDTH, HEIGHT, plb, vs);
+
+	return 0;
 }
 
 #if 0
@@ -540,6 +682,10 @@ vertex_shader[VERTEX_SHADER_SIZE * 4] = {
 	0x6c8b42b5, 0x03804193, 0xc643c080, 0x000ac508, /* 0x00000060 */
 };
 
+#define FRAGMENT_SHADER_SIZE 3
+unsigned int
+fragment_shader[FRAGMENT_SHADER_SIZE] = {0x000000a3, 0xf0003c60, 0x00000000};
+
 int
 main(int argc, char *argv[])
 {
@@ -548,6 +694,7 @@ main(int argc, char *argv[])
 	struct plb *plb;
 	struct pp_info *pp_info;
 	struct vs_info *vs_info;
+	struct plbu_info *plbu_info;
 	_mali_uk_gp_start_job_s gp_job = {0};
 	float vertices[] = { 0.0, -0.6, 0.0,
 			     0.4, 0.6, 0.0,
@@ -591,10 +738,6 @@ main(int argc, char *argv[])
 	vs_info_attach_attribute(vs_info, aColors);
 	vs_info_attach_varying(vs_info, vColors);
 	vs_info_attach_shader(vs_info, vertex_shader, VERTEX_SHADER_SIZE);
-
-	/* hardcode our varyings until the plbu stage is complete */
-	vColors->physical = 0x40000180;
-
 	vs_info_finalize(vs_info);
 
 	plb = plb_create(WIDTH, HEIGHT, 0x40000000, mem_0x40000000.address,
@@ -602,17 +745,20 @@ main(int argc, char *argv[])
 	if (!plb)
 		return -1;
 
-	plbu_commands_create((struct mali_cmd *) (mem_0x40000000.address + 0x500),
-			     WIDTH, HEIGHT, plb);
-
+	plbu_info = plbu_info_create(mem_0x40000000.address + 0x3000,
+				     0x40000000 + 0x3000, 0x1000);
+	plbu_info_attach_shader(plbu_info, fragment_shader, FRAGMENT_SHADER_SIZE);
+	plbu_info_render_state_create(plbu_info, vs_info);
+	plbu_info_finalize(plbu_info, plb, vs_info);
 
 	gp_job.frame_registers[MALI_GP_VS_COMMANDS_START] =
 		vs_info->mem_physical + vs_info->commands_offset;
 	gp_job.frame_registers[MALI_GP_VS_COMMANDS_END] = vs_info->mem_physical +
 		vs_info->commands_offset + vs_info->commands_size;
-
-	gp_job.frame_registers[MALI_GP_PLBU_COMMANDS_START] = 0x40000500;
-	gp_job.frame_registers[MALI_GP_PLBU_COMMANDS_END] = 0x40000600;
+	gp_job.frame_registers[MALI_GP_PLBU_COMMANDS_START] =
+		plbu_info->mem_physical + plbu_info->commands_offset;
+	gp_job.frame_registers[MALI_GP_PLBU_COMMANDS_END] = plbu_info->mem_physical +
+		plbu_info->commands_offset + plbu_info->commands_size;
 	gp_job.frame_registers[MALI_GP_TILE_HEAP_START] = 0;
 	gp_job.frame_registers[MALI_GP_TILE_HEAP_END] = 0;
 

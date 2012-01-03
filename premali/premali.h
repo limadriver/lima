@@ -28,4 +28,9 @@ from_float(float x)
 
 extern int dev_mali_fd;
 
+struct mali_cmd {
+	unsigned int val;
+	unsigned int cmd;
+};
+
 #endif /* PREMALI_PREMALI_H */
