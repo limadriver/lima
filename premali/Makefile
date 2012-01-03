@@ -10,6 +10,8 @@ bmp.o: bmp.c bmp.h
 
 fb.o: fb.c fb.h
 
+symbols.o: symbols.c symbols.h
+
 plb.o: plb.c plb.h premali.h
 
 jobs.o: jobs.c jobs.h premali.h
@@ -18,10 +20,10 @@ dump.o: dump.c dump.h premali.h
 
 pp.o: pp.c pp.h premali.h plb.h
 
-premali.o: premali.c dumped_stream.c bmp.h fb.h plb.h dump.h jobs.h premali.h
+premali.o: premali.c dumped_stream.c bmp.h fb.h symbols.h plb.h dump.h jobs.h premali.h
 	$(CC) $(CFLAGS) -c -o $@ premali.c
 
-premali: bmp.o fb.o plb.o jobs.o dump.o pp.o premali.o
+premali: bmp.o fb.o plb.o symbols.o jobs.o dump.o pp.o premali.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 install: $(SDK)/platform-tools/adb premali

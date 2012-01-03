@@ -36,6 +36,7 @@
 #include "bmp.h"
 #include "fb.h"
 #include "plb.h"
+#include "symbols.h"
 #include "premali.h"
 #include "jobs.h"
 #include "dump.h"
@@ -54,85 +55,6 @@ struct mali_cmd {
 };
 
 #include "vs.h"
-
-enum symbol_type {
-	SYMBOL_UNIFORM,
-	SYMBOL_ATTRIBUTE,
-	SYMBOL_VARYING,
-};
-
-struct symbol {
-	/* as referenced by the shaders and shader compiler binary streams */
-	const char *name;
-
-	enum symbol_type type;
-
-	int element_size;
-	int element_count;
-
-	void *address;
-	int physical; /* empty for uniforms */
-
-	void *data;
-};
-
-struct symbol *
-symbol_create(const char *name, enum symbol_type type, int element_size,
-	      int count, void *data, int copy)
-{
-	struct symbol *symbol;
-
-	if (copy)
-		symbol = calloc(1, sizeof(struct symbol) + element_size * count);
-	else
-		symbol = calloc(1, sizeof(struct symbol));
-	if (!symbol) {
-		printf("%s: failed to allocate: %s\n", __func__, strerror(errno));
-		return NULL;
-	}
-
-	symbol->name = name;
-	symbol->type = type;
-
-	symbol->element_size = element_size;
-	symbol->element_count = count;
-
-	if (copy) {
-		symbol->data = &symbol[1];
-		memcpy(symbol->data, data, element_size * count);
-	} else
-		symbol->data = data;
-
-	return symbol;
-}
-
-struct symbol *
-uniform_gl_mali_ViewPortTransform(float x0, float y0, float x1, float y1,
-				  float depth_near, float depth_far)
-{
-	float viewport[8];
-
-	viewport[0] = x1 / 2;
-	viewport[1] = y1 / 2;
-	viewport[2] = (depth_far - depth_near) / 2;
-	viewport[3] = depth_far;
-	viewport[4] = (x0 + x1) / 2;
-	viewport[5] = (y0 + y1) / 2;
-	viewport[6] = (depth_near + depth_far) / 2;
-	viewport[7] = depth_near;
-
-	return symbol_create("gl_mali_ViewportTransform", SYMBOL_UNIFORM,
-			     4, 8, viewport, 1);
-}
-
-struct symbol *
-uniform___maligp2_constant_000(void)
-{
-	float constant[] = {-1e+10, 1e+10, 0.0, 0.0};
-
-	return symbol_create("__maligp2_constant_000", SYMBOL_UNIFORM,
-			     4, 4, constant, 1);
-}
 
 struct vs_info {
 	void *mem_address;
