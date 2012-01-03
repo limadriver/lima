@@ -40,6 +40,7 @@
 #include "premali.h"
 #include "jobs.h"
 #include "dump.h"
+#include "gp.h"
 #include "pp.h"
 
 int dev_mali_fd;
@@ -50,52 +51,6 @@ int dev_mali_fd;
 #include "dumped_stream.c"
 
 #include "vs.h"
-
-struct vs_info {
-	void *mem_address;
-	int mem_physical;
-	int mem_used;
-	int mem_size;
-
-	struct mali_cmd *commands;
-	int commands_offset;
-	int commands_size;
-
-	struct gp_common *common;
-	int common_offset;
-	int common_size;
-
-	struct symbol *uniforms[0x10];
-	int uniform_count;
-	int uniform_offset;
-	int uniform_used;
-	int uniform_size;
-
-	struct symbol *attributes[0x10];
-	int attribute_count;
-
-	struct symbol *varyings[0x10];
-	int varying_count;
-	int varying_element_size;
-
-	/* finishes off our varyings */
-	int vertex_array_offset;
-	int vertex_array_size;
-
-	unsigned int *shader;
-	int shader_offset;
-	int shader_size;
-};
-
-struct gp_common_entry {
-	unsigned int physical;
-	int size; /* (element_size << 11) | (element_count - 1) */
-};
-
-struct gp_common {
-	struct gp_common_entry attributes[0x10];
-	struct gp_common_entry varyings[0x10];
-};
 
 void
 vs_commands_create(struct vs_info *info)
@@ -152,436 +107,6 @@ vs_commands_create(struct vs_info *info)
 	info->commands_size = i * sizeof(struct mali_cmd);
 }
 
-struct vs_info *
-vs_info_create(void *address, int physical, int size)
-{
-	struct vs_info *info;
-	int i;
-
-	info = calloc(1, sizeof(struct vs_info));
-	if (!info) {
-		printf("%s: Error allocating structure: %s\n",
-		       __func__, strerror(errno));
-		return NULL;
-	}
-
-	info->mem_address = address;
-	info->mem_physical = physical;
-	info->mem_size = size;
-
-	info->commands = info->mem_address + info->mem_used;
-	info->commands_offset = info->mem_used;
-	info->commands_size = 0x10 * sizeof(struct mali_cmd);
-	info->mem_used += ALIGN(info->commands_size, 0x40);
-
-	info->common = info->mem_address + info->mem_used;
-	info->common_offset = info->mem_used;
-	info->common_size = sizeof(struct gp_common);
-	info->mem_used += ALIGN(info->common_size, 0x40);
-
-	/* initialize common */
-	for (i = 0; i < 0x10; i++) {
-		info->common->attributes[i].physical = 0;
-		info->common->attributes[i].size = 0x3F;
-	}
-	for (i = 0; i < 0x10; i++) {
-		info->common->varyings[i].physical = 0;
-		info->common->varyings[i].size = 0x3F;
-	}
-
-	/* predefine an area for the uniforms */
-	info->uniform_offset = info->mem_used;
-	info->uniform_size = 0x200;
-	info->mem_used += ALIGN(info->uniform_size, 0x40);
-
-	/* predefine an area for our vertex array */
-	info->vertex_array_offset = info->mem_used;
-	info->vertex_array_size = 0x40;
-	info->mem_used += 0x40;
-
-	/* leave the rest empty for now */
-
-	if (info->mem_used > info->mem_size) {
-		printf("%s: Not enough memory\n", __func__);
-		free(info);
-		return NULL;
-	}
-
-	return info;
-}
-
-int
-vs_info_attach_uniform(struct vs_info *info, struct symbol *uniform)
-{
-	int size;
-
-	if (info->uniform_count == 0x10) {
-		printf("%s: No more uniforms\n", __func__);
-		return -1;
-	}
-
-	size = uniform->element_size * uniform->element_count;
-	if (size > (info->uniform_size - info->uniform_used)) {
-		printf("%s: No more space\n", __func__);
-		return -2;
-	}
-
-	uniform->address = info->mem_address + info->uniform_offset +
-		info->uniform_used;
-
-	info->uniform_used += size;
-	info->uniforms[info->uniform_count] = uniform;
-	info->uniform_count++;
-
-	memcpy(uniform->address, uniform->data,
-	       uniform->element_size * uniform->element_count);
-
-	return 0;
-}
-
-int
-vs_info_attach_standard_uniforms(struct vs_info *info)
-{
-	struct symbol *viewport =
-		uniform_gl_mali_ViewPortTransform(0.0, 0.0, WIDTH, HEIGHT, 0.0, 1.0);
-	struct symbol *constant = uniform___maligp2_constant_000();
-	int ret;
-
-	ret = vs_info_attach_uniform(info, viewport);
-	if (ret)
-		return ret;
-
-	ret = vs_info_attach_uniform(info, constant);
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
-int
-vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute)
-{
-	int size;
-
-	if (info->attribute_count == 0x10) {
-		printf("%s: No more attributes\n", __func__);
-		return -1;
-	}
-
-	size = ALIGN(attribute->element_size * attribute->element_count, 0x40);
-	if (size > (info->mem_size - info->mem_used)) {
-		printf("%s: No more space\n", __func__);
-		return -2;
-	}
-
-	attribute->address = info->mem_address + info->mem_used;
-	attribute->physical = info->mem_physical + info->mem_used;
-	info->mem_used += size;
-
-	info->attributes[info->attribute_count] = attribute;
-	info->attribute_count++;
-
-	memcpy(attribute->address, attribute->data,
-	       attribute->element_size * attribute->element_count);
-
-	return 0;
-}
-
-/* varyings are still a bit of black magic at this point */
-int
-vs_info_attach_varying(struct vs_info *info, struct symbol *varying)
-{
-	int size;
-
-	/* last varying is always the vertex array */
-	if (info->varying_count == 0x0F) {
-		printf("%s: No more varyings\n", __func__);
-		return -1;
-	}
-
-	if (varying->element_size) {
-		printf("%s: invalid varying %s\n", __func__, varying->name);
-		return -3;
-	}
-
-	size = ALIGN(4 * varying->element_count, 0x40);
-	if (size > (info->mem_size - info->mem_used)) {
-		printf("%s: No more space\n", __func__);
-		return -2;
-	}
-
-	varying->physical = info->mem_physical + info->mem_used;
-	info->mem_used += size;
-
-	info->varyings[info->varying_count] = varying;
-	info->varying_count++;
-
-	/* the vertex shader fills in the varyings */
-
-	return 0;
-}
-
-int
-vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size)
-{
-	int mem_size;
-
-	if (info->shader != NULL) {
-		printf("%s: shader already assigned\n", __func__);
-		return -1;
-	}
-
-	mem_size = ALIGN(size * 16, 0x40);
-	if (mem_size > (info->mem_size - info->mem_used)) {
-		printf("%s: no more space\n", __func__);
-		return -2;
-	}
-
-	info->shader = info->mem_address + info->mem_used;
-	info->shader_offset = info->mem_used;
-	info->shader_size = size;
-	info->mem_used += mem_size;
-
-	memcpy(info->shader, shader, 16 * size);
-
-	return 0;
-}
-
-void
-vs_info_finalize(struct vs_info *info)
-{
-	int i;
-
-	for (i = 0; i < info->attribute_count; i++) {
-		info->common->attributes[i].physical = info->attributes[i]->physical;
-		info->common->attributes[i].size =
-			(info->attributes[i]->element_size << 11) |
-			(info->attributes[i]->element_count - 1);
-	}
-
-	for (i = 0; i < info->varying_count; i++) {
-		info->common->varyings[i].physical = info->varyings[i]->physical;
-		info->common->varyings[i].size = (8 << 11) |
-			(info->varyings[i]->element_count - 1);
-	}
-
-	info->common->varyings[i].physical =
-		info->mem_physical + info->vertex_array_offset;
-	info->common->varyings[i].size = (16 << 11) | (1 - 1) | 0x20;
-
-	vs_commands_create(info);
-}
-
-struct plbu_info {
-	void *mem_address;
-	int mem_physical;
-	int mem_used;
-	int mem_size;
-
-	struct mali_cmd *commands;
-	int commands_offset;
-	int commands_size;
-
-	unsigned int *render_state;
-	int render_state_offset;
-	int render_state_size;
-
-	unsigned int *shader;
-	int shader_offset;
-	int shader_size;
-};
-
-#include "plbu.h"
-
-void
-plbu_commands_create(struct plbu_info *info, int width, int height,
-		     struct plb *plb, struct vs_info *vs)
-{
-	struct mali_cmd *cmds = info->commands;
-	int i = 0;
-
-	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
-	cmds[i].cmd = MALI_PLBU_CMD_BLOCK_STEP;
-	i++;
-
-	cmds[i].val = ((plb->width - 1) << 24) | ((plb->height - 1) << 8);
-	cmds[i].cmd = MALI_PLBU_CMD_TILED_DIMENSIONS;
-	i++;
-
-	cmds[i].val = plb->width >> plb->shift_w;
-	cmds[i].cmd = MALI_PLBU_CMD_PLBU_BLOCK_STRIDE;
-	i++;
-
-	cmds[i].val = plb->mem_physical + plb->plbu_offset;
-	cmds[i].cmd = MALI_PLBU_CMD_PLBU_ARRAY_ADDRESS;
-	i++;
-
-#if 0
-	cmds[i].val = 0x40100000;
-	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_START;
-	i++;
-
-	cmds[i].val = 0x40150000;
-	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_END;
-	i++;
-#endif
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_Y;
-	i++;
-
-	cmds[i].val = from_float(height);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_H;
-	i++;
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_X;
-	i++;
-
-	cmds[i].val = from_float(width);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_W;
-	i++;
-
-	/*
-	 *
-	 */
-	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN;
-	cmds[i].cmd = MALI_PLBU_CMD_ARRAYS_SEMAPHORE;
-	i++;
-
-	cmds[i].val = 0x00002200;
-	cmds[i].cmd = MALI_PLBU_CMD_PRIMITIVE_SETUP;
-	i++;
-
-	cmds[i].val = info->mem_physical + info->render_state_offset;
-	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY |
-		((vs->mem_physical + vs->vertex_array_offset) >> 4);
-	i++;
-
-	cmds[i].val = 0x00000000;
-	cmds[i].cmd = 0x1000010a;
-	i++;
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_NEAR;
-	i++;
-
-	cmds[i].val = from_float(1.0);
-	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_FAR;
-	i++;
-
-	/* could this be some sort of delay or wait? */
-	cmds[i].val = 0x03000000;
-	cmds[i].cmd = 0x00040000;
-	i++;
-
-	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_END;
-	cmds[i].cmd = MALI_PLBU_CMD_ARRAYS_SEMAPHORE;
-	i++;
-
-	/*
-	 * Some inter-frame communication apparently.
-	 */
-#if 0
-	cmds[i].val = 0x400e41c0;
-	cmds[i].cmd = 0xa0000103;
-	i++;
-
-	cmds[i].val = 0x400e41c4;
-	cmds[i].cmd = 0xa0000104;
-	i++;
-
-	cmds[i].val = 0x400e41c8;
-	cmds[i].cmd = 0xa0000107;
-	i++;
-
-	cmds[i].val = 0x400e41cc;
-	cmds[i].cmd = 0xa0000108;
-	i++;
-
-	cmds[i].val = 0x400e41d0;
-	cmds[i].cmd = 0xa0000105;
-	i++;
-
-	cmds[i].val = 0x400e41d4;
-	cmds[i].cmd = 0xa0000106;
-	i++;
-#endif
-
-	cmds[i].val = 0x00000000;
-	cmds[i].cmd = 0xd0000000;
-	i++;
-
-	cmds[i].val = 0x00000000;
-	cmds[i].cmd = 0xd0000000;
-	i++;
-
-	cmds[i].val = 0;
-	cmds[i].cmd = MALI_PLBU_CMD_END;
-	i++;
-
-	/* update our size so we can set the gp job properly */
-	info->commands_size = i * sizeof(struct mali_cmd);
-}
-
-struct plbu_info *
-plbu_info_create(void *address, int physical, int size)
-{
-	struct plbu_info *info;
-
-	info = calloc(1, sizeof(struct plbu_info));
-	if (!info) {
-		printf("%s: Error allocating structure: %s\n",
-		       __func__, strerror(errno));
-		return NULL;
-	}
-
-	info->mem_address = address;
-	info->mem_physical = physical;
-	info->mem_size = size;
-
-	info->commands = info->mem_address + info->mem_used;
-	info->commands_offset = info->mem_used;
-	info->commands_size = 0x20 * sizeof(struct mali_cmd);
-	info->mem_used += ALIGN(info->commands_size, 0x40);
-
-	/* leave the rest empty for now */
-
-	if (info->mem_used > info->mem_size) {
-		printf("%s: Not enough memory\n", __func__);
-		free(info);
-		return NULL;
-	}
-
-	return info;
-}
-
-int
-plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size)
-{
-	int mem_size;
-
-	if (info->shader != NULL) {
-		printf("%s: shader already assigned\n", __func__);
-		return -1;
-	}
-
-	mem_size = ALIGN(size * 4, 0x40);
-	if (mem_size > (info->mem_size - info->mem_used)) {
-		printf("%s: no more space\n", __func__);
-		return -2;
-	}
-
-	info->shader = info->mem_address + info->mem_used;
-	info->shader_offset = info->mem_used;
-	info->shader_size = size;
-	info->mem_used += mem_size;
-
-	memcpy(info->shader, shader, 4 * size);
-
-	return 0;
-}
-
 int
 plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 {
@@ -628,24 +153,6 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 	info->render_state[0x0E] = 0x2000;
 
 	info->render_state[0x0F] = vs->varyings[0]->physical;
-
-	return 0;
-}
-
-int
-plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs)
-{
-	if (!info->render_state) {
-		printf("%s: Missing render_state\n", __func__);
-		return -1;
-	}
-
-	if (!info->shader) {
-		printf("%s: Missing shader\n", __func__);
-		return -1;
-	}
-
-	plbu_commands_create(info, WIDTH, HEIGHT, plb, vs);
 
 	return 0;
 }
@@ -730,37 +237,31 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	vs_info = vs_info_create(mem_0x40000000.address + 0x2000,
-				 0x40000000 + 0x2000, 0x1000);
+	vs_info = vs_info_create(mem_0x40000000.address + 0x0000,
+				 0x40000000 + 0x0000, 0x1000);
 
-	vs_info_attach_standard_uniforms(vs_info);
+	vs_info_attach_standard_uniforms(vs_info, WIDTH, HEIGHT);
 	vs_info_attach_attribute(vs_info, aVertices);
 	vs_info_attach_attribute(vs_info, aColors);
 	vs_info_attach_varying(vs_info, vColors);
 	vs_info_attach_shader(vs_info, vertex_shader, VERTEX_SHADER_SIZE);
+	// TODO: move to gp.c once more is known.
+	vs_commands_create(vs_info);
 	vs_info_finalize(vs_info);
 
 	plb = plb_create(WIDTH, HEIGHT, 0x40000000, mem_0x40000000.address,
-			 0x80000, 0x80000);
+			 0x3000, 0x7D000);
 	if (!plb)
 		return -1;
 
-	plbu_info = plbu_info_create(mem_0x40000000.address + 0x3000,
-				     0x40000000 + 0x3000, 0x1000);
+	plbu_info = plbu_info_create(mem_0x40000000.address + 0x1000,
+				     0x40000000 + 0x1000, 0x1000);
 	plbu_info_attach_shader(plbu_info, fragment_shader, FRAGMENT_SHADER_SIZE);
+	// TODO: move to gp.c once more is known.
 	plbu_info_render_state_create(plbu_info, vs_info);
-	plbu_info_finalize(plbu_info, plb, vs_info);
+	plbu_info_finalize(plbu_info, plb, vs_info, WIDTH, HEIGHT);
 
-	gp_job.frame_registers[MALI_GP_VS_COMMANDS_START] =
-		vs_info->mem_physical + vs_info->commands_offset;
-	gp_job.frame_registers[MALI_GP_VS_COMMANDS_END] = vs_info->mem_physical +
-		vs_info->commands_offset + vs_info->commands_size;
-	gp_job.frame_registers[MALI_GP_PLBU_COMMANDS_START] =
-		plbu_info->mem_physical + plbu_info->commands_offset;
-	gp_job.frame_registers[MALI_GP_PLBU_COMMANDS_END] = plbu_info->mem_physical +
-		plbu_info->commands_offset + plbu_info->commands_size;
-	gp_job.frame_registers[MALI_GP_TILE_HEAP_START] = 0;
-	gp_job.frame_registers[MALI_GP_TILE_HEAP_END] = 0;
+	gp_job_setup(&gp_job, vs_info, plbu_info);
 
 	ret = premali_gp_job_start(&gp_job);
 	if (ret)
@@ -769,8 +270,9 @@ main(int argc, char *argv[])
 	fb_clear();
 
 	pp_info = pp_info_create(WIDTH, HEIGHT, 0xFF505050, plb,
-				 mem_0x40000000.address + 0x1000,
-				 0x40001000, 0x1000, 0x40200000);
+				 mem_0x40000000.address + 0x2000,
+				 0x40000000 + 0x2000,
+				 0x1000, 0x40080000);
 
 	ret = premali_pp_job_start(pp_info->job);
 	if (ret)

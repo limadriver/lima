@@ -8,7 +8,7 @@
 struct mali_dumped_mem_block mem_0x40000000 = {
 	NULL,
 	0x40000000,
-	0x00200000,
+	0x00080000,
 	0,
 	{
 	},
