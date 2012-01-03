@@ -25,9 +25,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include "formats.h"
-#include "registers.h"
-
 #define u32 uint32_t
 #define USING_MALI200
 #include "mali_200_regs.h"
@@ -39,7 +36,6 @@
 #include "symbols.h"
 #include "premali.h"
 #include "jobs.h"
-#include "dump.h"
 #include "gp.h"
 #include "pp.h"
 
@@ -47,8 +43,6 @@ int dev_mali_fd;
 
 #define WIDTH 800
 #define HEIGHT 480
-
-#include "dumped_stream.c"
 
 #include "vs.h"
 
@@ -197,6 +191,8 @@ int
 main(int argc, char *argv[])
 {
 	_mali_uk_init_mem_s mem_init;
+	int mem_physical;
+	void *mem_address;
 	int ret;
 	struct plb *plb;
 	struct pp_info *pp_info;
@@ -233,12 +229,17 @@ main(int argc, char *argv[])
 		return errno;
 	}
 
-	ret = dumped_mem_load(&dumped_mem);
-	if (ret)
-		return ret;
+	mem_physical = 0x40000000;
+	mem_address = mmap(NULL, 0x80000, PROT_READ | PROT_WRITE, MAP_SHARED,
+			   dev_mali_fd, mem_physical);
+	if (mem_address == MAP_FAILED) {
+		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
+		       mem_physical, 0x80000, strerror(errno));
+		return errno;
+	}
 
-	vs_info = vs_info_create(mem_0x40000000.address + 0x0000,
-				 0x40000000 + 0x0000, 0x1000);
+	vs_info = vs_info_create(mem_address + 0x0000,
+				 mem_physical + 0x0000, 0x1000);
 
 	vs_info_attach_standard_uniforms(vs_info, WIDTH, HEIGHT);
 	vs_info_attach_attribute(vs_info, aVertices);
@@ -249,13 +250,13 @@ main(int argc, char *argv[])
 	vs_commands_create(vs_info);
 	vs_info_finalize(vs_info);
 
-	plb = plb_create(WIDTH, HEIGHT, 0x40000000, mem_0x40000000.address,
+	plb = plb_create(WIDTH, HEIGHT, mem_physical, mem_address,
 			 0x3000, 0x7D000);
 	if (!plb)
 		return -1;
 
-	plbu_info = plbu_info_create(mem_0x40000000.address + 0x1000,
-				     0x40000000 + 0x1000, 0x1000);
+	plbu_info = plbu_info_create(mem_address + 0x1000,
+				     mem_physical + 0x1000, 0x1000);
 	plbu_info_attach_shader(plbu_info, fragment_shader, FRAGMENT_SHADER_SIZE);
 	// TODO: move to gp.c once more is known.
 	plbu_info_render_state_create(plbu_info, vs_info);
@@ -270,9 +271,9 @@ main(int argc, char *argv[])
 	fb_clear();
 
 	pp_info = pp_info_create(WIDTH, HEIGHT, 0xFF505050, plb,
-				 mem_0x40000000.address + 0x2000,
-				 0x40000000 + 0x2000,
-				 0x1000, 0x40080000);
+				 mem_address + 0x2000,
+				 mem_physical + 0x2000,
+				 0x1000, mem_physical + 0x80000);
 
 	ret = premali_pp_job_start(pp_info->job);
 	if (ret)

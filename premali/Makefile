@@ -22,7 +22,7 @@ gp.o: gp.c gp.h premali.h plb.h symbols.h
 
 pp.o: pp.c pp.h premali.h plb.h
 
-premali.o: premali.c dumped_stream.c bmp.h fb.h symbols.h plb.h dump.h jobs.h gp.h pp.h premali.h
+premali.o: premali.c bmp.h fb.h symbols.h plb.h jobs.h gp.h pp.h premali.h
 	$(CC) $(CFLAGS) -c -o $@ premali.c
 
 premali: bmp.o fb.o plb.o symbols.o jobs.o dump.o gp.o pp.o premali.o
