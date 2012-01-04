@@ -152,22 +152,61 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 }
 
 #if 0
-/* A single attribute is bits 0x1C.2 through 0x1C.5 of every instruction,
-   bit 0x1C.6 is set when there is an attribute. */
-
+/*
+ * Attribute linking:
+ *
+ * One single attribute per command:
+ *  bits 0x1C.2 through 0x1C.5 of every instruction,
+ *  bit 0x1C.6 is set when there is an attribute.
+ *
+ * Before linking, attribute 0 is aColor, and attribute 1 is aPosition,
+ * as obviously spotted from the attribute link stream.
+ * After linking, attribute 0 is aVertices, and attribute 1 is aColor.
+ * This matches the way in which we attach our attributes.
+ *
+ * And indeed, if we swap the bits and the attributes over, things work fine,
+ * and if we only swap the attributes over, then the rendering is broken in a
+ * logical way.
+ */
+/*
+ * Varying linking:
+ *
+ * 4 entries, linked to two varyings. If both varyings are specified, they have
+ * to be the same.
+ *
+ * Bits 47-52, contain 4 entries, 3 bits each. 7 means invalid. 2 entries per
+ * varying.
+ * Bits 5A through 63 specify two varyings, 5 bits each. Top bit means
+ * valid/defined, other is most likely the index in the common area.
+ *
+ * How this fully fits together, is not entirely clear yet, but hopefully
+ * clear enough to implement linking in one of the next stages.
+ */
+/*
+ * Uniform linking:
+ *
+ * Since there is just a memory blob with uniforms packed in it, it would
+ * appear that there is no linking, and uniforms just have to be packed as
+ * defined in the uniform link stream.
+ *
+ */
 unsigned int unlinked[] = {
-	{
-		0xad4ad463, 0x478002b5, 0x0147ff80, 0x000a8d30, /* 0x00000000 */
-		/*            /\ valid attribute is here. Note that it is 1 here, and 0 after linking. */
-		0xad4fda56, 0x038022ce, 0x0007ff80, 0x000ad510, /* 0x00000010 */
-		0xb04b02cd, 0x43802ac2, 0xc6462180, 0x000a8d08, /* 0x00000020 */
-		/*            /\ attribute 0. */
-		/*                       */
-		0xad490722, 0x478082b5, 0x0007ff80, 0x000d5700, /* 0x00000030 */
-		0xad4a4980, 0x478002b5, 0x0007ff80, 0x000ad500, /* 0x00000040 */
-		0xb5cbcafb, 0x038049d3, 0x0007ff80, 0x000ad500, /* 0x00000050 */
-		0x6c8b42b5, 0x03804193, 0x4243c080, 0x000ac508, /* 0x00000060 */
-	},
+	0xad4ad463, 0x478002b5, 0x0147ff80, 0x000a8d30, /* 0x00000000 */
+	/*            ^^       */
+	/*       attribute 1   */
+	0xad4fda56, 0x038022ce, 0x0007ff80, 0x000ad510, /* 0x00000010 */
+	0xb04b02cd, 0x43802ac2, 0xc6462180, 0x000a8d08, /* 0x00000020 */
+	/*            ^^          ^^ ^^^^            ^ */
+	/*       attribute 0                */
+	0xad490722, 0x478082b5, 0x0007ff80, 0x000d5700, /* 0x00000030 */
+	/*            ^^     */
+	/*       attribute 1 */
+	0xad4a4980, 0x478002b5, 0x0007ff80, 0x000ad500, /* 0x00000040 */
+	/*            ^^     */
+	/*       attribute 1 */
+	0xb5cbcafb, 0x038049d3, 0x0007ff80, 0x000ad500, /* 0x00000050 */
+	0x6c8b42b5, 0x03804193, 0x4243c080, 0x000ac508, /* 0x00000060 */
+	/*                        ^^ ^^^^            ^ */
 };
 #endif
 
@@ -202,8 +241,8 @@ main(int argc, char *argv[])
 	float vertices[] = { 0.0, -0.6, 0.0,
 			     0.4, 0.6, 0.0,
 			     -0.4, 0.6, 0.0};
-	struct symbol *aVertices =
-		symbol_create("aVertices", SYMBOL_ATTRIBUTE, 12, 3, vertices, 0);
+	struct symbol *aPosition =
+		symbol_create("aPosition", SYMBOL_ATTRIBUTE, 12, 3, vertices, 0);
 	float colors[] = {0.0, 1.0, 0.0, 1.0,
 			  0.0, 0.0, 1.0, 1.0,
 			  1.0, 0.0, 0.0, 1.0};
@@ -242,8 +281,10 @@ main(int argc, char *argv[])
 				 mem_physical + 0x0000, 0x1000);
 
 	vs_info_attach_standard_uniforms(vs_info, WIDTH, HEIGHT);
-	vs_info_attach_attribute(vs_info, aVertices);
+
+	vs_info_attach_attribute(vs_info, aPosition);
 	vs_info_attach_attribute(vs_info, aColors);
+
 	vs_info_attach_varying(vs_info, vColors);
 	vs_info_attach_shader(vs_info, vertex_shader, VERTEX_SHADER_SIZE);
 	// TODO: move to gp.c once more is known.
