@@ -151,7 +151,6 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 	return 0;
 }
 
-#if 0
 /*
  * Attribute linking:
  *
@@ -190,41 +189,136 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
  * defined in the uniform link stream.
  *
  */
-unsigned int unlinked[] = {
-	0xad4ad463, 0x478002b5, 0x0147ff80, 0x000a8d30, /* 0x00000000 */
-	/*            ^^       */
-	/*       attribute 1   */
-	0xad4fda56, 0x038022ce, 0x0007ff80, 0x000ad510, /* 0x00000010 */
-	0xb04b02cd, 0x43802ac2, 0xc6462180, 0x000a8d08, /* 0x00000020 */
-	/*            ^^          ^^ ^^^^            ^ */
-	/*       attribute 0                */
-	0xad490722, 0x478082b5, 0x0007ff80, 0x000d5700, /* 0x00000030 */
-	/*            ^^     */
-	/*       attribute 1 */
-	0xad4a4980, 0x478002b5, 0x0007ff80, 0x000ad500, /* 0x00000040 */
-	/*            ^^     */
-	/*       attribute 1 */
-	0xb5cbcafb, 0x038049d3, 0x0007ff80, 0x000ad500, /* 0x00000050 */
-	0x6c8b42b5, 0x03804193, 0x4243c080, 0x000ac508, /* 0x00000060 */
-	/*                        ^^ ^^^^            ^ */
-};
-#endif
 
-#define VERTEX_SHADER_SIZE 7
-unsigned int
-vertex_shader[VERTEX_SHADER_SIZE * 4] = {
-	0xad4ad463, 0x438002b5, 0x0147ff80, 0x000a8d30, /* 0x00000000 */
-	0xad4fda56, 0x038022ce, 0x0007ff80, 0x000ad510, /* 0x00000010 */
-	0xb04b02cd, 0x47802ac2, 0x42462180, 0x000a8d08, /* 0x00000020 */
-	0xad490722, 0x438082b5, 0x0007ff80, 0x000d5700, /* 0x00000030 */
-	0xad4a4980, 0x438002b5, 0x0007ff80, 0x000ad500, /* 0x00000040 */
-	0xb5cbcafb, 0x038049d3, 0x0007ff80, 0x000ad500, /* 0x00000050 */
-	0x6c8b42b5, 0x03804193, 0xc643c080, 0x000ac508, /* 0x00000060 */
-};
+#include "compiler.h"
 
-#define FRAGMENT_SHADER_SIZE 3
-unsigned int
-fragment_shader[FRAGMENT_SHADER_SIZE] = {0x000000a3, 0xf0003c60, 0x00000000};
+void
+vertex_shader_attributes_patch(unsigned int *shader, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		int tmp = (shader[4 * i + 1] >> 26) & 0x1F;
+
+		if (!(tmp & 0x10))
+			continue;
+
+		tmp &= 0x0F;
+		shader[4 * i + 1] &= ~(0x0F << 26);
+
+		/* program specific bit, for now */
+		if (!tmp)
+			tmp = 1;
+		else
+			tmp = 0;
+
+		shader[4 * i + 1] |= tmp << 26;
+	}
+}
+
+void
+vertex_shader_varyings_patch(unsigned int *shader, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		int tmp;
+
+		/* ignore entries for now, until we know more */
+
+		tmp = (shader[4 * i + 2] >> 26) & 0x1F;
+
+		if (tmp & 0x10) {
+			tmp &= 0x0F;
+			shader[4 * i + 2] &= ~(0x0F << 26);
+
+			/* program specific bit, for now */
+			if (!tmp)
+				tmp = 1;
+			else
+				tmp = 0;
+
+			shader[4 * i + 2] |= tmp << 26;
+		}
+
+		tmp = ((shader[4 * i + 2] >> 31) & 0x01) |
+			((shader[4 * i + 3] << 1) & 0x1E);
+
+		if (tmp & 0x10) {
+			tmp &= 0x0F;
+			shader[4 * i + 2] &= ~(0x01 << 31);
+			shader[4 * i + 3] &= ~0x07;
+
+			/* program specific bit, for now */
+			if (!tmp)
+				tmp = 1;
+			else
+				tmp = 0;
+
+			shader[4 * i + 2] |= tmp << 31;
+			shader[4 * i + 3] |= tmp >> 1;
+		}
+	}
+}
+
+int
+vertex_shader_compile(struct vs_info *info, const char *source)
+{
+	struct mali_shader_binary binary = {0};
+	unsigned int *shader;
+	int length = strlen(source);
+	int ret, size;
+
+	ret = __mali_compile_essl_shader(&binary, MALI_SHADER_VERTEX,
+					 (char *) source, &length, 1);
+	if (ret) {
+		if (binary.error_log)
+			printf("%s: compilation failed: %s\n",
+			       __func__, binary.error_log);
+		else
+			printf("%s: compilation failed: %s\n",
+			       __func__, binary.oom_log);
+		return ret;
+	}
+
+	shader = binary.shader;
+	size = binary.shader_size / 16;
+
+	vertex_shader_attributes_patch(shader, size);
+	vertex_shader_varyings_patch(shader, size);
+
+	vs_info_attach_shader(info, shader, size);
+
+	return 0;
+}
+
+int
+fragment_shader_compile(struct plbu_info *info, const char *source)
+{
+	struct mali_shader_binary binary = {0};
+	unsigned int *shader;
+	int length = strlen(source);
+	int ret, size;
+
+	ret = __mali_compile_essl_shader(&binary, MALI_SHADER_FRAGMENT,
+					 (char *) source, &length, 1);
+	if (ret) {
+		if (binary.error_log)
+			printf("%s: compilation failed: %s\n",
+			       __func__, binary.error_log);
+		else
+			printf("%s: compilation failed: %s\n",
+			       __func__, binary.oom_log);
+		return ret;
+	}
+
+	shader = binary.shader;
+	size = binary.shader_size / 4;
+
+	plbu_info_attach_shader(info, shader, size);
+
+	return 0;
+}
 
 int
 main(int argc, char *argv[])
@@ -250,6 +344,27 @@ main(int argc, char *argv[])
 		symbol_create("aColors", SYMBOL_ATTRIBUTE, 16, 3, colors, 0);
 	struct symbol *vColors =
 		symbol_create("vColors", SYMBOL_VARYING, 0, 16, NULL, 0);
+
+	const char *vertex_shader_source =
+		"attribute vec4 aPosition;    \n"
+		"attribute vec4 aColor;       \n"
+		"                             \n"
+		"varying vec4 vColor;         \n"
+                "                             \n"
+                "void main()                  \n"
+                "{                            \n"
+		"    vColor = aColor;         \n"
+                "    gl_Position = aPosition; \n"
+                "}                            \n";
+	const char *fragment_shader_source =
+		"precision mediump float;     \n"
+		"                             \n"
+		"varying vec4 vColor;         \n"
+		"                             \n"
+		"void main()                  \n"
+		"{                            \n"
+		"    gl_FragColor = vColor;   \n"
+		"}                            \n";
 
 	dev_mali_fd = open("/dev/mali", O_RDWR);
 	if (dev_mali_fd == -1) {
@@ -280,13 +395,15 @@ main(int argc, char *argv[])
 	vs_info = vs_info_create(mem_address + 0x0000,
 				 mem_physical + 0x0000, 0x1000);
 
+	vertex_shader_compile(vs_info, vertex_shader_source);
+
 	vs_info_attach_standard_uniforms(vs_info, WIDTH, HEIGHT);
 
 	vs_info_attach_attribute(vs_info, aPosition);
 	vs_info_attach_attribute(vs_info, aColors);
 
 	vs_info_attach_varying(vs_info, vColors);
-	vs_info_attach_shader(vs_info, vertex_shader, VERTEX_SHADER_SIZE);
+
 	// TODO: move to gp.c once more is known.
 	vs_commands_create(vs_info);
 	vs_info_finalize(vs_info);
@@ -298,7 +415,7 @@ main(int argc, char *argv[])
 
 	plbu_info = plbu_info_create(mem_address + 0x1000,
 				     mem_physical + 0x1000, 0x1000);
-	plbu_info_attach_shader(plbu_info, fragment_shader, FRAGMENT_SHADER_SIZE);
+	fragment_shader_compile(plbu_info, fragment_shader_source);
 	// TODO: move to gp.c once more is known.
 	plbu_info_render_state_create(plbu_info, vs_info);
 	plbu_info_finalize(plbu_info, plb, vs_info, WIDTH, HEIGHT);

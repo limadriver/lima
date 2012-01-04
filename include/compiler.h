@@ -68,6 +68,10 @@ struct mali_shader_binary { /* 0x5C */
 	} parameters; /* 0x2C - 0x5C */
 };
 
+/* values from GL */
+#define MALI_SHADER_FRAGMENT 0x8B30
+#define MALI_SHADER_VERTEX   0x8B31
+
 int __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
 			       char *source, int *length, int count);
 #endif /* MALI_COMPILER_H */

@@ -26,7 +26,7 @@ premali.o: premali.c bmp.h fb.h symbols.h plb.h jobs.h gp.h pp.h premali.h
 	$(CC) $(CFLAGS) -c -o $@ premali.c
 
 premali: bmp.o fb.o plb.o symbols.o jobs.o dump.o gp.o pp.o premali.o
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lMali
 
 install: $(SDK)/platform-tools/adb premali
 	$(SDK)/platform-tools/adb push premali /system/bin
