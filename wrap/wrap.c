@@ -49,6 +49,50 @@ static void mali_memory_dump(void);
 
 static pthread_mutex_t serializer[1] = { PTHREAD_MUTEX_INITIALIZER };
 
+#if 0
+/*
+ * Broken with the wait_for_notification workaround.
+ *
+ */
+static const char *first_func;
+static int recursive;
+
+static inline void
+serialized_start(const char *func)
+{
+	if (recursive)
+		printf("%s: trying to recursively call wrapper symbols (%s)!\n",
+		       func, first_func);
+	else {
+		first_func = func;
+		pthread_mutex_lock(serializer);
+	}
+	recursive++;
+}
+
+static inline void
+serialized_stop(void)
+{
+	recursive--;
+	if (!recursive) {
+		first_func = NULL;
+		pthread_mutex_unlock(serializer);
+	}
+}
+#else
+static inline void
+serialized_start(const char *func)
+{
+	pthread_mutex_lock(serializer);
+}
+
+static inline void
+serialized_stop(void)
+{
+	pthread_mutex_unlock(serializer);
+}
+#endif
+
 /*
  *
  * Basic log writing infrastructure.
@@ -142,7 +186,7 @@ open(const char* path, int flags, ...)
 	mode_t mode = 0;
 	int ret;
 
-	pthread_mutex_lock(serializer);
+	serialized_start(__func__);
 
 	if (!orig_open)
 		orig_open = libc_dlsym(__func__);
@@ -165,7 +209,7 @@ open(const char* path, int flags, ...)
 		}
 	}
 
-	pthread_mutex_unlock(serializer);
+	serialized_stop();
 
 	return ret;
 }
@@ -180,7 +224,7 @@ close(int fd)
 {
 	int ret;
 
-	pthread_mutex_lock(serializer);
+	serialized_start(__func__);
 
 	if (!orig_close)
 		orig_close = libc_dlsym(__func__);
@@ -192,7 +236,7 @@ close(int fd)
 
 	ret = orig_close(fd);
 
-	pthread_mutex_unlock(serializer);
+	serialized_stop();
 
 	return ret;
 }
@@ -209,12 +253,13 @@ ioctl(int fd, int request, ...)
 	int ret;
 	int yield = 0;
 
-	pthread_mutex_lock(serializer);
+	serialized_start(__func__);
 
 	if (!orig_ioctl)
 		orig_ioctl = libc_dlsym(__func__);
 
-	if (ioc_size) {
+	/* hack around badly defined fbdev ioctls */
+	if (ioc_size || (request == 0x4600)) {
 		va_list args;
 		void *ptr;
 
@@ -236,7 +281,7 @@ ioctl(int fd, int request, ...)
 			ret = orig_ioctl(fd, request);
 	}
 
-	pthread_mutex_unlock(serializer);
+	serialized_stop();
 
 	if (yield)
 		sched_yield();
@@ -255,7 +300,7 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
 	void *ret;
 
-	pthread_mutex_lock(serializer);
+	serialized_start(__func__);
 
 	if (!orig_mmap)
 		orig_mmap = libc_dlsym(__func__);
@@ -268,7 +313,7 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 		memset(ret, 0, length);
 	}
 
-	pthread_mutex_unlock(serializer);
+	serialized_stop();
 
 	return ret;
 }
@@ -283,7 +328,7 @@ munmap(void *addr, size_t length)
 {
 	int ret;
 
-	pthread_mutex_lock(serializer);
+	serialized_start(__func__);
 
 	if (!orig_munmap)
 		orig_munmap = libc_dlsym(__func__);
@@ -293,7 +338,7 @@ munmap(void *addr, size_t length)
 	if (!mali_address_remove(addr, length))
 		wrap_log("MUNMAP %p (0x%08x);\n", addr, length);
 
-	pthread_mutex_unlock(serializer);
+	serialized_stop();
 
 	return ret;
 }
@@ -305,7 +350,7 @@ fflush(FILE *stream)
 {
 	int ret;
 
-	pthread_mutex_lock(serializer);
+	serialized_start(__func__);
 
 	if (!orig_fflush)
 		orig_fflush = libc_dlsym(__func__);
@@ -315,7 +360,7 @@ fflush(FILE *stream)
 	if (stream != remali_wrap_log)
 		orig_fflush(remali_wrap_log);
 
-	pthread_mutex_unlock(serializer);
+	serialized_stop();
 
 	return ret;
 }
@@ -452,6 +497,9 @@ dev_mali_wait_for_notification_pre(void *data)
 	wrap_log("IOCTL MALI_IOC_WAIT_FOR_NOTIFICATION IN = {\n");
 	wrap_log("\t.code.timeout = 0x%x,\n", notification->code.timeout);
 	wrap_log("};\n");
+
+	/* some kernels wait forever otherwise */
+	serialized_stop();
 }
 
 /*
@@ -461,6 +509,9 @@ static void
 dev_mali_wait_for_notification_post(void *data)
 {
 	_mali_uk_wait_for_notification_s *notification = data;
+
+	/* to match the pre function */
+	serialized_start(__func__);
 
 	wrap_log("IOCTL MALI_IOC_WAIT_FOR_NOTIFICATION OUT = {\n");
 	wrap_log("\t.code.type = 0x%x,\n", notification->code.type);
@@ -950,7 +1001,7 @@ __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
 	int ret;
 	int i, offset = 0;
 
-	pthread_mutex_lock(serializer);
+	serialized_start(__func__);
 
 	if (!orig__mali_compile_essl_shader)
 		orig__mali_compile_essl_shader = libmali_dlsym(__func__);
@@ -1014,7 +1065,7 @@ __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
 	}
 	wrap_log("}\n");
 
-	pthread_mutex_unlock(serializer);
+	serialized_stop();
 
 	return ret;
 }
