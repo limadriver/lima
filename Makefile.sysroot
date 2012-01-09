@@ -1,0 +1,64 @@
+# Do not run this as root, as then a missing $(SYSROOT) will have
+# rather severe consequences.
+
+include Makefile.inc
+
+all:
+	# nothing, don't run this accidentally.
+
+sysroot:
+	$(RM) $(SYSROOT)/usr/lib/*.so
+	$(ADB) pull /system/lib/egl/libEGL_mali.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/egl/libGLESv2_mali.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libMali.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libutils.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libcutils.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libbinder.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libui.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libhardware.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libhardware_legacy.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libandroid_runtime.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libpixelflinger.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libexpat.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libnativehelper.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libnetutils.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libgui.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libsurfaceflinger_client.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libcamera_client.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libskiagl.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libskia.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libsqlite.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libdvm.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libETC1.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libsonivox.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libcrypto.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libssl.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libicuuc.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libicui18n.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libmedia.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libwpa_client.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libjpeg.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libnfc_ndef.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libbluedroid.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libdbus.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libemoji.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libm.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libc.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/liblog.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libEGL.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libGLESv1_CM.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libdl.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libstdc++.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libz.so $(SYSROOT)/usr/lib
+	$(ADB) pull /system/lib/libGLESv2.so $(SYSROOT)/usr/lib
+
+device:
+	# since otherwise direct linking will fail.
+	$(ADB) shell "ln -sf /system/lib/egl/libEGL_mali.so /system/lib"
+	$(ADB) shell "ln -sf /system/lib/egl/libGLESv2_mali.so /system/lib"
+	# this is where our premali tests go.
+	$(ADB) shell mkdir /system/bin/premali
+	# this is for our native tests
+	$(ADB) shell mkdir /system/bin/premali/premali
+	# and this is for the EGL/GLES based tests.
+	$(ADB) shell mkdir /system/bin/premali/egl

@@ -27,10 +27,16 @@ from_float(float x)
 }
 
 extern int dev_mali_fd;
+extern int mem_physical;
+extern void *mem_address;
 
 struct mali_cmd {
 	unsigned int val;
 	unsigned int cmd;
 };
+
+/* from premali.c */
+int premali_init(void);
+void premali_finish(void);
 
 #endif /* PREMALI_PREMALI_H */

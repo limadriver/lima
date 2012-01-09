@@ -1,19 +1,15 @@
-include Makefile.inc
+DIRS = premali tools wrap
 
-all:
-	cd wrap && $(MAKE) all
-	cd test && $(MAKE) all
-	cd premali && $(MAKE) all
+.PHONY: all clean install $(DIRS)
 
-clean:
-	cd wrap && $(MAKE) clean
-	cd test && $(MAKE) clean
-	cd premali && $(MAKE) clean
+all: MAKE = make all
+all: $(DIRS)
 
-install:
-	make remount
-	cd wrap && $(MAKE) install
-	cd test && $(MAKE) install
-	cd premali && $(MAKE) install
+$(DIRS):
+	$(MAKE) -C $@
 
-include Makefile.post
+install: MAKE = make install
+install: $(DIRS)
+
+clean: MAKE = make clean
+clean: $(DIRS)

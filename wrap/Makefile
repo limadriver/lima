@@ -1,5 +1,9 @@
 include ../Makefile.inc
 
+TOP=..
+
+CFLAGS += -I$(TOP)/include
+
 all: libMali_wrap.so
 
 wrap.o: wrap.c
@@ -11,7 +15,7 @@ clean:
 libMali_wrap.so: wrap.o
 	$(CC) -shared -Wl -o $@ $^ -ldl
 
-install: $(SDK)/platform-tools/adb libMali_wrap.so
-	$(SDK)/platform-tools/adb push libMali_wrap.so /system/lib/
+install: $(ADB) libMali_wrap.so
+	$(ADB) push libMali_wrap.so /system/lib/
 
 include ../Makefile.post

@@ -39,8 +39,6 @@
 #include "gp.h"
 #include "pp.h"
 
-int dev_mali_fd;
-
 #define WIDTH 800
 #define HEIGHT 480
 
@@ -323,9 +321,6 @@ fragment_shader_compile(struct plbu_info *info, const char *source)
 int
 main(int argc, char *argv[])
 {
-	_mali_uk_init_mem_s mem_init;
-	int mem_physical;
-	void *mem_address;
 	int ret;
 	struct plb *plb;
 	struct pp_info *pp_info;
@@ -366,31 +361,10 @@ main(int argc, char *argv[])
 		"    gl_FragColor = vColor;   \n"
 		"}                            \n";
 
-	dev_mali_fd = open("/dev/mali", O_RDWR);
-	if (dev_mali_fd == -1) {
-		printf("Error: Failed to open /dev/mali: %s\n",
-		       strerror(errno));
-		return errno;
-	}
 
-	mem_init.ctx = (void *) dev_mali_fd;
-	mem_init.mali_address_base = 0;
-	mem_init.memory_size = 0;
-	ret = ioctl(dev_mali_fd, MALI_IOC_MEM_INIT, &mem_init);
-	if (ret == -1) {
-		printf("Error: ioctl MALI_IOC_MEM_INIT failed: %s\n",
-		       strerror(errno));
-		return errno;
-	}
-
-	mem_physical = 0x40000000;
-	mem_address = mmap(NULL, 0x80000, PROT_READ | PROT_WRITE, MAP_SHARED,
-			   dev_mali_fd, mem_physical);
-	if (mem_address == MAP_FAILED) {
-		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
-		       mem_physical, 0x80000, strerror(errno));
-		return errno;
-	}
+	ret = premali_init();
+	if (ret)
+		return ret;
 
 	vs_info = vs_info_create(mem_address + 0x0000,
 				 mem_physical + 0x0000, 0x1000);
@@ -445,7 +419,7 @@ main(int argc, char *argv[])
 	fb_dump(pp_info->frame_address, pp_info->frame_size,
 		pp_info->width, pp_info->height);
 
-	fflush(stdout);
+	premali_finish();
 
 	return 0;
 }

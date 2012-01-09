@@ -1,4 +1,5 @@
-DIRS = lib tests
+DIRS = triangle_smoothed \
+	triangle_smoothed_inverted
 
 .PHONY: all clean install $(DIRS)
 
@@ -13,4 +14,3 @@ install: $(DIRS)
 
 clean: MAKE = make clean
 clean: $(DIRS)
-

@@ -1,0 +1,123 @@
+How to set up the android ndk/sdk for building remali.
+------------------------------------------------------
+
+Create a separate directory for this, this README uses ~/android/, but of
+course, feel free to substitute with your own.
+
+Getting the NDK/SDK:
+--------------------
+
+You will need the NDK, as this will contain the toolchain and sysroot that we
+will build against:
+http://developer.android.com/sdk/ndk/index.html
+
+You will also need the SDK, as it contains tools like adb (android debug
+bridge).
+http://developer.android.com/sdk/index.html
+
+Download and untar them into your android directory.
+
+This then gives us, with the ndk at the time of writing this readme:
+~/android/android-ndk-r7
+~/android/android-sdk-linux
+
+Setting up the NDK:
+-------------------
+
+Since we need to add some libraries and header files of our own later on, we
+need to create a standalone toolchain. While the headerfiles are generic, the
+libraries will be taken from the device, so this standalone toolchain will be
+somewhat device specific. The device for which this toolchain is being created
+in this example, is a telechips 8901, with a android-2.3 image, therefor the
+toolchain will be sent to ~/android/telechips-2.3/.
+
+Since there is a rather major issue with the make-standalone-toolchain.sh
+script, we need to provide the full path for our standalone toolchain.
+Otherwise you end up with a separate directory called ~ which will contain
+your toolchain.
+
+The script also requires to be told which platform we are for, since this
+example is for android-2.3, the platform is android-9 (see
+docs/STABLE-APIS.html in the ndk).
+
+./android-ndk-r7/build/tools/make-standalone-toolchain.sh --platform=android-9 \
+			  --install-dir=/home/user/android/telechips-2.3/
+
+You can now edit Makefile.inc in the top remali directory to point to your
+standalone toolchain and your SDK.
+
+Please verify that you now are able to build some things, by running make
+in the top remali directory. Linking will fail though as we are still missing
+some libraries (we will resolve that in the next section).
+
+Getting ADB (android debug bridge):
+-----------------------------------
+
+Descend into your sdk directory, and tools/android. This will open up a window
+called "Android SDK Manager". There, deselect whatever it tries to install, and
+instead only select "Android SDK Platform-tools" under "Tools", and then press
+"install 1 pack".
+
+Once this is done, you can verify that ADB works, by running:
+
+ make remount
+
+This will run adb remount, which remounts the /system/ partition on your
+device so that it is writable. We will be installing remali bits to it
+later on.
+
+This might fail, stating "error: insufficient permissions for device",
+which means that we still need to set up udev for this device.
+
+Setting up udev:
+----------------
+
+If adb works out of the box, this step was already done for you by your
+distribution.
+
+Run lsusb, and spot your device. For the telechips tablets, this is:
+
+	Bus xxx Device xxx: ID 18d1:deed Google Inc.
+
+As root, then edit /etc/udev/rules.d/51-android.rules and add the following
+line:
+
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0666", GROUP="plugdev"
+
+Now run:
+
+chmod a+r /etc/udev/rules.d/51-android.rules
+
+If you now plug in your device (or re-plug), it should be accessible.
+
+Getting the right libraries:
+----------------------------
+
+There is Makefile.sysroot. When its sysroot target is run, the sysroot/usr/lib
+directory in your standalone toolchain will be emptied, and the necessary
+libraries from your device will be pulled in instead.
+
+make -f Makefile.sysroot sysroot
+
+If all went well, you should now be able to full build remali.
+
+If linking failed, then pull in the necessary libraries from the device
+yourself.
+
+Setting up the device:
+----------------------
+
+The following command will add two symlinks on your device, so that
+the mali EGL/GLES libraries can be linked to properly.
+
+make -f Makefile.sysroot device
+
+TODO:
+-----
+
+Everything. Most of the above could be easily automated, and make could
+check for different devices with different images, and rebuild and reinstall
+if a different device pops up.
+
+But for the time being, this is good enough, and unless someone feels
+bothered enough, it might not change :)

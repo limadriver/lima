@@ -1,0 +1,4 @@
+Shows a smoothed triangle on a grey background.
+
+Smoothed means: each vertex has a colour, and the body of the triangle
+transitions smoothly between the colours.

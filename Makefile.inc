@@ -3,10 +3,11 @@ SDK ?= ~/android/android-sdk-linux_x86/
 
 CC = $(TOOLCHAIN)/bin/arm-linux-androideabi-gcc
 LD = $(TOOLCHAIN)/bin/arm-linux-androideabi-ld
+ADB = $(SDK)/platform-tools/adb
 SYSROOT = $(TOOLCHAIN)/sysroot/
-
-CFLAGS += -O0 -g -Wall -I../include/
 
 SYSTEM = android
 ARCH = arm
+
+CFLAGS += -O0 -g -Wall
 
