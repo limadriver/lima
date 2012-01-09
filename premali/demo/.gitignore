@@ -1,2 +1,6 @@
+local.properties
+default.properties
+build.xml
+proguard.cfg
 bin
 gen

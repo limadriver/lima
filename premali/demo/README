@@ -1,7 +1,4 @@
+Small demo application for showing premali tests on screen.
 
-ant clean
-
-ant debug
-
-ant debug install
-
+make for building.
+make install for getting it on the device.
