@@ -25,6 +25,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include <GLES2/gl2.h>
+
 #define u32 uint32_t
 #define USING_MALI200
 #include "mali_200_regs.h"
@@ -45,7 +47,7 @@
 #include "vs.h"
 
 void
-vs_commands_create(struct vs_info *info)
+vs_commands_create(struct vs_info *info, int vertex_count)
 {
 	struct mali_cmd *cmds = info->commands;
 	int i = 0;
@@ -83,7 +85,7 @@ vs_commands_create(struct vs_info *info)
 	cmds[i].cmd = 0x10000041;
 	i++;
 
-	cmds[i].val = 0x03000000;
+	cmds[i].val = (vertex_count << 24);
 	cmds[i].cmd = 0x00000000;
 	i++;
 
@@ -331,14 +333,14 @@ main(int argc, char *argv[])
 			     0.4, -0.6, 0.0,
 			     -0.4, -0.6, 0.0};
 	struct symbol *aPosition =
-		symbol_create("aPosition", SYMBOL_ATTRIBUTE, 12, 3, vertices, 0);
+		symbol_create("aPosition", SYMBOL_ATTRIBUTE, 12, 3, 3, vertices, 0);
 	float colors[] = {0.0, 1.0, 0.0, 1.0,
 			  0.0, 0.0, 1.0, 1.0,
 			  1.0, 0.0, 0.0, 1.0};
 	struct symbol *aColors =
-		symbol_create("aColors", SYMBOL_ATTRIBUTE, 16, 3, colors, 0);
+		symbol_create("aColors", SYMBOL_ATTRIBUTE, 16, 4, 3, colors, 0);
 	struct symbol *vColors =
-		symbol_create("vColors", SYMBOL_VARYING, 0, 16, NULL, 0);
+		symbol_create("vColors", SYMBOL_VARYING, 0, 16, 0, NULL, 0);
 
 	const char *vertex_shader_source =
 		"attribute vec4 aPosition;    \n"
@@ -379,7 +381,7 @@ main(int argc, char *argv[])
 	vs_info_attach_varying(vs_info, vColors);
 
 	// TODO: move to gp.c once more is known.
-	vs_commands_create(vs_info);
+	vs_commands_create(vs_info, 3);
 	vs_info_finalize(vs_info);
 
 	plb = plb_create(WIDTH, HEIGHT, mem_physical, mem_address,
@@ -392,7 +394,8 @@ main(int argc, char *argv[])
 	fragment_shader_compile(plbu_info, fragment_shader_source);
 	// TODO: move to gp.c once more is known.
 	plbu_info_render_state_create(plbu_info, vs_info);
-	plbu_info_finalize(plbu_info, plb, vs_info, WIDTH, HEIGHT);
+	plbu_info_finalize(plbu_info, plb, vs_info, WIDTH, HEIGHT,
+			   GL_TRIANGLES, 3);
 
 	gp_job_setup(&gp_job, vs_info, plbu_info);
 

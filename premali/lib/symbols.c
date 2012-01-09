@@ -28,7 +28,7 @@
 
 struct symbol *
 symbol_create(const char *name, enum symbol_type type, int element_size,
-	      int count, void *data, int copy)
+	      int element_entries, int count, void *data, int copy)
 {
 	struct symbol *symbol;
 
@@ -46,6 +46,7 @@ symbol_create(const char *name, enum symbol_type type, int element_size,
 
 	symbol->element_size = element_size;
 	symbol->element_count = count;
+	symbol->element_entries = element_entries;
 
 	if (copy) {
 		symbol->data = &symbol[1];
@@ -75,7 +76,7 @@ uniform_gl_mali_ViewPortTransform(float x0, float y0, float x1, float y1,
 	viewport[7] = depth_near;
 
 	return symbol_create("gl_mali_ViewportTransform", SYMBOL_UNIFORM,
-			     4, 8, viewport, 1);
+			     32, 8, 1, viewport, 1);
 }
 
 struct symbol *
@@ -84,5 +85,5 @@ uniform___maligp2_constant_000(void)
 	float constant[] = {-1e+10, 1e+10, 0.0, 0.0};
 
 	return symbol_create("__maligp2_constant_000", SYMBOL_UNIFORM,
-			     4, 4, constant, 1);
+			     16, 4, 1, constant, 1);
 }

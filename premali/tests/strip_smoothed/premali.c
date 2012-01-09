@@ -1,29 +1,34 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sub license,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
+ * The above copyright notice and this permission notice (including the
+ * next paragraph) shall be included in all copies or substantial portions
+ * of the Software.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ *
  */
+
+/*
+ * Template file for replaying a dumped stream.
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <dlfcn.h>
-#include <fcntl.h>
 #include <inttypes.h>
-#include <string.h>
-#include <errno.h>
 
 #include <GLES2/gl2.h>
 
@@ -32,12 +37,13 @@
 #include "mali_200_regs.h"
 #include "mali_ioctl.h"
 
-#include "bmp.h"
-#include "fb.h"
-#include "plb.h"
-#include "symbols.h"
 #include "premali.h"
 #include "jobs.h"
+#include "bmp.h"
+#include "fb.h"
+
+#include "plb.h"
+#include "symbols.h"
 #include "gp.h"
 #include "pp.h"
 
@@ -329,16 +335,22 @@ main(int argc, char *argv[])
 	struct vs_info *vs_info;
 	struct plbu_info *plbu_info;
 	_mali_uk_gp_start_job_s gp_job = {0};
-	float vertices[] = { 0.0, -0.6, 0.0,
-			     0.4, 0.6, 0.0,
-			     -0.4, 0.6, 0.0};
+	float vertices[] = { -0.7,  0.7, -0.7,
+			     -0.7,  0.2, -0.4,
+			      0.0,  0.3, -0.5,
+			     -0.2, -0.3,  0.3,
+			      0.5, -0.2,  0.4,
+			      0.7, -0.7, 0.7 };
 	struct symbol *aPosition =
-		symbol_create("aPosition", SYMBOL_ATTRIBUTE, 12, 3, 3, vertices, 0);
-	float colors[] = {0.0, 1.0, 0.0, 1.0,
+		symbol_create("aPosition", SYMBOL_ATTRIBUTE, 12, 3, 6, vertices, 0);
+	float colors[] = {0.1, 0.1, 0.1, 1.0,
+			  1.0, 0.0, 0.0, 1.0,
 			  0.0, 0.0, 1.0, 1.0,
-			  1.0, 0.0, 0.0, 1.0};
+			  1.0, 1.0, 0.0, 1.0,
+			  0.0, 1.0, 1.0, 1.0,
+			  0.9, 0.9, 0.9, 1.0};
 	struct symbol *aColors =
-		symbol_create("aColors", SYMBOL_ATTRIBUTE, 16, 4, 3, colors, 0);
+		symbol_create("aColors", SYMBOL_ATTRIBUTE, 16, 4, 6, colors, 0);
 	struct symbol *vColors =
 		symbol_create("vColors", SYMBOL_VARYING, 0, 16, 0, NULL, 0);
 
@@ -381,8 +393,16 @@ main(int argc, char *argv[])
 	vs_info_attach_varying(vs_info, vColors);
 
 	// TODO: move to gp.c once more is known.
-	vs_commands_create(vs_info, 3);
+	vs_commands_create(vs_info, 6);
 	vs_info_finalize(vs_info);
+
+	printf("attribute[0].size = 0x%x\n",
+	       vs_info->common->attributes[0].size);
+	printf("attribute[1].size = 0x%x\n",
+	       vs_info->common->attributes[1].size);
+
+	vs_info->common->attributes[0].size = 0x6002;
+	vs_info->common->attributes[1].size = 0x8003;
 
 	plb = plb_create(WIDTH, HEIGHT, mem_physical, mem_address,
 			 0x3000, 0x7D000);
@@ -395,7 +415,7 @@ main(int argc, char *argv[])
 	// TODO: move to gp.c once more is known.
 	plbu_info_render_state_create(plbu_info, vs_info);
 	plbu_info_finalize(plbu_info, plb, vs_info, WIDTH, HEIGHT,
-			   GL_TRIANGLES, 3);
+			   GL_TRIANGLE_STRIP, 6);
 
 	gp_job_setup(&gp_job, vs_info, plbu_info);
 
@@ -426,3 +446,4 @@ main(int argc, char *argv[])
 
 	return 0;
 }
+

@@ -247,13 +247,13 @@ vs_info_finalize(struct vs_info *info)
 		info->common->attributes[i].physical = info->attributes[i]->physical;
 		info->common->attributes[i].size =
 			(info->attributes[i]->element_size << 11) |
-			(info->attributes[i]->element_count - 1);
+			(info->attributes[i]->element_entries - 1);
 	}
 
 	for (i = 0; i < info->varying_count; i++) {
 		info->common->varyings[i].physical = info->varyings[i]->physical;
 		info->common->varyings[i].size = (8 << 11) |
-			(info->varyings[i]->element_count - 1);
+			(info->varyings[i]->element_entries - 1);
 	}
 
 	info->common->varyings[i].physical =
@@ -263,7 +263,8 @@ vs_info_finalize(struct vs_info *info)
 
 void
 plbu_commands_create(struct plbu_info *info, int width, int height,
-		     struct plb *plb, struct vs_info *vs)
+		     struct plb *plb, struct vs_info *vs,
+		     int draw_mode, int vertex_count)
 {
 	struct mali_cmd *cmds = info->commands;
 	int i = 0;
@@ -338,9 +339,8 @@ plbu_commands_create(struct plbu_info *info, int width, int height,
 	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_FAR;
 	i++;
 
-	/* could this be some sort of delay or wait? */
-	cmds[i].val = 0x03000000;
-	cmds[i].cmd = 0x00040000;
+	cmds[i].val = (vertex_count << 24);
+	cmds[i].cmd = ((draw_mode & 0x1F) << 16) | (vertex_count >> 8);
 	i++;
 
 	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_END;
@@ -452,7 +452,7 @@ plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size)
 
 int
 plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
-		   int width, int height)
+		   int width, int height, int draw_mode, int vertex_count)
 {
 	if (!info->render_state) {
 		printf("%s: Missing render_state\n", __func__);
@@ -464,7 +464,8 @@ plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
 		return -1;
 	}
 
-	plbu_commands_create(info, width, height, plb, vs);
+	plbu_commands_create(info, width, height, plb, vs,
+			     draw_mode, vertex_count);
 
 	return 0;
 }

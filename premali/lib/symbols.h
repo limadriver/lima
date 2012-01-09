@@ -36,6 +36,7 @@ struct symbol {
 	enum symbol_type type;
 
 	int element_size;
+	int element_entries;
 	int element_count;
 
 	void *address;
@@ -45,7 +46,8 @@ struct symbol {
 };
 
 struct symbol *symbol_create(const char *name, enum symbol_type type,
-			     int element_size, int count, void *data, int copy);
+			     int element_size, int element_entries, int count,
+			     void *data, int copy);
 
 struct symbol *uniform_gl_mali_ViewPortTransform(float x0, float y0,
 						 float x1, float y1,

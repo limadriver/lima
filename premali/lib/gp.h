@@ -93,11 +93,12 @@ struct plbu_info {
 };
 
 void plbu_commands_create(struct plbu_info *info, int width, int height,
-			  struct plb *plb, struct vs_info *vs);
+			  struct plb *plb, struct vs_info *vs,
+			  int draw_mode, int vertex_count);
 struct plbu_info *plbu_info_create(void *address, int physical, int size);
 int plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size);
 int plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
-		       int width, int height);
+		       int width, int height, int draw_mode, int vertex_count);
 
 void gp_job_setup(_mali_uk_gp_start_job_s *gp_job, struct vs_info *vs,
 		  struct plbu_info *plbu);

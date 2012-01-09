@@ -1,6 +1,6 @@
 include ../Makefile.top
 
-NAME = triangle_smoothed
+NAME = strip_smoothed
 
 all: premali egl
 
