@@ -1,0 +1,20 @@
+.PHONY : egl egl_install egl_run egl_wrap
+
+egl: egl_$(NAME)
+
+egl_$(NAME): egl.c
+	$(CC) $(CFLAGS) -o $@ $^ -lEGL_mali -lGLESv2_mali
+
+egl_install: $(ADB) egl_$(NAME)
+	$(ADB) push egl_$(NAME) $(INSTALL_DIR)/egl/$(NAME)
+
+egl_wrap: $(ADB)
+	$(ADB) shell "rm $(WRAP_LOG)"
+	$(ADB) shell "LD_PRELOAD=libMali_wrap.so REMALI_WRAP_LOG=$(WRAP_LOG) $(INSTALL_DIR)/egl/$(NAME)"
+	$(ADB) pull $(WRAP_LOG)
+
+egl_run: $(ADB)
+	$(ADB) shell $(INSTALL_DIR)egl/$(NAME)
+
+egl_clean:
+	rm -f egl_$(NAME)

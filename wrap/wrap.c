@@ -1,5 +1,5 @@
 /*
- * Copyright 2011      Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -40,12 +40,17 @@
 #include "mali_ioctl.h"
 
 #include "compiler.h"
+#include "registers.h"
+#include "formats.h"
+
+#include "bmp.h"
 
 static int mali_ioctl(int request, void *data);
 static int mali_address_add(void *address, unsigned int size,
 			    unsigned int physical);
 static int mali_address_remove(void *address, int size);
 static void mali_memory_dump(void);
+static void mali_bmp_dump(void);
 
 static pthread_mutex_t serializer[1] = { PTHREAD_MUTEX_INITIALIZER };
 
@@ -185,8 +190,12 @@ open(const char* path, int flags, ...)
 {
 	mode_t mode = 0;
 	int ret;
+	int hello = 0;
 
-	serialized_start(__func__);
+	if (!strcmp(path, "/dev/mali")) {
+		hello = 1;
+	    	serialized_start(__func__);
+	}
 
 	if (!orig_open)
 		orig_open = libc_dlsym(__func__);
@@ -203,13 +212,14 @@ open(const char* path, int flags, ...)
 	} else {
 		ret = orig_open(path, flags);
 
-		if ((ret != -1) && !strcmp(path, "/dev/mali")) {
+		if ((ret != -1) && hello) {
 			dev_mali_fd = ret;
 			wrap_log("OPEN;\n");
 		}
 	}
 
-	serialized_stop();
+	if (hello)
+		serialized_stop();
 
 	return ret;
 }
@@ -224,7 +234,8 @@ close(int fd)
 {
 	int ret;
 
-	serialized_start(__func__);
+	if (fd == dev_mali_fd)
+	    	serialized_start(__func__);
 
 	if (!orig_close)
 		orig_close = libc_dlsym(__func__);
@@ -236,7 +247,8 @@ close(int fd)
 
 	ret = orig_close(fd);
 
-	serialized_stop();
+	if (fd == dev_mali_fd)
+		serialized_stop();
 
 	return ret;
 }
@@ -559,6 +571,9 @@ dev_mali_wait_for_notification_post(void *data)
 			wrap_log("\t},\n");
 
 			//mali_memory_dump();
+
+			/* We finished a frame, we dump the result */
+			mali_bmp_dump();
 		}
 		break;
 	case _MALI_NOTIFICATION_GP_STALLED:
@@ -617,6 +632,11 @@ dev_mali_gp_start_job_post(void *data)
 	wrap_log("};\n");
 }
 
+unsigned int render_address;
+int render_pitch;
+int render_height;
+int render_format;
+
 static void
 dev_mali_pp_start_job_pre(void *data)
 {
@@ -653,6 +673,18 @@ dev_mali_pp_start_job_pre(void *data)
 	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
 
 	wrap_log("};\n");
+
+	/*
+	 * Now store where our final render is headed, and what it looks like.
+	 * We will dump it as a bmp once we're done.
+	 */
+	render_address = job->wb0_registers[MALI_PP_WB_ADDRESS];
+	render_pitch = job->wb0_registers[MALI_PP_WB_PITCH] * 8;
+	if (job->frame_registers[MALI_PP_FRAME_HEIGHT])
+		render_height = job->frame_registers[MALI_PP_FRAME_HEIGHT];
+	else
+		render_height = job->frame_registers[MALI_PP_FRAME_SUPERSAMPLED_HEIGHT] + 1;
+	render_format = MALI_PIXEL_FORMAT_RGBA_8888;
 
 	//mali_memory_dump();
 }
@@ -804,6 +836,21 @@ mali_address_remove(void *address, int size)
 	return -1;
 }
 
+static void *
+mali_address_retrieve(unsigned int physical)
+{
+	int i;
+
+	for (i = 0; i < MALI_ADDRESSES; i++)
+		if ((mali_addresses[i].physical <= physical) &&
+		    ((mali_addresses[i].physical + mali_addresses[i].size)
+		     >= physical))
+			return mali_addresses[i].address +
+				(mali_addresses[i].physical - physical);
+
+	return NULL;
+}
+
 static void
 mali_memory_dump_block(unsigned int *address, int start, int stop,
 		       unsigned physical, int count)
@@ -896,6 +943,26 @@ mali_memory_dump(void)
 
 	wrap_log("\t},\n");
 	wrap_log("};\n");
+}
+
+static void
+mali_bmp_dump(void)
+{
+	void *address = mali_address_retrieve(render_address);
+
+	if (!address) {
+		wrap_log("%s: Failed to dump bmp at 0x%x\n",
+			 __func__, render_address);
+		return;
+	}
+
+	if (render_format != MALI_PIXEL_FORMAT_RGBA_8888) {
+		wrap_log("%s: Pixel format 0x%x is currently not implemented\n",
+			 __func__, render_format);
+		return;
+	}
+
+	bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/sdcard/premali.wrap.bmp");
 }
 
 /*

@@ -1,6 +1,6 @@
 include ../Makefile.top
 
-NAME = triangle_smoothed_inverted
+NAME = ___TEMPLATE___
 
 include ../Makefile.premali
 include ../Makefile.egl

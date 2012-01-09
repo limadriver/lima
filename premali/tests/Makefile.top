@@ -1,0 +1,8 @@
+TOP = ../../../
+
+include $(TOP)Makefile.inc
+
+CFLAGS += -I$(TOP)include -I../../lib/
+
+INSTALL_DIR = /system/bin/premali/
+WRAP_LOG = /sdcard/remali_test.wrap.log
