@@ -1,0 +1,7 @@
+
+ant clean
+
+ant debug
+
+ant debug install
+

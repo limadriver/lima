@@ -6,28 +6,28 @@ import java.lang.String;
 import java.util.Vector;
 import java.io.File;
 import java.io.IOException;
-import android.app.Activity;
+import android.app.ListActivity;
 import android.util.Log;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.Button;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ArrayAdapter;
 
-public class PreMaliDemo extends Activity
+
+public class PreMaliDemo extends ListActivity
 {
-    private Vector<String> programs = new Vector<String>();
-
-
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
 	Log.i("PreMaliDemo", "create");
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
 
-	getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-			     WindowManager.LayoutParams.FLAG_FULLSCREEN);
+	Vector<String> programs = new Vector<String>();
 
 	File[] files = new File("/system/bin/premali/premali").listFiles();
 	for (File file : files)
@@ -38,21 +38,35 @@ public class PreMaliDemo extends Activity
 		programs.add(file.getAbsolutePath());
 	    }
 	}
+
+	setListAdapter(new ArrayAdapter<String>(this, R.layout.listitem, programs));
+
+	ListView listview = getListView();
+
+	listview.setOnItemClickListener(new OnItemClickListener() {
+	    public void onItemClick(AdapterView<?> parent, View view,
+				    int position, long id)
+	    {
+		String program = ((TextView) view).getText().toString();
+		runProgram(program);
+	    }
+	});
+
+	getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+			     WindowManager.LayoutParams.FLAG_FULLSCREEN);
     }
 
 
-    public void triangle1(View view) throws IOException
+    public void runProgram(String program)
     {
-	Log.i("PreMaliDemo", "triangle1");
+	Log.i("PreMaliDemo", program);
 
-	Runtime.getRuntime().exec("/system/bin/premali/premali/triangle_smoothed");
-    }
-
-
-    public void triangle2(View view) throws IOException
-    {
-	Log.i("PreMaliDemo", "triangle2");
-
-	Runtime.getRuntime().exec("/system/bin/premali/premali/triangle_smoothed_inverted");
+	try
+	{
+	    Runtime.getRuntime().exec(program);
+	}
+	catch (IOException e)
+	{
+	}
     }
 }
