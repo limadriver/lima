@@ -335,20 +335,20 @@ main(int argc, char *argv[])
 	struct vs_info *vs_info;
 	struct plbu_info *plbu_info;
 	_mali_uk_gp_start_job_s gp_job = {0};
-	float vertices[] = { -0.7,  0.7, -0.7,
-			     -0.7,  0.2, -0.4,
-			      0.0,  0.3, -0.5,
-			     -0.2, -0.3,  0.3,
-			      0.5, -0.2,  0.4,
-			      0.7, -0.7, 0.7 };
+	float vertices[] = { -0.7,  0.7, 0.0,
+			     -0.7,  0.2, 0.0,
+			      0.0, -0.2, 0.0,
+			      0.0, -0.7, 0.0,
+			      0.7,  0.7, 0.0,
+			      0.7,  0.2, 0.0};
 	struct symbol *aPosition =
 		symbol_create("aPosition", SYMBOL_ATTRIBUTE, 12, 3, 6, vertices, 0);
-	float colors[] = {0.1, 0.1, 0.1, 1.0,
-			  1.0, 0.0, 0.0, 1.0,
-			  0.0, 0.0, 1.0, 1.0,
+	float colors[] = {1.0, 0.0, 0.0, 1.0,
 			  1.0, 1.0, 0.0, 1.0,
-			  0.0, 1.0, 1.0, 1.0,
-			  0.9, 0.9, 0.9, 1.0};
+			  1.0, 0.0, 1.0, 1.0,
+			  0.0, 1.0, 0.0, 1.0,
+			  0.0, 0.0, 1.0, 1.0,
+			  0.0, 1.0, 1.0, 1.0};
 	struct symbol *aColors =
 		symbol_create("aColors", SYMBOL_ATTRIBUTE, 16, 4, 6, colors, 0);
 	struct symbol *vColors =

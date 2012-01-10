@@ -1,5 +1,6 @@
 DIRS = triangle_smoothed \
-	triangle_smoothed_inverted
+	strip_smoothed \
+	fan_smoothed
 
 .PHONY: all clean install $(DIRS)
 
