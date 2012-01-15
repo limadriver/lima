@@ -14,10 +14,13 @@ import android.content.Intent;
 
 public class RunDemo extends Activity
 {
+    private Process process = null;
+
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
 	super.onCreate(savedInstanceState);
+
 	setContentView(R.layout.run);
 
 	getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -32,10 +35,24 @@ public class RunDemo extends Activity
 
 	try
 	{
-	    Runtime.getRuntime().exec(program);
+	    process = Runtime.getRuntime().exec(program);
 	}
 	catch (IOException e)
 	{
+	    Log.e("PreMaliDemo", "exec failed");
+	    process = null;
+	}
+    }
+
+    @Override
+    public void onStop()
+    {
+	super.onStop();
+
+	if (process != null)
+	{
+	    process.destroy();
+	    process = null;
 	}
     }
 }

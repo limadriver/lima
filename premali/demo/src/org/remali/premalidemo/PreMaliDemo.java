@@ -24,21 +24,28 @@ public class PreMaliDemo extends ListActivity
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
-	Log.i("PreMaliDemo", "create");
-
         super.onCreate(savedInstanceState);
+
+	Log.i("PreMaliDemo", "create");
 
 	getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 			     WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
 	File[] files = new File("/system/bin/premali/premali").listFiles();
-	for (File file : files)
+	if (files != null)
 	{
-	    if (file.canExecute())
+	    for (File file : files)
 	    {
-		Log.i("PreMaliDemo", file.getAbsolutePath());
-		programs.add(file.getAbsolutePath());
+		if (file.canExecute())
+		{
+		    Log.i("PreMaliDemo", file.getAbsolutePath());
+		    programs.add(file.getAbsolutePath());
+		}
 	    }
+	}
+	else
+	{
+	    Log.e("PreMaliDemo", "no programs found");
 	}
 
 	setListAdapter(new ArrayAdapter<String>(this, R.layout.listitem, programs));
