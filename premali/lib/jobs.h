@@ -23,8 +23,11 @@
 #ifndef PREMALI_JOBS_H
 #define PREMALI_JOBS_H 1
 
-int premali_gp_job_start(_mali_uk_gp_start_job_s *gp_job);
-int premali_pp_job_start(_mali_uk_pp_start_job_s *pp_job);
 void premali_jobs_wait(void);
+void wait_for_notification_start(void);
+
+int premali_gp_job_start_direct(struct mali_gp_job_start *job);
+int premali_m200_pp_job_start_direct(struct mali200_pp_job_start *job);
+int premali_m400_pp_job_start_direct(struct mali400_pp_job_start *job);
 
 #endif /* PREMALI_JOBS_H */

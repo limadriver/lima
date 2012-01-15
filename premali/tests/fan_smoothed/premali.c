@@ -32,16 +32,11 @@
 
 #include <GLES2/gl2.h>
 
-#define u32 uint32_t
-#define USING_MALI200
-#include "mali_200_regs.h"
-#include "mali_ioctl.h"
-
 #include "premali.h"
 #include "jobs.h"
 #include "bmp.h"
 #include "fb.h"
-
+#include "ioctl.h"
 #include "plb.h"
 #include "symbols.h"
 #include "gp.h"
@@ -334,7 +329,7 @@ main(int argc, char *argv[])
 	struct pp_info *pp_info;
 	struct vs_info *vs_info;
 	struct plbu_info *plbu_info;
-	_mali_uk_gp_start_job_s gp_job = {0};
+	struct mali_gp_job_start gp_job = {0};
 	float vertices[] = {  0.0,  0.8, 0.0,
 			     -0.8,  0.4, 0.0,
 			     -0.6, -0.5, 0.0,
@@ -417,9 +412,7 @@ main(int argc, char *argv[])
 	plbu_info_finalize(plbu_info, plb, vs_info, WIDTH, HEIGHT,
 			   GL_TRIANGLE_FAN, 6);
 
-	gp_job_setup(&gp_job, vs_info, plbu_info);
-
-	ret = premali_gp_job_start(&gp_job);
+	ret = premali_gp_job_start(&gp_job, vs_info, plbu_info);
 	if (ret)
 		return ret;
 
@@ -430,7 +423,7 @@ main(int argc, char *argv[])
 				 mem_physical + 0x2000,
 				 0x1000, mem_physical + 0x80000);
 
-	ret = premali_pp_job_start(pp_info->job);
+	ret = premali_pp_job_start(pp_info);
 	if (ret)
 		return ret;
 

@@ -25,11 +25,18 @@
 
 struct pp_info
 {
-	_mali_uk_pp_start_job_s job[1];
+	union {
+		struct mali200_pp_job_start *mali200;
+		struct mali400_pp_job_start *mali400;
+	} job;
 
 	int width;
 	int height;
 	int pitch;
+
+	unsigned int plb_physical;
+	int plb_shift_w;
+	int plb_shift_h;
 
 	unsigned int clear_color;
 
@@ -51,5 +58,6 @@ struct pp_info *pp_info_create(int width, int height, unsigned int clear_color,
 			       struct plb *plb, void *address,
 			       unsigned int physical, int size,
 			       unsigned int frame_physical);
+int premali_pp_job_start(struct pp_info *info);
 
 #endif /* PREMALI_PP_H */

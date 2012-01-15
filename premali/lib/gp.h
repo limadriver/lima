@@ -100,7 +100,7 @@ int plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int si
 int plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
 		       int width, int height, int draw_mode, int vertex_count);
 
-void gp_job_setup(_mali_uk_gp_start_job_s *gp_job, struct vs_info *vs,
-		  struct plbu_info *plbu);
+int premali_gp_job_start(struct mali_gp_job_start *gp_job, struct vs_info *vs,
+			 struct plbu_info *plbu);
 
 #endif /* PREMALI_GP_H */

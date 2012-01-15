@@ -22,21 +22,18 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <inttypes.h>
 #include <sys/mman.h>
 #include <errno.h>
+#include <sys/ioctl.h>
 
 #include "formats.h"
-#include "registers.h"
 
-#define u32 uint32_t
-#define USING_MALI200
-#include "mali_200_regs.h"
-#include "mali_ioctl.h"
+#include "ioctl.h"
 
 #include "premali.h"
 #include "plb.h"
 #include "pp.h"
+#include "jobs.h"
 
 struct pp_info *
 pp_info_create(int width, int height, unsigned int clear_color, struct plb *plb,
@@ -44,7 +41,6 @@ pp_info_create(int width, int height, unsigned int clear_color, struct plb *plb,
 	       unsigned int frame_physical)
 {
 	struct pp_info *info;
-	_mali_uk_pp_start_job_s *job;
 	unsigned int quad[5] =
 		{0x00020425, 0x0000000c, 0x01e007cf, 0xb0000000, 0x000005f5};
 	int offset;
@@ -57,6 +53,10 @@ pp_info_create(int width, int height, unsigned int clear_color, struct plb *plb,
 	info->height = height;
 	info->pitch = width * 4;
 	info->clear_color = clear_color;
+
+	info->plb_physical = plb->mem_physical + plb->pp_offset;
+	info->plb_shift_w = plb->shift_w;
+	info->plb_shift_h = plb->shift_h;
 
 	/* first, try to grab the necessary space for our image */
 	info->frame_size = info->pitch * info->height;
@@ -88,48 +88,204 @@ pp_info_create(int width, int height, unsigned int clear_color, struct plb *plb,
 	info->render_address[0x09] = info->quad_physical | info->quad_size;
 	info->render_address[0x0D] = 0x100;
 
-	/* setup the actual pp job */
-	job = info->job;
+	return info;
+}
+
+int
+premali_m200_pp_job_start(struct pp_info *info)
+{
+	struct mali200_pp_job_start *job;
+	int supersampling = 1;
+	int ret;
+
+	job = calloc(1, sizeof(struct mali200_pp_job_start));
+	if (!job) {
+		printf("%s: Error: failed to allocate job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	info->job.mali200 = job;
 
 	/* frame registers */
-	job->frame_registers[MALI_PP_PLBU_ARRAY_ADDRESS] = plb->mem_physical + plb->pp_offset;
-        job->frame_registers[MALI_PP_FRAME_RENDER_ADDRESS] = info->render_physical;
-	job->frame_registers[MALI_PP_FRAME_FLAGS] =
-		MALI_PP_FRAME_FLAGS_ACTIVE | MALI_PP_FRAME_FLAGS_ONSCREEN;
-	job->frame_registers[MALI_PP_FRAME_CLEAR_VALUE_DEPTH] = 0x00FFFFFF;
-	job->frame_registers[MALI_PP_FRAME_CLEAR_VALUE_STENCIL] = 0;
-	job->frame_registers[MALI_PP_FRAME_CLEAR_VALUE_COLOR] = info->clear_color;
-	job->frame_registers[MALI_PP_FRAME_CLEAR_VALUE_COLOR_1] = info->clear_color;
-	job->frame_registers[MALI_PP_FRAME_CLEAR_VALUE_COLOR_2] = info->clear_color;
-	job->frame_registers[MALI_PP_FRAME_CLEAR_VALUE_COLOR_3] = info->clear_color;
+	job->frame.plbu_array_address = info->plb_physical;
+        job->frame.render_address = info->render_physical;
+
+	job->frame.flags = MALI_PP_FRAME_FLAGS_ACTIVE;
+	if (supersampling)
+		job->frame.flags |= MALI_PP_FRAME_FLAGS_ONSCREEN;
+
+	job->frame.clear_value_depth = 0x00FFFFFF;
+	job->frame.clear_value_stencil = 0;
+	job->frame.clear_value_color = info->clear_color;
+	job->frame.clear_value_color_1 = info->clear_color;
+	job->frame.clear_value_color_2 = info->clear_color;
+	job->frame.clear_value_color_3 = info->clear_color;
 
 	if ((info->width & 0x0F) || (info->height & 0x0F)) {
-		job->frame_registers[MALI_PP_FRAME_WIDTH] = info->width;
-		job->frame_registers[MALI_PP_FRAME_HEIGHT] = info->height;
+		job->frame.width = info->width;
+		job->frame.height = info->height;
 	} else {
-		job->frame_registers[MALI_PP_FRAME_WIDTH] = 0;
-		job->frame_registers[MALI_PP_FRAME_HEIGHT] = 0;
+		job->frame.width = 0;
+		job->frame.height = 0;
 	}
 
 	/* not needed for drawing a simple triangle */
-	job->frame_registers[MALI_PP_FRAME_FRAGMENT_STACK_ADDRESS] = 0;
-	job->frame_registers[MALI_PP_FRAME_FRAGMENT_STACK_SIZE] = 0;
+	job->frame.fragment_stack_address = 0;
+	job->frame.fragment_stack_size = 0;
 
-	job->frame_registers[MALI_PP_FRAME_ONE] = 1;
-	job->frame_registers[MALI_PP_FRAME_SUPERSAMPLED_HEIGHT] = info->height - 1;
-	job->frame_registers[MALI_PP_FRAME_DUBYA] = 0x77;
-	job->frame_registers[MALI_PP_FRAME_ONSCREEN] = 1;
+	job->frame.one = 1;
+	if (supersampling)
+		job->frame.supersampled_height = info->height - 1;
+	else
+		job->frame.supersampled_height = 1;
+	job->frame.dubya = 0x77;
+	job->frame.onscreen = supersampling;
 
 	/* write back registers */
-	job->wb0_registers[MALI_PP_WB_TYPE] = MALI_PP_WB_TYPE_COLOR;
-	job->wb0_registers[MALI_PP_WB_ADDRESS] = info->frame_physical;
-	job->wb0_registers[MALI_PP_WB_PIXEL_FORMAT] = MALI_PIXEL_FORMAT_RGBA_8888;
-	job->wb0_registers[MALI_PP_WB_DOWNSAMPLE_FACTOR] = 0;
-	job->wb0_registers[MALI_PP_WB_PIXEL_LAYOUT] = 0;
-	job->wb0_registers[MALI_PP_WB_PITCH] = info->pitch / 8;
-	job->wb0_registers[MALI_PP_WB_MRT_BITS] = 0;
-	job->wb0_registers[MALI_PP_WB_MRT_PITCH] = 0;
-	job->wb0_registers[MALI_PP_WB_ZERO] = 0;
+	job->wb[0].type = MALI_PP_WB_TYPE_COLOR;
+	job->wb[0].address = info->frame_physical;
+	job->wb[0].pixel_format = MALI_PIXEL_FORMAT_RGBA_8888;
+	job->wb[0].downsample_factor = 0;
+	job->wb[0].pixel_layout = 0;
+	job->wb[0].pitch = info->pitch / 8;
+	job->wb[0].mrt_bits = 0;
+	job->wb[0].mrt_pitch = 0;
+	job->wb[0].zero = 0;
 
-	return info;
+	/* now send the actual job out to the hw */
+	premali_jobs_wait();
+
+	wait_for_notification_start();
+
+	job->fd = dev_mali_fd;
+	job->user_job_ptr = (unsigned int) job;
+	job->priority = 1;
+	job->watchdog_msecs = 0;
+	job->abort_id = 0;
+
+	ret = ioctl(dev_mali_fd, MALI200_PP_START_JOB, job);
+	if (ret == -1) {
+		printf("%s: Error: failed to start job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	return 0;
+}
+
+/* 3 registers were added, and "supersampling" is disabled */
+int
+premali_m400_pp_job_start(struct pp_info *info)
+{
+	struct mali400_pp_job_start *job;
+	int supersampling = 0;
+	int max_blocking = 0;
+	int ret;
+
+	job = calloc(1, sizeof(struct mali400_pp_job_start));
+	if (!job) {
+		printf("%s: Error: failed to allocate job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	info->job.mali400 = job;
+
+	/* frame registers */
+	job->frame.plbu_array_address = info->plb_physical;
+        job->frame.render_address = info->render_physical;
+
+	job->frame.flags = MALI_PP_FRAME_FLAGS_ACTIVE;
+	if (supersampling)
+		job->frame.flags |= MALI_PP_FRAME_FLAGS_ONSCREEN;
+
+	job->frame.clear_value_depth = 0x00FFFFFF;
+	job->frame.clear_value_stencil = 0;
+	job->frame.clear_value_color = info->clear_color;
+	job->frame.clear_value_color_1 = info->clear_color;
+	job->frame.clear_value_color_2 = info->clear_color;
+	job->frame.clear_value_color_3 = info->clear_color;
+
+	if ((info->width & 0x0F) || (info->height & 0x0F)) {
+		job->frame.width = info->width;
+		job->frame.height = info->height;
+	} else {
+		job->frame.width = 0;
+		job->frame.height = 0;
+	}
+
+	/* not needed for drawing a simple triangle */
+	job->frame.fragment_stack_address = 0;
+	job->frame.fragment_stack_size = 0;
+
+	job->frame.one = 1;
+	if (supersampling)
+		job->frame.supersampled_height = info->height - 1;
+	else
+		job->frame.supersampled_height = 1;
+	job->frame.dubya = 0x77;
+	job->frame.onscreen = supersampling;
+
+	if (info->plb_shift_w > info->plb_shift_h)
+		max_blocking = info->plb_shift_w;
+	else
+		max_blocking = info->plb_shift_h;
+
+	if (max_blocking > 2)
+		max_blocking = 2;
+
+	job->frame.blocking = (max_blocking << 28) |
+		(info->plb_shift_h << 16) | (info->plb_shift_w);
+
+	job->frame.scale = 0x0C;
+	if (supersampling)
+		job->frame.scale |= 0xC00;
+	else
+		job->frame.scale |= 0x100;
+
+	/* always set to this on newer drivers */
+	job->frame.foureight = 0x8888;
+
+	/* write back registers */
+	job->wb[0].type = MALI_PP_WB_TYPE_COLOR;
+	job->wb[0].address = info->frame_physical;
+	job->wb[0].pixel_format = MALI_PIXEL_FORMAT_RGBA_8888;
+	job->wb[0].downsample_factor = 0;
+	job->wb[0].pixel_layout = 0;
+	job->wb[0].pitch = info->pitch / 8;
+	job->wb[0].mrt_bits = 0;
+	job->wb[0].mrt_pitch = 0;
+	job->wb[0].zero = 0;
+
+	/* now send the actual job out to the hw */
+	premali_jobs_wait();
+
+	wait_for_notification_start();
+
+	job->fd = dev_mali_fd;
+	job->user_job_ptr = (unsigned int) job;
+	job->priority = 1;
+	job->watchdog_msecs = 0;
+	job->abort_id = 0;
+
+	ret = ioctl(dev_mali_fd, MALI400_PP_START_JOB, job);
+	if (ret == -1) {
+		printf("%s: Error: failed to start job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	return 0;
+}
+
+int premali_type = 200;
+
+int
+premali_pp_job_start(struct pp_info *info)
+{
+	if (premali_type == 400)
+		return premali_m400_pp_job_start(info);
+	else
+		return premali_m200_pp_job_start(info);
 }

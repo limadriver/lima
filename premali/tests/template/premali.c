@@ -28,13 +28,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <inttypes.h>
 
-#define u32 uint32_t
-#define USING_MALI200
-#include "mali_200_regs.h"
-#include "mali_ioctl.h"
-
+#include "ioctl.h"
 #include "dump.h"
 #include "premali.h"
 #include "jobs.h"
@@ -56,13 +51,17 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	ret = premali_gp_job_start(&gp_job);
+	ret = premali_gp_job_start_direct(&gp_job);
 	if (ret)
 		return ret;
 
 	fb_clear();
 
-	ret = premali_pp_job_start(&pp_job);
+#ifdef MALI400
+	ret = premali_m400_pp_job_start_direct(&pp_job);
+#else
+	ret = premali_m200_pp_job_start_direct(&pp_job);
+#endif
 	if (ret)
 		return ret;
 

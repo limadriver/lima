@@ -35,14 +35,11 @@
 #include <errno.h>
 
 #define u32 uint32_t
-#define USING_MALI200
-#include "mali_200_regs.h"
 #include "mali_ioctl.h"
 
 #include "compiler.h"
-#include "registers.h"
 #include "formats.h"
-
+#include "ioctl.h"
 #include "bmp.h"
 
 static int mali_ioctl(int request, void *data);
@@ -441,6 +438,8 @@ dev_mali_get_system_info_pre(void *data)
 	wrap_log("};\n");
 }
 
+static int mali_type = 200;
+
 static void
 dev_mali_get_system_info_post(void *data)
 {
@@ -455,6 +454,10 @@ dev_mali_get_system_info_post(void *data)
 	while (core) {
 		wrap_log("\t\t.core_info = {\n");
 		wrap_log("\t\t\t.type = 0x%x,\n", core->type);
+		if (core->type == 7)
+			mali_type = 400;
+		else
+			mali_type = 200;
 		wrap_log("\t\t\t.version = 0x%x,\n", core->version);
 		wrap_log("\t\t\t.reg_address = 0x%x,\n", core->reg_address);
 		wrap_log("\t\t\t.core_nr = 0x%x,\n", core->core_nr);
@@ -595,20 +598,25 @@ dev_mali_wait_for_notification_post(void *data)
 }
 
 static void
-dev_mali_gp_start_job_pre(void *data)
+dev_mali_gp_job_start_pre(void *data)
 {
-	_mali_uk_gp_start_job_s *job = data;
-	int i;
+	struct mali_gp_job_start *job = data;
 
-	wrap_log("IOCTL MALI_IOC_GP2_START_JOB IN = {\n");
+	wrap_log("IOCTL MALI_IOC_GP2_START_JOB IN;\n");
+
+	wrap_log("struct mali_gp_job_start gp_job[1] = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
 	wrap_log("\t.watchdog_msecs = 0x%x,\n", job->watchdog_msecs);
 
-	wrap_log("\t.frame_registers = {\n");
-	for (i = 0; i < MALIGP2_NUM_REGS_FRAME; i++)
-		wrap_log("\t\t0x%08x,\n", job->frame_registers[i]);
+	wrap_log("\t.frame = {\n");
+	wrap_log("\t\t.vs_commands_start = 0x%x\n", job->frame.vs_commands_start);
+	wrap_log("\t\t.vs_commands_end = 0x%x\n", job->frame.vs_commands_end);
+	wrap_log("\t\t.plbu_commands_start = 0x%x\n", job->frame.plbu_commands_start);
+	wrap_log("\t\t.plbu_commands_end = 0x%x\n", job->frame.plbu_commands_end);
+	wrap_log("\t\t.tile_heap_start = 0x%x\n", job->frame.tile_heap_start);
+	wrap_log("\t\t.tile_heap_end = 0x%x\n", job->frame.tile_heap_end);
 	wrap_log("\t},\n");
 
 	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
@@ -619,9 +627,9 @@ dev_mali_gp_start_job_pre(void *data)
 }
 
 static void
-dev_mali_gp_start_job_post(void *data)
+dev_mali_gp_job_start_post(void *data)
 {
-	_mali_uk_gp_start_job_s *job = data;
+	struct mali_gp_job_start *job = data;
 
 	wrap_log("IOCTL MALI_IOC_GP2_START_JOB OUT = {\n");
 
@@ -638,37 +646,52 @@ int render_height;
 int render_format;
 
 static void
-dev_mali_pp_start_job_pre(void *data)
+dev_mali200_pp_job_start_pre(void *data)
 {
-	_mali_uk_pp_start_job_s *job = data;
+	struct mali200_pp_job_start *job = data;
 	int i;
 
-	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN = {\n");
+	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
+
+	wrap_log("struct mali200_pp_job_start pp_job[1] = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
 	wrap_log("\t.watchdog_msecs = 0x%x,\n", job->watchdog_msecs);
 
-	wrap_log("\t.frame_registers = {\n");
-	for (i = 0; i < MALI200_NUM_REGS_FRAME; i++)
-		wrap_log("\t\t0x%08x,\n", job->frame_registers[i]);
+	wrap_log("\t.frame = {\n");
+	wrap_log("\t\t.plbu_array_address = 0x%x\n", job->frame.plbu_array_address);
+	wrap_log("\t\t.render_address = 0x%x\n", job->frame.render_address);
+	wrap_log("\t\t.flags = 0x%x\n", job->frame.flags);
+	wrap_log("\t\t.clear_value_depth = 0x%x\n", job->frame.clear_value_depth);
+	wrap_log("\t\t.clear_value_stencil = 0x%x\n", job->frame.clear_value_stencil);
+	wrap_log("\t\t.clear_value_color = 0x%x\n", job->frame.clear_value_color);
+	wrap_log("\t\t.clear_value_color_1 = 0x%x\n", job->frame.clear_value_color_1);
+	wrap_log("\t\t.clear_value_color_2 = 0x%x\n", job->frame.clear_value_color_2);
+	wrap_log("\t\t.clear_value_color_3 = 0x%x\n", job->frame.clear_value_color_3);
+	wrap_log("\t\t.width = 0x%x\n", job->frame.width);
+	wrap_log("\t\t.height = 0x%x\n", job->frame.height);
+	wrap_log("\t\t.fragment_stack_address = 0x%x\n", job->frame.fragment_stack_address);
+	wrap_log("\t\t.fragment_stack_size = 0x%x\n", job->frame.fragment_stack_size);
+	wrap_log("\t\t.one = 0x%x\n", job->frame.one);
+	wrap_log("\t\t.supersampled_height = 0x%x\n", job->frame.supersampled_height);
+	wrap_log("\t\t.dubya = 0x%x\n", job->frame.dubya);
+	wrap_log("\t\t.onscreen = 0x%x\n", job->frame.onscreen);
 	wrap_log("\t},\n");
 
-	wrap_log("\t.wb0_registers = {\n");
-	for (i = 0; i < MALI200_NUM_REGS_WBx; i++)
-		wrap_log("\t\t0x%08x,\n", job->wb0_registers[i]);
-	wrap_log("\t},\n");
-
-	wrap_log("\t.wb1_registers = {\n");
-	for (i = 0; i < MALI200_NUM_REGS_WBx; i++)
-		wrap_log("\t\t0x%08x,\n", job->wb1_registers[i]);
-	wrap_log("\t},\n");
-
-	wrap_log("\t.wb2_registers = {\n");
-	for (i = 0; i < MALI200_NUM_REGS_WBx; i++)
-		wrap_log("\t\t0x%08x,\n", job->wb2_registers[i]);
-	wrap_log("\t},\n");
-
+	for (i = 0; i < 3; i++) {
+		wrap_log("\t.wb[%d] = {\n", i);
+		wrap_log("\t\t.type = 0x%x\n", job->wb[i].type);
+		wrap_log("\t\t.address = 0x%x\n", job->wb[i].address);
+		wrap_log("\t\t.pixel_format = 0x%x\n", job->wb[i].pixel_format);
+		wrap_log("\t\t.downsample_factor = 0x%x\n", job->wb[i].downsample_factor);
+		wrap_log("\t\t.pixel_layout = 0x%x\n", job->wb[i].pixel_layout);
+		wrap_log("\t\t.pitch = 0x%x\n", job->wb[i].pitch);
+		wrap_log("\t\t.mrt_bits = 0x%x\n", job->wb[i].mrt_bits);
+		wrap_log("\t\t.mrt_pitch = 0x%x\n", job->wb[i].mrt_pitch);
+		wrap_log("\t\t.zero = 0x%x\n", job->wb[i].zero);
+		wrap_log("\t},\n");
+	}
 
 	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
 
@@ -678,21 +701,101 @@ dev_mali_pp_start_job_pre(void *data)
 	 * Now store where our final render is headed, and what it looks like.
 	 * We will dump it as a bmp once we're done.
 	 */
-	render_address = job->wb0_registers[MALI_PP_WB_ADDRESS];
-	render_pitch = job->wb0_registers[MALI_PP_WB_PITCH] * 8;
-	if (job->frame_registers[MALI_PP_FRAME_HEIGHT])
-		render_height = job->frame_registers[MALI_PP_FRAME_HEIGHT];
+	render_address = job->wb[0].address;
+	render_pitch = job->wb[0].pitch * 8;
+	if (job->frame.height)
+		render_height = job->frame.height;
 	else
-		render_height = job->frame_registers[MALI_PP_FRAME_SUPERSAMPLED_HEIGHT] + 1;
+		render_height = job->frame.supersampled_height + 1;
 	render_format = MALI_PIXEL_FORMAT_RGBA_8888;
 
 	//mali_memory_dump();
 }
 
 static void
-dev_mali_pp_start_job_post(void *data)
+dev_mali400_pp_job_start_pre(void *data)
 {
-	_mali_uk_pp_start_job_s *job = data;
+	struct mali400_pp_job_start *job = data;
+	int i;
+
+	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
+
+	wrap_log("struct mali400_pp_job_start pp_job[1] = {\n");
+
+	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
+	wrap_log("\t.priority = 0x%x,\n", job->priority);
+	wrap_log("\t.watchdog_msecs = 0x%x,\n", job->watchdog_msecs);
+
+	wrap_log("\t.frame = {\n");
+	wrap_log("\t\t.plbu_array_address = 0x%x\n", job->frame.plbu_array_address);
+	wrap_log("\t\t.render_address = 0x%x\n", job->frame.render_address);
+	wrap_log("\t\t.flags = 0x%x\n", job->frame.flags);
+	wrap_log("\t\t.clear_value_depth = 0x%x\n", job->frame.clear_value_depth);
+	wrap_log("\t\t.clear_value_stencil = 0x%x\n", job->frame.clear_value_stencil);
+	wrap_log("\t\t.clear_value_color = 0x%x\n", job->frame.clear_value_color);
+	wrap_log("\t\t.clear_value_color_1 = 0x%x\n", job->frame.clear_value_color_1);
+	wrap_log("\t\t.clear_value_color_2 = 0x%x\n", job->frame.clear_value_color_2);
+	wrap_log("\t\t.clear_value_color_3 = 0x%x\n", job->frame.clear_value_color_3);
+	wrap_log("\t\t.width = 0x%x\n", job->frame.width);
+	wrap_log("\t\t.height = 0x%x\n", job->frame.height);
+	wrap_log("\t\t.fragment_stack_address = 0x%x\n", job->frame.fragment_stack_address);
+	wrap_log("\t\t.fragment_stack_size = 0x%x\n", job->frame.fragment_stack_size);
+	wrap_log("\t\t.one = 0x%x\n", job->frame.one);
+	wrap_log("\t\t.supersampled_height = 0x%x\n", job->frame.supersampled_height);
+	wrap_log("\t\t.dubya = 0x%x\n", job->frame.dubya);
+	wrap_log("\t\t.onscreen = 0x%x\n", job->frame.onscreen);
+	wrap_log("\t\t.blocking = 0x%x\n", job->frame.blocking);
+	wrap_log("\t\t.scale = 0x%x\n", job->frame.scale);
+	wrap_log("\t\t.foureight = 0x%x\n", job->frame.foureight);
+
+	wrap_log("\t},\n");
+
+	for (i = 0; i < 3; i++) {
+		wrap_log("\t.wb[%d] = {\n", i);
+		wrap_log("\t\t.type = 0x%x\n", job->wb[i].type);
+		wrap_log("\t\t.address = 0x%x\n", job->wb[i].address);
+		wrap_log("\t\t.pixel_format = 0x%x\n", job->wb[i].pixel_format);
+		wrap_log("\t\t.downsample_factor = 0x%x\n", job->wb[i].downsample_factor);
+		wrap_log("\t\t.pixel_layout = 0x%x\n", job->wb[i].pixel_layout);
+		wrap_log("\t\t.pitch = 0x%x\n", job->wb[i].pitch);
+		wrap_log("\t\t.mrt_bits = 0x%x\n", job->wb[i].mrt_bits);
+		wrap_log("\t\t.mrt_pitch = 0x%x\n", job->wb[i].mrt_pitch);
+		wrap_log("\t\t.zero = 0x%x\n", job->wb[i].zero);
+		wrap_log("\t},\n");
+	}
+
+	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
+
+	wrap_log("};\n");
+
+	/*
+	 * Now store where our final render is headed, and what it looks like.
+	 * We will dump it as a bmp once we're done.
+	 */
+	render_address = job->wb[0].address;
+	render_pitch = job->wb[0].pitch * 8;
+	if (job->frame.height)
+		render_height = job->frame.height;
+	else
+		render_height = job->frame.supersampled_height + 1;
+	render_format = MALI_PIXEL_FORMAT_RGBA_8888;
+
+	//mali_memory_dump();
+}
+
+static void
+dev_mali_pp_job_start_pre(void *data)
+{
+	if (mali_type == 400)
+		dev_mali400_pp_job_start_pre(data);
+	else
+		dev_mali200_pp_job_start_pre(data);
+}
+
+static void
+dev_mali200_pp_job_start_post(void *data)
+{
+	struct mali200_pp_job_start *job = data;
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB OUT = {\n");
 
@@ -701,6 +804,29 @@ dev_mali_pp_start_job_post(void *data)
 	wrap_log("\t.status = 0x%x,\n", job->status);
 
 	wrap_log("};\n");
+}
+
+static void
+dev_mali400_pp_job_start_post(void *data)
+{
+	struct mali400_pp_job_start *job = data;
+
+	wrap_log("IOCTL MALI_IOC_PP_START_JOB OUT = {\n");
+
+	wrap_log("\t.returned_user_job_ptr = 0x%x,\n",
+		 job->returned_user_job_ptr);
+	wrap_log("\t.status = 0x%x,\n", job->status);
+
+	wrap_log("};\n");
+}
+
+static void
+dev_mali_pp_job_start_post(void *data)
+{
+	if (mali_type == 400)
+		dev_mali400_pp_job_start_post(data);
+	else
+		dev_mali200_pp_job_start_post(data);
 }
 
 static struct dev_mali_ioctl_table {
@@ -723,11 +849,11 @@ static struct dev_mali_ioctl_table {
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM",
 	 NULL, dev_mali_memory_init_mem_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB",
-	 dev_mali_pp_start_job_pre, dev_mali_pp_start_job_post},
+	 dev_mali_pp_job_start_pre, dev_mali_pp_job_start_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION, "PP, GET_CORE_VERSION",
 	 NULL, dev_mali_pp_core_version_post},
 	{MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, "GP, START_JOB",
-	 dev_mali_gp_start_job_pre, dev_mali_gp_start_job_post},
+	 dev_mali_gp_job_start_pre, dev_mali_gp_job_start_post},
 
 	{ 0, 0, NULL, NULL, NULL}
 };
@@ -959,6 +1085,11 @@ mali_bmp_dump(void)
 	if (render_format != MALI_PIXEL_FORMAT_RGBA_8888) {
 		wrap_log("%s: Pixel format 0x%x is currently not implemented\n",
 			 __func__, render_format);
+		return;
+	}
+
+	if (render_height < 16) {
+		wrap_log("%s: invalid height: %d\n", __func__, render_height);
 		return;
 	}
 

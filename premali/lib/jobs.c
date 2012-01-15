@@ -33,6 +33,7 @@
 #include "mali_200_regs.h"
 #include "mali_ioctl.h"
 
+#include "ioctl.h"
 #include "premali.h"
 #include "jobs.h"
 
@@ -65,7 +66,7 @@ wait_for_notification(void *ignored)
 	return NULL;
 }
 
-static void
+void
 wait_for_notification_start(void)
 {
 	pthread_t thread;
@@ -73,61 +74,84 @@ wait_for_notification_start(void)
 	pthread_create(&thread, NULL, wait_for_notification, NULL);
 }
 
-int
-premali_gp_job_start(_mali_uk_gp_start_job_s *gp_job)
-{
-	int ret;
-
-	premali_jobs_wait();
-
-	wait_for_notification_start();
-
-	gp_job->ctx = (void *) dev_mali_fd;
-	gp_job->user_job_ptr = (u32) gp_job;
-	gp_job->priority = 1;
-	gp_job->watchdog_msecs = 0;
-	gp_job->abort_id = 0;
-	ret = ioctl(dev_mali_fd, MALI_IOC_GP2_START_JOB, gp_job);
-	if (ret == -1) {
-		printf("Error: ioctl MALI_IOC_GP2_START_JOB failed: %s\n",
-		       strerror(errno));
-		return errno;
-	}
-
-	printf("%s: done!\n", __func__);
-
-	return 0;
-}
-
-int
-premali_pp_job_start(_mali_uk_pp_start_job_s *pp_job)
-{
-	int ret;
-
-	premali_jobs_wait();
-
-	wait_for_notification_start();
-
-	pp_job->ctx = (void *) dev_mali_fd;
-	pp_job->user_job_ptr = (u32) pp_job;
-	pp_job->priority = 1;
-	pp_job->watchdog_msecs = 0;
-	pp_job->abort_id = 0;
-	ret = ioctl(dev_mali_fd, MALI_IOC_PP_START_JOB, pp_job);
-	if (ret == -1) {
-		printf("Error: ioctl MALI_IOC_PP_START_JOB failed: %s\n",
-		       strerror(errno));
-		return errno;
-	}
-
-	printf("%s: done!\n", __func__);
-
-	return 0;
-}
-
 void
 premali_jobs_wait(void)
 {
 	pthread_mutex_lock(&wait_mutex);
 	pthread_mutex_unlock(&wait_mutex);
+}
+
+int
+premali_gp_job_start_direct(struct mali_gp_job_start *job)
+{
+	int ret;
+
+	/* now run the job */
+	premali_jobs_wait();
+
+	wait_for_notification_start();
+
+	job->fd = dev_mali_fd;
+	job->user_job_ptr = (unsigned int) job;
+	job->priority = 1;
+	job->watchdog_msecs = 0;
+	job->abort_id = 0;
+	ret = ioctl(dev_mali_fd, MALI_GP_START_JOB, job);
+	if (ret == -1) {
+		printf("%s: Error: failed to start job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	return 0;
+}
+
+int
+premali_m200_pp_job_start_direct(struct mali200_pp_job_start *job)
+{
+	int ret;
+
+	premali_jobs_wait();
+
+	wait_for_notification_start();
+
+	job->fd = dev_mali_fd;
+	job->user_job_ptr = (unsigned int) job;
+	job->priority = 1;
+	job->watchdog_msecs = 0;
+	job->abort_id = 0;
+
+	ret = ioctl(dev_mali_fd, MALI200_PP_START_JOB, job);
+	if (ret == -1) {
+		printf("%s: Error: failed to start job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	return 0;
+}
+
+int
+premali_m400_pp_job_start_direct(struct mali400_pp_job_start *job)
+{
+	int ret;
+
+	premali_jobs_wait();
+
+	wait_for_notification_start();
+
+	job->fd = dev_mali_fd;
+	job->user_job_ptr = (unsigned int) job;
+	job->priority = 1;
+	job->watchdog_msecs = 0;
+	job->abort_id = 0;
+
+	ret = ioctl(dev_mali_fd, MALI400_PP_START_JOB, job);
+	if (ret == -1) {
+		printf("%s: Error: failed to start job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	return 0;
 }

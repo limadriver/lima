@@ -26,22 +26,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <inttypes.h>
-
-#define u32 uint32_t
-#define USING_MALI200
-#include "mali_200_regs.h"
-#include "mali_ioctl.h"
+#include <sys/ioctl.h>
 
 #include "premali.h"
+#include "ioctl.h"
 #include "plb.h"
 #include "symbols.h"
 #include "gp.h"
-
-#include "registers.h"
+#include "jobs.h"
 #include "vs.h"
 #include "plbu.h"
-
 
 struct vs_info *
 vs_info_create(void *address, int physical, int size)
@@ -470,18 +464,37 @@ plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
 	return 0;
 }
 
-void
-gp_job_setup(_mali_uk_gp_start_job_s *gp_job, struct vs_info *vs,
-	     struct plbu_info *plbu)
+int
+premali_gp_job_start(struct mali_gp_job_start *job, struct vs_info *vs,
+		     struct plbu_info *plbu)
 {
-	gp_job->frame_registers[MALI_GP_VS_COMMANDS_START] =
-		vs->mem_physical + vs->commands_offset;
-	gp_job->frame_registers[MALI_GP_VS_COMMANDS_END] = vs->mem_physical +
+	int ret;
+
+	job->frame.vs_commands_start = vs->mem_physical + vs->commands_offset;
+	job->frame.vs_commands_end = vs->mem_physical +
 		vs->commands_offset + vs->commands_size;
-	gp_job->frame_registers[MALI_GP_PLBU_COMMANDS_START] =
-		plbu->mem_physical + plbu->commands_offset;
-	gp_job->frame_registers[MALI_GP_PLBU_COMMANDS_END] = plbu->mem_physical +
+	job->frame.plbu_commands_start = plbu->mem_physical + plbu->commands_offset;
+	job->frame.plbu_commands_end = plbu->mem_physical +
 		plbu->commands_offset + plbu->commands_size;
-	gp_job->frame_registers[MALI_GP_TILE_HEAP_START] = 0;
-	gp_job->frame_registers[MALI_GP_TILE_HEAP_END] = 0;
+	job->frame.tile_heap_start = 0;
+	job->frame.tile_heap_end = 0;
+
+	/* now run the job */
+	premali_jobs_wait();
+
+	wait_for_notification_start();
+
+	job->fd = dev_mali_fd;
+	job->user_job_ptr = (unsigned int) job;
+	job->priority = 1;
+	job->watchdog_msecs = 0;
+	job->abort_id = 0;
+	ret = ioctl(dev_mali_fd, MALI_GP_START_JOB, job);
+	if (ret == -1) {
+		printf("%s: Error: failed to start job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	return 0;
 }

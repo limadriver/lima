@@ -419,7 +419,7 @@ typedef struct
  * @{ */
 
 /** @brief Status indicating the result of starting a Vertex or Fragment processor job */
-typedef enum
+typedef enum _mali_uk_start_job_status
 {
     _MALI_UK_START_JOB_STARTED,                         /**< Job started */
     _MALI_UK_START_JOB_STARTED_LOW_PRI_JOB_RETURNED,    /**< Job started and bumped a lower priority job that was pending execution */
@@ -500,6 +500,7 @@ typedef enum
  * you may be able to resolve this by providing more memory and resuming the job.
  *
  */
+#if 0
 typedef struct
 {
     void *ctx;                          /**< [in,out] user-kernel context (trashed on output) */
@@ -516,6 +517,7 @@ typedef struct
 	u32 perf_counter_l2_src0;           /**< [in] soruce id for Mali-400 MP L2 cache performance counter 0 */
 	u32 perf_counter_l2_src1;           /**< [in] source id for Mali-400 MP L2 cache performance counter 1 */
 } _mali_uk_gp_start_job_s;
+#endif
 
 #define _MALI_PERFORMANCE_COUNTER_FLAG_SRC0_ENABLE (1<<0) /**< Enable performance counter SRC0 for a job */
 #define _MALI_PERFORMANCE_COUNTER_FLAG_SRC1_ENABLE (1<<1) /**< Enable performance counter SRC1 for a job */
@@ -609,6 +611,7 @@ typedef struct
  * driver shutdown.
  *
  */
+#if 0
 typedef struct
 {
     void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
@@ -628,6 +631,7 @@ typedef struct
 	u32 perf_counter_l2_src0;           /**< [in] soruce id for Mali-400 MP L2 cache performance counter 0 */
 	u32 perf_counter_l2_src1;           /**< [in] source id for Mali-400 MP L2 cache performance counter 1 */
 } _mali_uk_pp_start_job_s;
+#endif
 /** @} */ /* end group _mali_uk_ppstartjob_s */
 
 typedef struct
