@@ -43,6 +43,58 @@ premali_fd_open(struct premali_state *state)
 	return 0;
 }
 
+static int
+premali_gpu_detect(struct premali_state *state)
+{
+	_mali_uk_get_system_info_size_s system_info_size;
+	_mali_uk_get_system_info_s system_info_ioctl;
+	struct _mali_system_info *system_info;
+	int ret;
+
+	ret = ioctl(state->fd, MALI_IOC_GET_SYSTEM_INFO_SIZE,
+		    &system_info_size);
+	if (ret) {
+		printf("Error: %s: ioctl(GET_SYSTEM_INFO_SIZE) failed: %s\n",
+		       __func__, strerror(ret));
+		return ret;
+	}
+
+	system_info_ioctl.size = system_info_size.size;
+	system_info_ioctl.system_info = calloc(1, system_info_size.size);
+	if (!system_info_ioctl.system_info) {
+		printf("%s: Error: failed to allocate system info: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	ret = ioctl(state->fd, MALI_IOC_GET_SYSTEM_INFO, &system_info_ioctl);
+	if (ret) {
+		printf("%s: Error: ioctl(GET_SYSTEM_INFO) failed: %s\n",
+		       __func__, strerror(ret));
+		free(system_info_ioctl.system_info);
+		return ret;
+	}
+
+	system_info = system_info_ioctl.system_info;
+
+	switch (system_info->core_info->type) {
+	case _MALI_GP2:
+	case _MALI_200:
+		printf("Detected Mali-200.\n");
+		state->type = 200;
+		break;
+	case _MALI_400_GP:
+	case _MALI_400_PP:
+		printf("Detected Mali-400.\n");
+		state->type = 400;
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 /*
  * TODO: MEMORY MANAGEMENT!!!!!!!!!
  *
@@ -93,11 +145,15 @@ premali_init(void)
 	if (ret)
 		goto error;
 
+	ret = premali_gpu_detect(state);
+	if (ret)
+		goto error;
+
 	ret = premali_mem_init(state);
 	if (ret)
 		goto error;
 
-	return 0;
+	return state;
  error:
 	free(state);
 	return NULL;

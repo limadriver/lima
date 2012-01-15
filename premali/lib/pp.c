@@ -242,12 +242,10 @@ premali_m400_pp_job_start(struct premali_state *state, struct pp_info *info)
 	return premali_m400_pp_job_start_direct(state, job);
 }
 
-int premali_type = 200;
-
 int
 premali_pp_job_start(struct premali_state *state, struct pp_info *info)
 {
-	if (premali_type == 400)
+	if (state->type == 400)
 		return premali_m400_pp_job_start(state, info);
 	else
 		return premali_m200_pp_job_start(state, info);
