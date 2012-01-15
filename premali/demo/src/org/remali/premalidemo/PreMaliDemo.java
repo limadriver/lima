@@ -1,11 +1,9 @@
 
 package org.remali.premalidemo;
 
-import java.lang.Runtime;
 import java.lang.String;
 import java.util.Vector;
 import java.io.File;
-import java.io.IOException;
 import android.app.ListActivity;
 import android.util.Log;
 import android.os.Bundle;
@@ -16,10 +14,13 @@ import android.widget.TextView;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.content.Intent;
 
 
 public class PreMaliDemo extends ListActivity
 {
+    private Vector<String> programs = new Vector<String>();
+
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
@@ -27,7 +28,8 @@ public class PreMaliDemo extends ListActivity
 
         super.onCreate(savedInstanceState);
 
-	Vector<String> programs = new Vector<String>();
+	getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+			     WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
 	File[] files = new File("/system/bin/premali/premali").listFiles();
 	for (File file : files)
@@ -47,26 +49,16 @@ public class PreMaliDemo extends ListActivity
 	    public void onItemClick(AdapterView<?> parent, View view,
 				    int position, long id)
 	    {
-		String program = ((TextView) view).getText().toString();
+		String program = programs.get((int) id);
 		runProgram(program);
 	    }
 	});
-
-	getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-			     WindowManager.LayoutParams.FLAG_FULLSCREEN);
     }
-
 
     public void runProgram(String program)
     {
-	Log.i("PreMaliDemo", program);
-
-	try
-	{
-	    Runtime.getRuntime().exec(program);
-	}
-	catch (IOException e)
-	{
-	}
+	Intent intent = new Intent(this, RunDemo.class);
+	intent.putExtra("org.remali.premalidemo.program", program);
+	startActivity(intent);
     }
 }
