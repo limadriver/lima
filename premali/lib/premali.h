@@ -26,27 +26,23 @@ from_float(float x)
 	return *((unsigned int *) &x);
 }
 
-extern int dev_mali_fd;
-extern int mem_physical;
-extern void *mem_address;
-
 struct mali_cmd {
 	unsigned int val;
 	unsigned int cmd;
 };
 
 struct premali_state {
+	int fd;
+	int device_type; /* 200/400 */
+
+	unsigned int mem_physical;
+	unsigned int mem_size;
+	void *mem_address;
+
 	int width;
 	int height;
 
 	unsigned int clear_color;
-
-	/* 200/400 */
-	int device_type;
-	int fd;
-
-	unsigned int mem_address;
-	unsigned int mem_size;
 
 	struct mali_gp_job_start *gp_job_start;
 	struct vs_info *vs;
@@ -58,7 +54,7 @@ struct premali_state {
 };
 
 /* from premali.c */
-int premali_init(void);
+struct premali_state *premali_init(void);
 void premali_finish(void);
 
 #endif /* PREMALI_PREMALI_H */

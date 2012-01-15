@@ -24,10 +24,10 @@
 #define PREMALI_JOBS_H 1
 
 void premali_jobs_wait(void);
-void wait_for_notification_start(void);
+void wait_for_notification_start(struct premali_state *state);
 
-int premali_gp_job_start_direct(struct mali_gp_job_start *job);
-int premali_m200_pp_job_start_direct(struct mali200_pp_job_start *job);
-int premali_m400_pp_job_start_direct(struct mali400_pp_job_start *job);
+int premali_gp_job_start_direct(struct premali_state *state, struct mali_gp_job_start *job);
+int premali_m200_pp_job_start_direct(struct premali_state *state, struct mali200_pp_job_start *job);
+int premali_m400_pp_job_start_direct(struct premali_state *state, struct mali400_pp_job_start *job);
 
 #endif /* PREMALI_JOBS_H */

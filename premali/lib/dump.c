@@ -43,7 +43,7 @@ mali_dumped_mem_content_load(void *address,
 }
 
 int
-dumped_mem_load(struct mali_dumped_mem *dump)
+dumped_mem_load(int fd, struct mali_dumped_mem *dump)
 {
 	int i;
 
@@ -51,7 +51,7 @@ dumped_mem_load(struct mali_dumped_mem *dump)
 		struct mali_dumped_mem_block *block = dump->blocks[i];
 
 		block->address = mmap(NULL, block->size, PROT_READ | PROT_WRITE,
-				      MAP_SHARED, dev_mali_fd, block->physical);
+				      MAP_SHARED, fd, block->physical);
 		if (block->address == MAP_FAILED) {
 			printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
 			       block->physical, block->size, strerror(errno));

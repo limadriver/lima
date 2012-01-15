@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "premali.h"
 #include "plb.h"
 #include "ioctl.h"
 #include "gp.h"

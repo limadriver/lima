@@ -104,7 +104,8 @@ int plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs);
 int plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
 		       int width, int height, int draw_mode, int vertex_count);
 
-int premali_gp_job_start(struct mali_gp_job_start *gp_job, struct vs_info *vs,
+int premali_gp_job_start(struct premali_state *state,
+			 struct mali_gp_job_start *gp_job, struct vs_info *vs,
 			 struct plbu_info *plbu);
 
 #endif /* PREMALI_GP_H */

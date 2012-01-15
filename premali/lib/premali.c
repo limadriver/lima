@@ -30,47 +30,77 @@
 
 #include "premali.h"
 
-int dev_mali_fd;
-int mem_physical;
-void *mem_address;
-
-/*
- * TODO: MEMORY MANAGEMENT!!!!!!!!!
- *
- */
-int
-premali_init(void)
+static int
+premali_fd_open(struct premali_state *state)
 {
-	_mali_uk_init_mem_s mem_init;
-	int ret;
-
-	dev_mali_fd = open("/dev/mali", O_RDWR);
-	if (dev_mali_fd == -1) {
+	state->fd = open("/dev/mali", O_RDWR);
+	if (state->fd == -1) {
 		printf("Error: Failed to open /dev/mali: %s\n",
 		       strerror(errno));
 		return errno;
 	}
 
-	mem_init.ctx = (void *) dev_mali_fd;
+	return 0;
+}
+
+/*
+ * TODO: MEMORY MANAGEMENT!!!!!!!!!
+ *
+ */
+static int
+premali_mem_init(struct premali_state *state)
+{
+	_mali_uk_init_mem_s mem_init = { 0 };
+	int ret;
+
+	mem_init.ctx = (void *) state->fd;
 	mem_init.mali_address_base = 0;
 	mem_init.memory_size = 0;
-	ret = ioctl(dev_mali_fd, MALI_IOC_MEM_INIT, &mem_init);
+	ret = ioctl(state->fd, MALI_IOC_MEM_INIT, &mem_init);
 	if (ret == -1) {
 		printf("Error: ioctl MALI_IOC_MEM_INIT failed: %s\n",
 		       strerror(errno));
 		return errno;
 	}
 
-	mem_physical = 0x40000000;
-	mem_address = mmap(NULL, 0x80000, PROT_READ | PROT_WRITE, MAP_SHARED,
-			   dev_mali_fd, mem_physical);
-	if (mem_address == MAP_FAILED) {
+	state->mem_physical = mem_init.mali_address_base;
+	state->mem_size = 0x80000;
+	state->mem_address = mmap(NULL, state->mem_size, PROT_READ | PROT_WRITE,
+				  MAP_SHARED, state->fd, state->mem_physical);
+	if (state->mem_address == MAP_FAILED) {
 		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
-		       mem_physical, 0x80000, strerror(errno));
+		       state->mem_physical, state->mem_size, strerror(errno));
 		return errno;
 	}
 
 	return 0;
+}
+
+struct premali_state *
+premali_init(void)
+{
+	struct premali_state *state;
+	int ret;
+
+	state = calloc(1, sizeof(struct premali_state));
+	if (!state) {
+		printf("%s: Error: failed to allocate state: %s\n",
+		       __func__, strerror(errno));
+		goto error;
+	}
+
+	ret = premali_fd_open(state);
+	if (ret)
+		goto error;
+
+	ret = premali_mem_init(state);
+	if (ret)
+		goto error;
+
+	return 0;
+ error:
+	free(state);
+	return NULL;
 }
 
 /*

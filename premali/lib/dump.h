@@ -41,6 +41,6 @@ struct mali_dumped_mem {
 	struct mali_dumped_mem_block *blocks[];
 };
 
-int dumped_mem_load(struct mali_dumped_mem *dump);
+int dumped_mem_load(int fd, struct mali_dumped_mem *dump);
 
 #endif /* PREMALI_DUMP_H */

@@ -41,18 +41,19 @@ static _mali_uk_wait_for_notification_s wait;
 static pthread_mutex_t wait_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *
-wait_for_notification(void *ignored)
+wait_for_notification(void *arg)
 {
+	struct premali_state *state = arg;
 	int ret;
 
 	pthread_mutex_lock(&wait_mutex);
 
 	do {
 		wait.code.timeout = 25;
-		ret = ioctl(dev_mali_fd, MALI_IOC_WAIT_FOR_NOTIFICATION, &wait);
+		ret = ioctl(state->fd, MALI_IOC_WAIT_FOR_NOTIFICATION, &wait);
 		if (ret == -1) {
-			printf("Error: ioctl MALI_IOC_WAIT_FOR_NOTIFICATION failed: %s\n",
-			       strerror(errno));
+			printf("%s: Error: wait failed: %s\n",
+			       __func__, strerror(errno));
 			exit(-1);
 		}
 
@@ -67,11 +68,11 @@ wait_for_notification(void *ignored)
 }
 
 void
-wait_for_notification_start(void)
+wait_for_notification_start(struct premali_state *state)
 {
 	pthread_t thread;
 
-	pthread_create(&thread, NULL, wait_for_notification, NULL);
+	pthread_create(&thread, NULL, wait_for_notification, state);
 }
 
 void
@@ -82,21 +83,22 @@ premali_jobs_wait(void)
 }
 
 int
-premali_gp_job_start_direct(struct mali_gp_job_start *job)
+premali_gp_job_start_direct(struct premali_state *state,
+			    struct mali_gp_job_start *job)
 {
 	int ret;
 
 	/* now run the job */
 	premali_jobs_wait();
 
-	wait_for_notification_start();
+	wait_for_notification_start(state);
 
-	job->fd = dev_mali_fd;
+	job->fd = state->fd;
 	job->user_job_ptr = (unsigned int) job;
 	job->priority = 1;
 	job->watchdog_msecs = 0;
 	job->abort_id = 0;
-	ret = ioctl(dev_mali_fd, MALI_GP_START_JOB, job);
+	ret = ioctl(state->fd, MALI_GP_START_JOB, job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));
@@ -107,21 +109,22 @@ premali_gp_job_start_direct(struct mali_gp_job_start *job)
 }
 
 int
-premali_m200_pp_job_start_direct(struct mali200_pp_job_start *job)
+premali_m200_pp_job_start_direct(struct premali_state *state,
+				 struct mali200_pp_job_start *job)
 {
 	int ret;
 
 	premali_jobs_wait();
 
-	wait_for_notification_start();
+	wait_for_notification_start(state);
 
-	job->fd = dev_mali_fd;
+	job->fd = state->fd;
 	job->user_job_ptr = (unsigned int) job;
 	job->priority = 1;
 	job->watchdog_msecs = 0;
 	job->abort_id = 0;
 
-	ret = ioctl(dev_mali_fd, MALI200_PP_START_JOB, job);
+	ret = ioctl(state->fd, MALI200_PP_START_JOB, job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));
@@ -132,21 +135,22 @@ premali_m200_pp_job_start_direct(struct mali200_pp_job_start *job)
 }
 
 int
-premali_m400_pp_job_start_direct(struct mali400_pp_job_start *job)
+premali_m400_pp_job_start_direct(struct premali_state *state,
+				 struct mali400_pp_job_start *job)
 {
 	int ret;
 
 	premali_jobs_wait();
 
-	wait_for_notification_start();
+	wait_for_notification_start(state);
 
-	job->fd = dev_mali_fd;
+	job->fd = state->fd;
 	job->user_job_ptr = (unsigned int) job;
 	job->priority = 1;
 	job->watchdog_msecs = 0;
 	job->abort_id = 0;
 
-	ret = ioctl(dev_mali_fd, MALI400_PP_START_JOB, job);
+	ret = ioctl(state->fd, MALI400_PP_START_JOB, job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));

@@ -48,6 +48,7 @@
 int
 main(int argc, char *argv[])
 {
+	struct premali_state *state;
 	int ret;
 	struct plb *plb;
 	struct pp_info *pp_info;
@@ -97,12 +98,12 @@ main(int argc, char *argv[])
 
 	fb_clear();
 
-	ret = premali_init();
-	if (ret)
-		return ret;
+	state = premali_init();
+	if (!state)
+		return -1;
 
-	vs_info = vs_info_create(mem_address + 0x0000,
-				 mem_physical + 0x0000, 0x1000);
+	vs_info = vs_info_create(state->mem_address + 0x0000,
+				 state->mem_physical + 0x0000, 0x1000);
 
 	vertex_shader_compile(vs_info, vertex_shader_source);
 
@@ -116,29 +117,29 @@ main(int argc, char *argv[])
 	vs_commands_create(vs_info, 6);
 	vs_info_finalize(vs_info);
 
-	plb = plb_create(WIDTH, HEIGHT, mem_physical, mem_address,
+	plb = plb_create(WIDTH, HEIGHT, state->mem_physical, state->mem_address,
 			 0x3000, 0x7D000);
 	if (!plb)
 		return -1;
 
-	plbu_info = plbu_info_create(mem_address + 0x1000,
-				     mem_physical + 0x1000, 0x1000);
+	plbu_info = plbu_info_create(state->mem_address + 0x1000,
+				     state->mem_physical + 0x1000, 0x1000);
 	fragment_shader_compile(plbu_info, fragment_shader_source);
 
 	plbu_info_render_state_create(plbu_info, vs_info);
 	plbu_info_finalize(plbu_info, plb, vs_info, WIDTH, HEIGHT,
 			   GL_TRIANGLE_FAN, 6);
 
-	pp_info = pp_info_create(WIDTH, HEIGHT, 0xFF505050, plb,
-				 mem_address + 0x2000,
-				 mem_physical + 0x2000,
-				 0x1000, mem_physical + 0x80000);
+	pp_info = pp_info_create(state, WIDTH, HEIGHT, 0xFF505050, plb,
+				 state->mem_address + 0x2000,
+				 state->mem_physical + 0x2000,
+				 0x1000, state->mem_physical + 0x80000);
 
-	ret = premali_gp_job_start(&gp_job, vs_info, plbu_info);
+	ret = premali_gp_job_start(state, &gp_job, vs_info, plbu_info);
 	if (ret)
 		return ret;
 
-	ret = premali_pp_job_start(pp_info);
+	ret = premali_pp_job_start(state, pp_info);
 	if (ret)
 		return ret;
 

@@ -36,7 +36,8 @@
 #include "jobs.h"
 
 struct pp_info *
-pp_info_create(int width, int height, unsigned int clear_color, struct plb *plb,
+pp_info_create(struct premali_state *state, int width, int height,
+	       unsigned int clear_color, struct plb *plb,
 	       void *address, unsigned int physical, int size,
 	       unsigned int frame_physical)
 {
@@ -62,7 +63,7 @@ pp_info_create(int width, int height, unsigned int clear_color, struct plb *plb,
 	info->frame_size = info->pitch * info->height;
 	info->frame_physical = frame_physical;
 	info->frame_address = mmap(NULL, info->frame_size, PROT_READ | PROT_WRITE,
-				   MAP_SHARED, dev_mali_fd, info->frame_physical);
+				   MAP_SHARED, state->fd, info->frame_physical);
 	if (info->frame_address == MAP_FAILED) {
 		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
 		       info->frame_physical, info->frame_size, strerror(errno));
@@ -92,11 +93,10 @@ pp_info_create(int width, int height, unsigned int clear_color, struct plb *plb,
 }
 
 int
-premali_m200_pp_job_start(struct pp_info *info)
+premali_m200_pp_job_start(struct premali_state *state, struct pp_info *info)
 {
 	struct mali200_pp_job_start *job;
 	int supersampling = 1;
-	int ret;
 
 	job = calloc(1, sizeof(struct mali200_pp_job_start));
 	if (!job) {
@@ -153,35 +153,16 @@ premali_m200_pp_job_start(struct pp_info *info)
 	job->wb[0].mrt_pitch = 0;
 	job->wb[0].zero = 0;
 
-	/* now send the actual job out to the hw */
-	premali_jobs_wait();
-
-	wait_for_notification_start();
-
-	job->fd = dev_mali_fd;
-	job->user_job_ptr = (unsigned int) job;
-	job->priority = 1;
-	job->watchdog_msecs = 0;
-	job->abort_id = 0;
-
-	ret = ioctl(dev_mali_fd, MALI200_PP_START_JOB, job);
-	if (ret == -1) {
-		printf("%s: Error: failed to start job: %s\n",
-		       __func__, strerror(errno));
-		return errno;
-	}
-
-	return 0;
+	return premali_m200_pp_job_start_direct(state, job);
 }
 
 /* 3 registers were added, and "supersampling" is disabled */
 int
-premali_m400_pp_job_start(struct pp_info *info)
+premali_m400_pp_job_start(struct premali_state *state, struct pp_info *info)
 {
 	struct mali400_pp_job_start *job;
 	int supersampling = 0;
 	int max_blocking = 0;
-	int ret;
 
 	job = calloc(1, sizeof(struct mali400_pp_job_start));
 	if (!job) {
@@ -258,34 +239,16 @@ premali_m400_pp_job_start(struct pp_info *info)
 	job->wb[0].mrt_pitch = 0;
 	job->wb[0].zero = 0;
 
-	/* now send the actual job out to the hw */
-	premali_jobs_wait();
-
-	wait_for_notification_start();
-
-	job->fd = dev_mali_fd;
-	job->user_job_ptr = (unsigned int) job;
-	job->priority = 1;
-	job->watchdog_msecs = 0;
-	job->abort_id = 0;
-
-	ret = ioctl(dev_mali_fd, MALI400_PP_START_JOB, job);
-	if (ret == -1) {
-		printf("%s: Error: failed to start job: %s\n",
-		       __func__, strerror(errno));
-		return errno;
-	}
-
-	return 0;
+	return premali_m400_pp_job_start_direct(state, job);
 }
 
 int premali_type = 200;
 
 int
-premali_pp_job_start(struct pp_info *info)
+premali_pp_job_start(struct premali_state *state, struct pp_info *info)
 {
 	if (premali_type == 400)
-		return premali_m400_pp_job_start(info);
+		return premali_m400_pp_job_start(state, info);
 	else
-		return premali_m200_pp_job_start(info);
+		return premali_m200_pp_job_start(state, info);
 }

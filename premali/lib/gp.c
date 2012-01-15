@@ -570,11 +570,9 @@ plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
 }
 
 int
-premali_gp_job_start(struct mali_gp_job_start *job, struct vs_info *vs,
-		     struct plbu_info *plbu)
+premali_gp_job_start(struct premali_state *state, struct mali_gp_job_start *job,
+		     struct vs_info *vs, struct plbu_info *plbu)
 {
-	int ret;
-
 	job->frame.vs_commands_start = vs->mem_physical + vs->commands_offset;
 	job->frame.vs_commands_end = vs->mem_physical +
 		vs->commands_offset + vs->commands_size;
@@ -584,22 +582,5 @@ premali_gp_job_start(struct mali_gp_job_start *job, struct vs_info *vs,
 	job->frame.tile_heap_start = 0;
 	job->frame.tile_heap_end = 0;
 
-	/* now run the job */
-	premali_jobs_wait();
-
-	wait_for_notification_start();
-
-	job->fd = dev_mali_fd;
-	job->user_job_ptr = (unsigned int) job;
-	job->priority = 1;
-	job->watchdog_msecs = 0;
-	job->abort_id = 0;
-	ret = ioctl(dev_mali_fd, MALI_GP_START_JOB, job);
-	if (ret == -1) {
-		printf("%s: Error: failed to start job: %s\n",
-		       __func__, strerror(errno));
-		return errno;
-	}
-
-	return 0;
+	return premali_gp_job_start_direct(state, job);
 }
