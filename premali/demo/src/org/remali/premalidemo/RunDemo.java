@@ -19,7 +19,6 @@
 package org.remali.premalidemo;
 
 import java.lang.Runtime;
-import java.lang.String;
 import java.io.IOException;
 import android.app.Activity;
 import android.util.Log;
