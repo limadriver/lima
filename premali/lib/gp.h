@@ -71,6 +71,8 @@ int vs_info_attach_standard_uniforms(struct vs_info *info, int width, int height
 int vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute);
 int vs_info_attach_varying(struct vs_info *info, struct symbol *varying);
 int vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size);
+
+void vs_commands_create(struct vs_info *info, int vertex_count);
 void vs_info_finalize(struct vs_info *info);
 
 struct plbu_info {
@@ -97,6 +99,8 @@ void plbu_commands_create(struct plbu_info *info, int width, int height,
 			  int draw_mode, int vertex_count);
 struct plbu_info *plbu_info_create(void *address, int physical, int size);
 int plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size);
+
+int plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs);
 int plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
 		       int width, int height, int draw_mode, int vertex_count);
 

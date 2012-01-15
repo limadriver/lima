@@ -35,6 +35,28 @@ struct mali_cmd {
 	unsigned int cmd;
 };
 
+struct premali_state {
+	int width;
+	int height;
+
+	unsigned int clear_color;
+
+	/* 200/400 */
+	int device_type;
+	int fd;
+
+	unsigned int mem_address;
+	unsigned int mem_size;
+
+	struct mali_gp_job_start *gp_job_start;
+	struct vs_info *vs;
+	struct plbu_info *plbu;
+
+	struct plb_info *plb;
+
+	struct pp_info *pp;
+};
+
 /* from premali.c */
 int premali_init(void);
 void premali_finish(void);

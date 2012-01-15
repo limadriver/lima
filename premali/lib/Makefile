@@ -26,9 +26,11 @@ gp.o: gp.c gp.h premali.h plb.h symbols.h
 
 pp.o: pp.c pp.h premali.h plb.h
 
+program.o: program.c program.h gp.h
+
 premali.o: premali.c premali.h
 
-libpremali.so: bmp.o fb.o plb.o symbols.o jobs.o dump.o gp.o pp.o premali.o
+libpremali.so: bmp.o fb.o plb.o symbols.o jobs.o dump.o gp.o pp.o program.o premali.o
 	$(CC) -shared -Wall -o $@ $^ -lMali
 
 install: $(ADB) libpremali.so

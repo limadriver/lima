@@ -233,6 +233,61 @@ vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size)
 }
 
 void
+vs_commands_create(struct vs_info *info, int vertex_count)
+{
+	struct mali_cmd *cmds = info->commands;
+	int i = 0;
+
+	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
+	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
+	i++;
+
+	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_2;
+	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
+	i++;
+
+	cmds[i].val = info->mem_physical + info->shader_offset;
+	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (info->shader_size << 16);
+	i++;
+
+	cmds[i].val = 0x00401800; /* will become clearer when linking */
+	cmds[i].cmd = 0x10000040;
+	i++;
+
+	cmds[i].val = 0x01000100; /* will become clearer when linking */
+	cmds[i].cmd = 0x10000042;
+	i++;
+
+	cmds[i].val = info->mem_physical + info->uniform_offset;
+	cmds[i].cmd = MALI_VS_CMD_UNIFORMS_ADDRESS |
+		(ALIGN(info->uniform_used, 4) << 14);
+	i++;
+
+	cmds[i].val = info->mem_physical + info->common_offset;
+	cmds[i].cmd = MALI_VS_CMD_COMMON_ADDRESS | (info->common_size << 14);
+	i++;
+
+	cmds[i].val = 0x00000003; /* always 3 */
+	cmds[i].cmd = 0x10000041;
+	i++;
+
+	cmds[i].val = (vertex_count << 24);
+	cmds[i].cmd = 0x00000000;
+	i++;
+
+	cmds[i].val = 0x00000000;
+	cmds[i].cmd = 0x60000000;
+	i++;
+
+	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_END;
+	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
+	i++;
+
+	/* update our size so we can set the gp job properly */
+	info->commands_size = i * sizeof(struct mali_cmd);
+}
+
+void
 vs_info_finalize(struct vs_info *info)
 {
 	int i;
@@ -440,6 +495,56 @@ plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size)
 	info->mem_used += mem_size;
 
 	memcpy(info->shader, shader, 4 * size);
+
+	return 0;
+}
+
+int
+plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
+{
+	int size;
+
+	if (info->render_state) {
+		printf("%s: render_state already assigned\n", __func__);
+		return -1;
+	}
+
+	size = ALIGN(0x10 * 4, 0x40);
+	if (size > (info->mem_size - info->mem_used)) {
+		printf("%s: no more space\n", __func__);
+		return -2;
+	}
+
+	if (!info->shader) {
+		printf("%s: no shader attached yet!\n", __func__);
+		return -3;
+	}
+
+	info->render_state = info->mem_address + info->mem_used;
+	info->render_state_offset = info->mem_used;
+	info->render_state_size = size;
+	info->mem_used += size;
+
+	/* this bit still needs some figuring out :) */
+	info->render_state[0x00] = 0;
+	info->render_state[0x01] = 0;
+	info->render_state[0x02] = 0xfc3b1ad2;
+	info->render_state[0x03] = 0x3E;
+	info->render_state[0x04] = 0xFFFF0000;
+	info->render_state[0x05] = 7;
+	info->render_state[0x06] = 7;
+	info->render_state[0x07] = 0;
+	info->render_state[0x08] = 0xF807;
+	info->render_state[0x09] = info->mem_physical + info->shader_offset +
+		info->shader_size;
+	info->render_state[0x0A] = 0x00000002;
+	info->render_state[0x0B] = 0x00000000;
+
+	info->render_state[0x0C] = 0;
+	info->render_state[0x0D] = 0x301;
+	info->render_state[0x0E] = 0x2000;
+
+	info->render_state[0x0F] = vs->varyings[0]->physical;
 
 	return 0;
 }
