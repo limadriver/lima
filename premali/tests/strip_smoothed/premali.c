@@ -101,7 +101,7 @@ main(int argc, char *argv[])
 	if (!state)
 		return -1;
 
-	vs_info = vs_info_create(state->mem_address + 0x0000,
+	vs_info = vs_info_create(state, state->mem_address + 0x0000,
 				 state->mem_physical + 0x0000, 0x1000);
 
 	vertex_shader_compile(vs_info, vertex_shader_source);
@@ -113,8 +113,8 @@ main(int argc, char *argv[])
 
 	vs_info_attach_varying(vs_info, vColors);
 
-	vs_commands_create(vs_info, 6);
-	vs_info_finalize(vs_info);
+	vs_commands_create(state, vs_info, 6);
+	vs_info_finalize(state, vs_info);
 
 	plb = plb_create(WIDTH, HEIGHT, state->mem_physical, state->mem_address,
 			 0x3000, 0x7D000);
@@ -126,7 +126,7 @@ main(int argc, char *argv[])
 	fragment_shader_compile(plbu_info, fragment_shader_source);
 
 	plbu_info_render_state_create(plbu_info, vs_info);
-	plbu_info_finalize(plbu_info, plb, vs_info, WIDTH, HEIGHT,
+	plbu_info_finalize(state, plbu_info, plb, vs_info, WIDTH, HEIGHT,
 			   GL_TRIANGLE_STRIP, 6);
 
 	pp_info = pp_info_create(state, WIDTH, HEIGHT, 0xFF505050, plb,

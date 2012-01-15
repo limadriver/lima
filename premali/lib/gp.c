@@ -38,7 +38,7 @@
 #include "plbu.h"
 
 struct vs_info *
-vs_info_create(void *address, int physical, int size)
+vs_info_create(struct premali_state *state, void *address, int physical, int size)
 {
 	struct vs_info *info;
 	int i;
@@ -59,19 +59,32 @@ vs_info_create(void *address, int physical, int size)
 	info->commands_size = 0x10 * sizeof(struct mali_cmd);
 	info->mem_used += ALIGN(info->commands_size, 0x40);
 
-	info->common = info->mem_address + info->mem_used;
-	info->common_offset = info->mem_used;
-	info->common_size = sizeof(struct gp_common);
-	info->mem_used += ALIGN(info->common_size, 0x40);
+	if (state->type == PREMALI_TYPE_MALI200) {
+		/* mali200 has a common area for attributes and varyings. */
+		info->common = info->mem_address + info->mem_used;
+		info->common_offset = info->mem_used;
+		info->common_size = sizeof(struct gp_common);
+		info->mem_used += ALIGN(info->common_size, 0x40);
 
-	/* initialize common */
-	for (i = 0; i < 0x10; i++) {
-		info->common->attributes[i].physical = 0;
-		info->common->attributes[i].size = 0x3F;
-	}
-	for (i = 0; i < 0x10; i++) {
-		info->common->varyings[i].physical = 0;
-		info->common->varyings[i].size = 0x3F;
+		/* initialize common */
+		for (i = 0; i < 0x10; i++) {
+			info->common->attributes[i].physical = 0;
+			info->common->attributes[i].size = 0x3F;
+		}
+		for (i = 0; i < 0x10; i++) {
+			info->common->varyings[i].physical = 0;
+			info->common->varyings[i].size = 0x3F;
+		}
+	} else if (state->type == PREMALI_TYPE_MALI400) {
+		info->attribute_area = info->mem_address + info->mem_used;
+		info->attribute_area_size = 0x10 * sizeof(struct gp_common_entry);
+		info->attribute_area_offset = info->mem_used;
+		info->mem_used += ALIGN(info->attribute_area_size, 0x40);
+
+		info->varying_area = info->mem_address + info->mem_used;
+		info->varying_area_size = 0x10 * sizeof(struct gp_common_entry);
+		info->varying_area_offset = info->mem_used;
+		info->mem_used += ALIGN(info->varying_area_size, 0x40);
 	}
 
 	/* predefine an area for the uniforms */
@@ -233,7 +246,7 @@ vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size)
 }
 
 void
-vs_commands_create(struct vs_info *info, int vertex_count)
+vs_commands_create(struct premali_state *state, struct vs_info *info, int vertex_count)
 {
 	struct mali_cmd *cmds = info->commands;
 	int i = 0;
@@ -263,9 +276,22 @@ vs_commands_create(struct vs_info *info, int vertex_count)
 		(ALIGN(info->uniform_used, 4) << 14);
 	i++;
 
-	cmds[i].val = info->mem_physical + info->common_offset;
-	cmds[i].cmd = MALI_VS_CMD_COMMON_ADDRESS | (info->common_size << 14);
-	i++;
+	if (state->type == PREMALI_TYPE_MALI200) {
+		cmds[i].val = info->mem_physical + info->common_offset;
+		cmds[i].cmd = MALI_VS_CMD_COMMON_ADDRESS |
+			(info->common_size << 14);
+		i++;
+	} else if (state->type == PREMALI_TYPE_MALI400) {
+		cmds[i].val = info->mem_physical + info->attribute_area_offset;
+		cmds[i].cmd = MALI_VS_CMD_ATTRIBUTES_ADDRESS |
+			(info->attribute_area_size << 11);
+		i++;
+
+		cmds[i].val = info->mem_physical + info->varying_area_offset;
+		cmds[i].cmd = MALI_VS_CMD_VARYINGS_ADDRESS |
+			(info->varying_area_size << 11);
+		i++;
+	}
 
 	cmds[i].val = 0x00000003; /* always 3 */
 	cmds[i].cmd = 0x10000041;
@@ -288,30 +314,50 @@ vs_commands_create(struct vs_info *info, int vertex_count)
 }
 
 void
-vs_info_finalize(struct vs_info *info)
+vs_info_finalize(struct premali_state *state, struct vs_info *info)
 {
 	int i;
 
-	for (i = 0; i < info->attribute_count; i++) {
-		info->common->attributes[i].physical = info->attributes[i]->physical;
-		info->common->attributes[i].size =
-			(info->attributes[i]->element_size << 11) |
-			(info->attributes[i]->element_entries - 1);
-	}
+	if (state->type == PREMALI_TYPE_MALI200) {
+		for (i = 0; i < info->attribute_count; i++) {
+			info->common->attributes[i].physical = info->attributes[i]->physical;
+			info->common->attributes[i].size =
+				(info->attributes[i]->element_size << 11) |
+				(info->attributes[i]->element_entries - 1);
+		}
 
-	for (i = 0; i < info->varying_count; i++) {
-		info->common->varyings[i].physical = info->varyings[i]->physical;
-		info->common->varyings[i].size = (8 << 11) |
-			(info->varyings[i]->element_entries - 1);
-	}
+		for (i = 0; i < info->varying_count; i++) {
+			info->common->varyings[i].physical = info->varyings[i]->physical;
+			info->common->varyings[i].size = (8 << 11) |
+				(info->varyings[i]->element_entries - 1);
+		}
 
-	info->common->varyings[i].physical =
-		info->mem_physical + info->vertex_array_offset;
-	info->common->varyings[i].size = (16 << 11) | (1 - 1) | 0x20;
+		info->common->varyings[i].physical =
+			info->mem_physical + info->vertex_array_offset;
+		info->common->varyings[i].size = (16 << 11) | (1 - 1) | 0x20;
+	} else if (state->type == PREMALI_TYPE_MALI400) {
+		for (i = 0; i < info->attribute_count; i++) {
+			info->attribute_area[i].physical = info->attributes[i]->physical;
+			info->attribute_area[i].size =
+				(info->attributes[i]->element_size << 11) |
+				(info->attributes[i]->element_entries - 1);
+		}
+
+		for (i = 0; i < info->varying_count; i++) {
+			info->varying_area[i].physical = info->varyings[i]->physical;
+			info->varying_area[i].size = (8 << 11) |
+				(info->varyings[i]->element_entries - 1);
+		}
+
+		info->varying_area[i].physical =
+			info->mem_physical + info->vertex_array_offset;
+		info->varying_area[i].size = (16 << 11) | (1 - 1) | 0x20;
+	}
 }
 
 void
-plbu_commands_create(struct plbu_info *info, int width, int height,
+plbu_commands_create(struct premali_state *state, struct plbu_info *info,
+		     int width, int height,
 		     struct plb *plb, struct vs_info *vs,
 		     int draw_mode, int vertex_count)
 {
@@ -319,6 +365,19 @@ plbu_commands_create(struct plbu_info *info, int width, int height,
 	int i = 0;
 
 	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
+	if (state->type == PREMALI_TYPE_MALI400) {
+		int block_max;
+
+		if (plb->shift_h > plb->shift_w)
+			block_max = plb->shift_h;
+		else
+			block_max = plb->shift_w;
+
+		if (block_max > 2)
+			block_max = 2;
+
+		cmds[i].val |= block_max << 28;
+	}
 	cmds[i].cmd = MALI_PLBU_CMD_BLOCK_STEP;
 	i++;
 
@@ -331,7 +390,13 @@ plbu_commands_create(struct plbu_info *info, int width, int height,
 	i++;
 
 	cmds[i].val = plb->mem_physical + plb->plbu_offset;
-	cmds[i].cmd = MALI_PLBU_CMD_PLBU_ARRAY_ADDRESS;
+	if (state->type == PREMALI_TYPE_MALI200)
+		cmds[i].cmd = MALI200_PLBU_CMD_PLBU_ARRAY_ADDRESS;
+	else if (state->type == PREMALI_TYPE_MALI400) {
+		cmds[i].cmd = MALI400_PLBU_CMD_PLBU_ARRAY_ADDRESS;
+		cmds[i].cmd |= ((plb->width * plb->height) >>
+				(plb->shift_w + plb->shift_h)) - 1;
+	}
 	i++;
 
 #if 0
@@ -550,7 +615,8 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 }
 
 int
-plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
+plbu_info_finalize(struct premali_state *state,
+		   struct plbu_info *info, struct plb *plb, struct vs_info *vs,
 		   int width, int height, int draw_mode, int vertex_count)
 {
 	if (!info->render_state) {
@@ -563,7 +629,7 @@ plbu_info_finalize(struct plbu_info *info, struct plb *plb, struct vs_info *vs,
 		return -1;
 	}
 
-	plbu_commands_create(info, width, height, plb, vs,
+	plbu_commands_create(state, info, width, height, plb, vs,
 			     draw_mode, vertex_count);
 
 	return 0;

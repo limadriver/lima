@@ -33,7 +33,10 @@ struct mali_cmd {
 
 struct premali_state {
 	int fd;
-	int type; /* 200/400 */
+
+#define PREMALI_TYPE_MALI200 200
+#define PREMALI_TYPE_MALI400 400
+	int type;
 
 	unsigned int mem_physical;
 	unsigned int mem_size;
