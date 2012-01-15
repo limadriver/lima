@@ -41,26 +41,27 @@
 int
 main(int argc, char *argv[])
 {
+	struct premali_state *state;
 	int ret;
 
-	ret = premali_init();
+	state = premali_init();
+	if (!state)
+		return -1;
+
+	ret = dumped_mem_load(state->fd, &dumped_mem);
 	if (ret)
 		return ret;
 
-	ret = dumped_mem_load(&dumped_mem);
-	if (ret)
-		return ret;
-
-	ret = premali_gp_job_start_direct(&gp_job);
+	ret = premali_gp_job_start_direct(state, &gp_job);
 	if (ret)
 		return ret;
 
 	fb_clear();
 
 #ifdef MALI400
-	ret = premali_m400_pp_job_start_direct(&pp_job);
+	ret = premali_m400_pp_job_start_direct(state, &pp_job);
 #else
-	ret = premali_m200_pp_job_start_direct(&pp_job);
+	ret = premali_m200_pp_job_start_direct(state, &pp_job);
 #endif
 	if (ret)
 		return ret;
