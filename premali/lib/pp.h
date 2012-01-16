@@ -54,8 +54,7 @@ struct pp_info
 	int frame_size;
 };
 
-struct pp_info *pp_info_create(struct premali_state *state,
-			       struct plb *plb, void *address,
+struct pp_info *pp_info_create(struct premali_state *state, void *address,
 			       unsigned int physical, int size,
 			       unsigned int frame_physical);
 int premali_pp_job_start(struct premali_state *state, struct pp_info *info);

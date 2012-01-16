@@ -29,6 +29,10 @@
 #include "mali_ioctl.h"
 
 #include "premali.h"
+#include "plb.h"
+#include "gp.h"
+#include "pp.h"
+#include "jobs.h"
 
 static int
 premali_fd_open(struct premali_state *state)
@@ -159,23 +163,87 @@ premali_init(void)
 	return NULL;
 }
 
-void
-premali_dimensions_set(struct premali_state *state, int width, int height)
+int
+premali_state_setup(struct premali_state *state, int width, int height,
+		    unsigned int clear_color)
 {
 	if (!state)
-		return;
+		return -1;
 
 	state->width = width;
 	state->height = height;
-}
-
-void
-premali_clear_color_set(struct premali_state *state, unsigned int clear_color)
-{
-	if (!state)
-		return;
 
 	state->clear_color = clear_color;
+
+	state->vs = vs_info_create(state, state->mem_address + 0x0000,
+				   state->mem_physical + 0x0000, 0x1000);
+	if (!state->vs)
+		return -1;
+
+	state->plb = plb_create(state, state->mem_physical, state->mem_address,
+				0x3000, 0x7D000);
+	if (!state->plb)
+		return -1;
+
+	state->plbu = plbu_info_create(state->mem_address + 0x1000,
+				       state->mem_physical + 0x1000,
+				       0x1000);
+	if (!state->plbu)
+		return -1;
+
+
+	state->pp = pp_info_create(state, state->mem_address + 0x2000,
+				   state->mem_physical + 0x2000,
+				   0x1000, state->mem_physical + 0x80000);
+	if (!state->pp)
+		return -1;
+
+	return 0;
+}
+
+int
+premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
+{
+	if (!state->vs) {
+		printf("%s: Error: vs member is not set up yet.\n", __func__);
+		return -1;
+	}
+
+	if (!state->plbu) {
+		printf("%s: Error: plbu member is not set up yet.\n", __func__);
+		return -1;
+	}
+
+	if (!state->plb) {
+		printf("%s: Error: plb member is not set up yet.\n", __func__);
+		return -1;
+	}
+
+	vs_commands_create(state, state->vs, vertex_count);
+	vs_info_finalize(state, state->vs);
+
+	plbu_info_render_state_create(state->plbu, state->vs);
+	plbu_info_finalize(state, state->plbu, state->plb, state->vs,
+			   mode, vertex_count);
+
+	return 0;
+}
+
+int
+premali_flush(struct premali_state *state)
+{
+	int ret;
+
+	ret = premali_gp_job_start(state);
+	if (ret)
+		return ret;
+
+	ret = premali_pp_job_start(state, state->pp);
+	if (ret)
+		return ret;
+
+	premali_jobs_wait();
+	return 0;
 }
 
 /*

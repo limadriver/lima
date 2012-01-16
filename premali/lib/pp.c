@@ -36,14 +36,22 @@
 #include "jobs.h"
 
 struct pp_info *
-pp_info_create(struct premali_state *state, struct plb *plb,
+pp_info_create(struct premali_state *state,
 	       void *address, unsigned int physical, int size,
 	       unsigned int frame_physical)
 {
+	struct plb *plb;
 	struct pp_info *info;
 	unsigned int quad[5] =
 		{0x00020425, 0x0000000c, 0x01e007cf, 0xb0000000, 0x000005f5};
 	int offset;
+
+	if (!state->plb) {
+		printf("%s: Error: member plb not assigned yet!\n", __func__);
+		return NULL;
+	}
+
+	plb = state->plb;
 
 	info = calloc(1, sizeof(struct pp_info));
 	if (!info)

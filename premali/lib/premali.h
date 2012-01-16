@@ -47,20 +47,21 @@ struct premali_state {
 
 	unsigned int clear_color;
 
-	struct mali_gp_job_start *gp_job_start;
+	struct mali_gp_job_start *gp_job;
 	struct vs_info *vs;
 	struct plbu_info *plbu;
 
-	struct plb_info *plb;
+	struct plb *plb;
 
 	struct pp_info *pp;
 };
 
 /* from premali.c */
 struct premali_state *premali_init(void);
+int premali_state_setup(struct premali_state *state, int width, int height,
+			unsigned int clear_color);
+int premali_draw_arrays(struct premali_state *state, int mode, int vertex_count);
+int premali_flush(struct premali_state *state);
 void premali_finish(void);
-
-void premali_dimensions_set(struct premali_state *state, int width, int height);
-void premali_clear_color_set(struct premali_state *state, unsigned int clear_color);
 
 #endif /* PREMALI_PREMALI_H */

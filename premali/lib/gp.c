@@ -636,9 +636,29 @@ plbu_info_finalize(struct premali_state *state,
 }
 
 int
-premali_gp_job_start(struct premali_state *state, struct mali_gp_job_start *job,
-		     struct vs_info *vs, struct plbu_info *plbu)
+premali_gp_job_start(struct premali_state *state)
 {
+	struct mali_gp_job_start *job;
+	struct vs_info *vs;
+	struct plbu_info *plbu;
+
+	if (!state->vs) {
+		printf("%s: Error: vs member is not set up yet.\n", __func__);
+		return -1;
+	}
+
+	if (!state->plbu) {
+		printf("%s: Error: plbu member is not set up yet.\n", __func__);
+		return -1;
+	}
+
+	vs = state->vs;
+	plbu = state->plbu;
+
+	job = calloc(1, sizeof(struct mali_gp_job_start));
+
+	state->gp_job = job;
+
 	job->frame.vs_commands_start = vs->mem_physical + vs->commands_offset;
 	job->frame.vs_commands_end = vs->mem_physical +
 		vs->commands_offset + vs->commands_size;
