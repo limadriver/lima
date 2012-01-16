@@ -55,7 +55,6 @@ struct pp_info
 };
 
 struct pp_info *pp_info_create(struct premali_state *state,
-			       int width, int height, unsigned int clear_color,
 			       struct plb *plb, void *address,
 			       unsigned int physical, int size,
 			       unsigned int frame_physical);

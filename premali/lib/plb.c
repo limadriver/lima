@@ -75,12 +75,13 @@ plb_pp_stream_create(struct plb *plb)
 }
 
 struct plb *
-plb_create(int width, int height, unsigned int physical, void *address, int offset, int size)
+plb_create(struct premali_state *state, unsigned int physical, void *address, int offset, int size)
 {
 	struct plb *plb = calloc(1, sizeof(struct plb));
+	int width, height;
 
-	width = ALIGN(width, 16) >> 4;
-	height = ALIGN(height, 16) >> 4;
+	width = ALIGN(state->width, 16) >> 4;
+	height = ALIGN(state->height, 16) >> 4;
 
 	/* limit the amount of plb's the pp has to chew through */
 	while ((width * height) > 320) {

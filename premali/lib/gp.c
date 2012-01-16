@@ -138,10 +138,11 @@ vs_info_attach_uniform(struct vs_info *info, struct symbol *uniform)
 }
 
 int
-vs_info_attach_standard_uniforms(struct vs_info *info, int width, int height)
+vs_info_attach_standard_uniforms(struct premali_state *state, struct vs_info *info)
 {
 	struct symbol *viewport =
-		uniform_gl_mali_ViewPortTransform(0.0, 0.0, width, height, 0.0, 1.0);
+		uniform_gl_mali_ViewPortTransform(0.0, 0.0, state->width,
+						  state->height, 0.0, 1.0);
 	struct symbol *constant = uniform___maligp2_constant_000();
 	int ret;
 
@@ -357,7 +358,6 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 
 void
 plbu_commands_create(struct premali_state *state, struct plbu_info *info,
-		     int width, int height,
 		     struct plb *plb, struct vs_info *vs,
 		     int draw_mode, int vertex_count)
 {
@@ -413,7 +413,7 @@ plbu_commands_create(struct premali_state *state, struct plbu_info *info,
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_Y;
 	i++;
 
-	cmds[i].val = from_float(height);
+	cmds[i].val = from_float(state->height);
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_H;
 	i++;
 
@@ -421,7 +421,7 @@ plbu_commands_create(struct premali_state *state, struct plbu_info *info,
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_X;
 	i++;
 
-	cmds[i].val = from_float(width);
+	cmds[i].val = from_float(state->width);
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_W;
 	i++;
 
@@ -617,7 +617,7 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 int
 plbu_info_finalize(struct premali_state *state,
 		   struct plbu_info *info, struct plb *plb, struct vs_info *vs,
-		   int width, int height, int draw_mode, int vertex_count)
+		   int draw_mode, int vertex_count)
 {
 	if (!info->render_state) {
 		printf("%s: Missing render_state\n", __func__);
@@ -629,7 +629,7 @@ plbu_info_finalize(struct premali_state *state,
 		return -1;
 	}
 
-	plbu_commands_create(state, info, width, height, plb, vs,
+	plbu_commands_create(state, info, plb, vs,
 			     draw_mode, vertex_count);
 
 	return 0;

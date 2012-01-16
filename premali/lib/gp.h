@@ -78,7 +78,7 @@ struct vs_info {
 
 struct vs_info *vs_info_create(struct premali_state *sate, void *address, int physical, int size);
 int vs_info_attach_uniform(struct vs_info *info, struct symbol *uniform);
-int vs_info_attach_standard_uniforms(struct vs_info *info, int width, int height);
+int vs_info_attach_standard_uniforms(struct premali_state *state, struct vs_info *info);
 int vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute);
 int vs_info_attach_varying(struct vs_info *info, struct symbol *varying);
 int vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size);
@@ -105,8 +105,7 @@ struct plbu_info {
 	int shader_size;
 };
 
-void plbu_commands_create(struct premali_state *state,
-			  struct plbu_info *info, int width, int height,
+void plbu_commands_create(struct premali_state *state, struct plbu_info *info,
 			  struct plb *plb, struct vs_info *vs,
 			  int draw_mode, int vertex_count);
 struct plbu_info *plbu_info_create(void *address, int physical, int size);
@@ -115,7 +114,7 @@ int plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int si
 int plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs);
 int plbu_info_finalize(struct premali_state *state,
 		       struct plbu_info *info, struct plb *plb, struct vs_info *vs,
-		       int width, int height, int draw_mode, int vertex_count);
+		       int draw_mode, int vertex_count);
 
 int premali_gp_job_start(struct premali_state *state,
 			 struct mali_gp_job_start *gp_job, struct vs_info *vs,

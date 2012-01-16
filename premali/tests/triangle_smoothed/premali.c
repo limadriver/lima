@@ -25,12 +25,12 @@
 
 #include <GLES2/gl2.h>
 
+#include "premali.h"
 #include "ioctl.h"
 #include "bmp.h"
 #include "fb.h"
 #include "plb.h"
 #include "symbols.h"
-#include "premali.h"
 #include "jobs.h"
 #include "gp.h"
 #include "pp.h"
@@ -89,38 +89,45 @@ main(int argc, char *argv[])
 	if (!state)
 		return -1;
 
+	premali_dimensions_set(state, WIDTH, HEIGHT);
+	premali_clear_color_set(state, 0xFF505050);
+
+
 	vs_info = vs_info_create(state, state->mem_address + 0x0000,
 				 state->mem_physical + 0x0000, 0x1000);
 
-	vertex_shader_compile(vs_info, vertex_shader_source);
-
-	vs_info_attach_standard_uniforms(vs_info, WIDTH, HEIGHT);
-
-	vs_info_attach_attribute(vs_info, aPosition);
-	vs_info_attach_attribute(vs_info, aColors);
-
-	vs_info_attach_varying(vs_info, vColors);
-
-	vs_commands_create(state, vs_info, 3);
-	vs_info_finalize(state, vs_info);
-
-	plb = plb_create(WIDTH, HEIGHT, state->mem_physical, state->mem_address,
+	plb = plb_create(state, state->mem_physical, state->mem_address,
 			 0x3000, 0x7D000);
 	if (!plb)
 		return -1;
 
 	plbu_info = plbu_info_create(state->mem_address + 0x1000,
 				     state->mem_physical + 0x1000, 0x1000);
-	fragment_shader_compile(plbu_info, fragment_shader_source);
 
-	plbu_info_render_state_create(plbu_info, vs_info);
-	plbu_info_finalize(state, plbu_info, plb, vs_info, WIDTH, HEIGHT,
-			   GL_TRIANGLES, 3);
-
-	pp_info = pp_info_create(state, WIDTH, HEIGHT, 0xFF505050, plb,
+	pp_info = pp_info_create(state, plb,
 				 state->mem_address + 0x2000,
 				 state->mem_physical + 0x2000,
 				 0x1000, state->mem_physical + 0x80000);
+
+
+	vertex_shader_compile(vs_info, vertex_shader_source);
+	fragment_shader_compile(plbu_info, fragment_shader_source);
+
+
+	vs_info_attach_standard_uniforms(state, vs_info);
+
+	vs_info_attach_attribute(vs_info, aPosition);
+	vs_info_attach_attribute(vs_info, aColors);
+
+	vs_info_attach_varying(vs_info, vColors);
+
+
+	vs_commands_create(state, vs_info, 3);
+	vs_info_finalize(state, vs_info);
+
+	plbu_info_render_state_create(plbu_info, vs_info);
+	plbu_info_finalize(state, plbu_info, plb, vs_info, GL_TRIANGLES, 3);
+
 
 	ret = premali_gp_job_start(state, &gp_job, vs_info, plbu_info);
 	if (ret)
@@ -132,11 +139,11 @@ main(int argc, char *argv[])
 
 	premali_jobs_wait();
 
-	bmp_dump(pp_info->frame_address, pp_info->frame_size,
-		 pp_info->width, pp_info->height, "/sdcard/premali.bmp");
+	bmp_dump(pp_info->frame_address, 0,
+		 state->width, state->height, "/sdcard/premali.bmp");
 
 	fb_dump(pp_info->frame_address, pp_info->frame_size,
-		pp_info->width, pp_info->height);
+		state->width, state->height);
 
 	premali_finish();
 

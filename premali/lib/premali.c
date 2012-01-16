@@ -159,6 +159,25 @@ premali_init(void)
 	return NULL;
 }
 
+void
+premali_dimensions_set(struct premali_state *state, int width, int height)
+{
+	if (!state)
+		return;
+
+	state->width = width;
+	state->height = height;
+}
+
+void
+premali_clear_color_set(struct premali_state *state, unsigned int clear_color)
+{
+	if (!state)
+		return;
+
+	state->clear_color = clear_color;
+}
+
 /*
  * Just run fflush(stdout) to give the wrapper library a chance to finish.
  */

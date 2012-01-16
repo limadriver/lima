@@ -36,8 +36,7 @@
 #include "jobs.h"
 
 struct pp_info *
-pp_info_create(struct premali_state *state, int width, int height,
-	       unsigned int clear_color, struct plb *plb,
+pp_info_create(struct premali_state *state, struct plb *plb,
 	       void *address, unsigned int physical, int size,
 	       unsigned int frame_physical)
 {
@@ -50,10 +49,10 @@ pp_info_create(struct premali_state *state, int width, int height,
 	if (!info)
 		return 0;
 
-	info->width = width;
-	info->height = height;
-	info->pitch = width * 4;
-	info->clear_color = clear_color;
+	info->width = state->width;
+	info->height = state->height;
+	info->pitch = state->width * 4;
+	info->clear_color = state->clear_color;
 
 	info->plb_physical = plb->mem_physical + plb->pp_offset;
 	info->plb_shift_w = plb->shift_w;

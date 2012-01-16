@@ -60,4 +60,7 @@ struct premali_state {
 struct premali_state *premali_init(void);
 void premali_finish(void);
 
+void premali_dimensions_set(struct premali_state *state, int width, int height);
+void premali_clear_color_set(struct premali_state *state, unsigned int clear_color);
+
 #endif /* PREMALI_PREMALI_H */

@@ -48,7 +48,7 @@ struct plb {
 	int mem_size;
 };
 
-struct plb *plb_create(int width, int height, unsigned int physical,
+struct plb *plb_create(struct premali_state *state, unsigned int physical,
 		       void *address, int offset, int size);
 
 #endif /* PREMALI_PLB_H */
