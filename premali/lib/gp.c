@@ -194,7 +194,7 @@ vs_info_attach_varying(struct vs_info *info, struct symbol *varying)
 	int size;
 
 	/* last varying is always the vertex array */
-	if (info->varying_count == 0x0F) {
+	if (info->varying_count == 0x0C) {
 		printf("%s: No more varyings\n", __func__);
 		return -1;
 	}
@@ -248,9 +248,9 @@ vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size)
 }
 
 void
-vs_commands_create(struct premali_state *state, struct vs_info *info, int vertex_count)
+vs_commands_create(struct premali_state *state, struct vs_info *vs, int vertex_count)
 {
-	struct mali_cmd *cmds = info->commands;
+	struct mali_cmd *cmds = vs->commands;
 	int i = 0;
 
 	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
@@ -261,37 +261,39 @@ vs_commands_create(struct premali_state *state, struct vs_info *info, int vertex
 	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
-	cmds[i].val = info->mem_physical + info->shader_offset;
-	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (info->shader_size << 16);
+	cmds[i].val = vs->mem_physical + vs->shader_offset;
+	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (vs->shader_size << 16);
 	i++;
 
-	cmds[i].val = 0x00401800; /* will become clearer when linking */
+	cmds[i].val = (5 - 1) << 20; /* will become clearer when linking */
+	cmds[i].val |= (vs->shader_size - 1) << 10;
 	cmds[i].cmd = 0x10000040;
 	i++;
 
-	cmds[i].val = 0x01000100; /* will become clearer when linking */
-	cmds[i].cmd = 0x10000042;
+	/* Since there is an implicit varying for position, we don't do - 1 */
+	cmds[i].val = (vs->varying_count << 8) | ((vs->attribute_count - 1) << 24);
+	cmds[i].cmd = MALI_VS_CMD_VARYING_ATTRIBUTE_COUNT;
 	i++;
 
-	cmds[i].val = info->mem_physical + info->uniform_offset;
+	cmds[i].val = vs->mem_physical + vs->uniform_offset;
 	cmds[i].cmd = MALI_VS_CMD_UNIFORMS_ADDRESS |
-		(ALIGN(info->uniform_used, 4) << 14);
+		(ALIGN(vs->uniform_used, 4) << 14);
 	i++;
 
 	if (state->type == PREMALI_TYPE_MALI200) {
-		cmds[i].val = info->mem_physical + info->common_offset;
+		cmds[i].val = vs->mem_physical + vs->common_offset;
 		cmds[i].cmd = MALI_VS_CMD_COMMON_ADDRESS |
-			(info->common_size << 14);
+			(vs->common_size << 14);
 		i++;
 	} else if (state->type == PREMALI_TYPE_MALI400) {
-		cmds[i].val = info->mem_physical + info->attribute_area_offset;
+		cmds[i].val = vs->mem_physical + vs->attribute_area_offset;
 		cmds[i].cmd = MALI_VS_CMD_ATTRIBUTES_ADDRESS |
-			(info->attribute_area_size << 11);
+			(vs->attribute_area_size << 11);
 		i++;
 
-		cmds[i].val = info->mem_physical + info->varying_area_offset;
+		cmds[i].val = vs->mem_physical + vs->varying_area_offset;
 		cmds[i].cmd = MALI_VS_CMD_VARYINGS_ADDRESS |
-			(info->varying_area_size << 11);
+			(vs->varying_area_size << 11);
 		i++;
 	}
 
@@ -312,7 +314,7 @@ vs_commands_create(struct premali_state *state, struct vs_info *info, int vertex
 	i++;
 
 	/* update our size so we can set the gp job properly */
-	info->commands_size = i * sizeof(struct mali_cmd);
+	vs->commands_size = i * sizeof(struct mali_cmd);
 }
 
 void
