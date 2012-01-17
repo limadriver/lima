@@ -604,20 +604,18 @@ dev_mali_gp_job_start_pre(void *data)
 
 	wrap_log("IOCTL MALI_IOC_GP2_START_JOB IN;\n");
 
-	wrap_log("struct mali_gp_job_start gp_job[1] = {\n");
+	wrap_log("struct mali_gp_job_start gp_job = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
 	wrap_log("\t.watchdog_msecs = 0x%x,\n", job->watchdog_msecs);
 
-	wrap_log("\t.frame = {\n");
-	wrap_log("\t\t.vs_commands_start = 0x%x\n", job->frame.vs_commands_start);
-	wrap_log("\t\t.vs_commands_end = 0x%x\n", job->frame.vs_commands_end);
-	wrap_log("\t\t.plbu_commands_start = 0x%x\n", job->frame.plbu_commands_start);
-	wrap_log("\t\t.plbu_commands_end = 0x%x\n", job->frame.plbu_commands_end);
-	wrap_log("\t\t.tile_heap_start = 0x%x\n", job->frame.tile_heap_start);
-	wrap_log("\t\t.tile_heap_end = 0x%x\n", job->frame.tile_heap_end);
-	wrap_log("\t},\n");
+	wrap_log("\t.frame.vs_commands_start = 0x%x,\n", job->frame.vs_commands_start);
+	wrap_log("\t.frame.vs_commands_end = 0x%x,\n", job->frame.vs_commands_end);
+	wrap_log("\t.frame.plbu_commands_start = 0x%x,\n", job->frame.plbu_commands_start);
+	wrap_log("\t.frame.plbu_commands_end = 0x%x,\n", job->frame.plbu_commands_end);
+	wrap_log("\t.frame.tile_heap_start = 0x%x,\n", job->frame.tile_heap_start);
+	wrap_log("\t.frame.tile_heap_end = 0x%x,\n", job->frame.tile_heap_end);
 
 	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
 
@@ -653,44 +651,40 @@ dev_mali200_pp_job_start_pre(void *data)
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
 
-	wrap_log("struct mali200_pp_job_start pp_job[1] = {\n");
+	wrap_log("struct mali200_pp_job_start pp_job = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
 	wrap_log("\t.watchdog_msecs = 0x%x,\n", job->watchdog_msecs);
 
-	wrap_log("\t.frame = {\n");
-	wrap_log("\t\t.plbu_array_address = 0x%x\n", job->frame.plbu_array_address);
-	wrap_log("\t\t.render_address = 0x%x\n", job->frame.render_address);
-	wrap_log("\t\t.flags = 0x%x\n", job->frame.flags);
-	wrap_log("\t\t.clear_value_depth = 0x%x\n", job->frame.clear_value_depth);
-	wrap_log("\t\t.clear_value_stencil = 0x%x\n", job->frame.clear_value_stencil);
-	wrap_log("\t\t.clear_value_color = 0x%x\n", job->frame.clear_value_color);
-	wrap_log("\t\t.clear_value_color_1 = 0x%x\n", job->frame.clear_value_color_1);
-	wrap_log("\t\t.clear_value_color_2 = 0x%x\n", job->frame.clear_value_color_2);
-	wrap_log("\t\t.clear_value_color_3 = 0x%x\n", job->frame.clear_value_color_3);
-	wrap_log("\t\t.width = 0x%x\n", job->frame.width);
-	wrap_log("\t\t.height = 0x%x\n", job->frame.height);
-	wrap_log("\t\t.fragment_stack_address = 0x%x\n", job->frame.fragment_stack_address);
-	wrap_log("\t\t.fragment_stack_size = 0x%x\n", job->frame.fragment_stack_size);
-	wrap_log("\t\t.one = 0x%x\n", job->frame.one);
-	wrap_log("\t\t.supersampled_height = 0x%x\n", job->frame.supersampled_height);
-	wrap_log("\t\t.dubya = 0x%x\n", job->frame.dubya);
-	wrap_log("\t\t.onscreen = 0x%x\n", job->frame.onscreen);
-	wrap_log("\t},\n");
+	wrap_log("\t.frame.plbu_array_address = 0x%x,\n", job->frame.plbu_array_address);
+	wrap_log("\t.frame.render_address = 0x%x,\n", job->frame.render_address);
+	wrap_log("\t.frame.flags = 0x%x,\n", job->frame.flags);
+	wrap_log("\t.frame.clear_value_depth = 0x%x,\n", job->frame.clear_value_depth);
+	wrap_log("\t.frame.clear_value_stencil = 0x%x,\n", job->frame.clear_value_stencil);
+	wrap_log("\t.frame.clear_value_color = 0x%x,\n", job->frame.clear_value_color);
+	wrap_log("\t.frame.clear_value_color_1 = 0x%x,\n", job->frame.clear_value_color_1);
+	wrap_log("\t.frame.clear_value_color_2 = 0x%x,\n", job->frame.clear_value_color_2);
+	wrap_log("\t.frame.clear_value_color_3 = 0x%x,\n", job->frame.clear_value_color_3);
+	wrap_log("\t.frame.width = 0x%x,\n", job->frame.width);
+	wrap_log("\t.frame.height = 0x%x,\n", job->frame.height);
+	wrap_log("\t.frame.fragment_stack_address = 0x%x,\n", job->frame.fragment_stack_address);
+	wrap_log("\t.frame.fragment_stack_size = 0x%x,\n", job->frame.fragment_stack_size);
+	wrap_log("\t.frame.one = 0x%x,\n", job->frame.one);
+	wrap_log("\t.frame.supersampled_height = 0x%x,\n", job->frame.supersampled_height);
+	wrap_log("\t.frame.dubya = 0x%x,\n", job->frame.dubya);
+	wrap_log("\t.frame.onscreen = 0x%x,\n", job->frame.onscreen);
 
 	for (i = 0; i < 3; i++) {
-		wrap_log("\t.wb[%d] = {\n", i);
-		wrap_log("\t\t.type = 0x%x\n", job->wb[i].type);
-		wrap_log("\t\t.address = 0x%x\n", job->wb[i].address);
-		wrap_log("\t\t.pixel_format = 0x%x\n", job->wb[i].pixel_format);
-		wrap_log("\t\t.downsample_factor = 0x%x\n", job->wb[i].downsample_factor);
-		wrap_log("\t\t.pixel_layout = 0x%x\n", job->wb[i].pixel_layout);
-		wrap_log("\t\t.pitch = 0x%x\n", job->wb[i].pitch);
-		wrap_log("\t\t.mrt_bits = 0x%x\n", job->wb[i].mrt_bits);
-		wrap_log("\t\t.mrt_pitch = 0x%x\n", job->wb[i].mrt_pitch);
-		wrap_log("\t\t.zero = 0x%x\n", job->wb[i].zero);
-		wrap_log("\t},\n");
+		wrap_log("\t.wb[%d].type = 0x%x,\n", i, job->wb[i].type);
+		wrap_log("\t.wb[%d].address = 0x%x,\n", i, job->wb[i].address);
+		wrap_log("\t.wb[%d].pixel_format = 0x%x,\n", i, job->wb[i].pixel_format);
+		wrap_log("\t.wb[%d].downsample_factor = 0x%x,\n", i, job->wb[i].downsample_factor);
+		wrap_log("\t.wb[%d].pixel_layout = 0x%x,\n", i, job->wb[i].pixel_layout);
+		wrap_log("\t.wb[%d].pitch = 0x%x,\n", i, job->wb[i].pitch);
+		wrap_log("\t.wb[%d].mrt_bits = 0x%x,\n", i, job->wb[i].mrt_bits);
+		wrap_log("\t.wb[%d].mrt_pitch = 0x%x,\n", i, job->wb[i].mrt_pitch);
+		wrap_log("\t.wb[%d].zero = 0x%x,\n", i, job->wb[i].zero);
 	}
 
 	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
@@ -720,48 +714,43 @@ dev_mali400_pp_job_start_pre(void *data)
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
 
-	wrap_log("struct mali400_pp_job_start pp_job[1] = {\n");
+	wrap_log("struct mali400_pp_job_start pp_job = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
 	wrap_log("\t.watchdog_msecs = 0x%x,\n", job->watchdog_msecs);
 
-	wrap_log("\t.frame = {\n");
-	wrap_log("\t\t.plbu_array_address = 0x%x\n", job->frame.plbu_array_address);
-	wrap_log("\t\t.render_address = 0x%x\n", job->frame.render_address);
-	wrap_log("\t\t.flags = 0x%x\n", job->frame.flags);
-	wrap_log("\t\t.clear_value_depth = 0x%x\n", job->frame.clear_value_depth);
-	wrap_log("\t\t.clear_value_stencil = 0x%x\n", job->frame.clear_value_stencil);
-	wrap_log("\t\t.clear_value_color = 0x%x\n", job->frame.clear_value_color);
-	wrap_log("\t\t.clear_value_color_1 = 0x%x\n", job->frame.clear_value_color_1);
-	wrap_log("\t\t.clear_value_color_2 = 0x%x\n", job->frame.clear_value_color_2);
-	wrap_log("\t\t.clear_value_color_3 = 0x%x\n", job->frame.clear_value_color_3);
-	wrap_log("\t\t.width = 0x%x\n", job->frame.width);
-	wrap_log("\t\t.height = 0x%x\n", job->frame.height);
-	wrap_log("\t\t.fragment_stack_address = 0x%x\n", job->frame.fragment_stack_address);
-	wrap_log("\t\t.fragment_stack_size = 0x%x\n", job->frame.fragment_stack_size);
-	wrap_log("\t\t.one = 0x%x\n", job->frame.one);
-	wrap_log("\t\t.supersampled_height = 0x%x\n", job->frame.supersampled_height);
-	wrap_log("\t\t.dubya = 0x%x\n", job->frame.dubya);
-	wrap_log("\t\t.onscreen = 0x%x\n", job->frame.onscreen);
-	wrap_log("\t\t.blocking = 0x%x\n", job->frame.blocking);
-	wrap_log("\t\t.scale = 0x%x\n", job->frame.scale);
-	wrap_log("\t\t.foureight = 0x%x\n", job->frame.foureight);
-
-	wrap_log("\t},\n");
+	wrap_log("\t.frame.plbu_array_address = 0x%x,\n", job->frame.plbu_array_address);
+	wrap_log("\t.frame.render_address = 0x%x,\n", job->frame.render_address);
+	wrap_log("\t.frame.flags = 0x%x,\n", job->frame.flags);
+	wrap_log("\t.frame.clear_value_depth = 0x%x,\n", job->frame.clear_value_depth);
+	wrap_log("\t.frame.clear_value_stencil = 0x%x,\n", job->frame.clear_value_stencil);
+	wrap_log("\t.frame.clear_value_color = 0x%x,\n", job->frame.clear_value_color);
+	wrap_log("\t.frame.clear_value_color_1 = 0x%x,\n", job->frame.clear_value_color_1);
+	wrap_log("\t.frame.clear_value_color_2 = 0x%x,\n", job->frame.clear_value_color_2);
+	wrap_log("\t.frame.clear_value_color_3 = 0x%x,\n", job->frame.clear_value_color_3);
+	wrap_log("\t.frame.width = 0x%x,\n", job->frame.width);
+	wrap_log("\t.frame.height = 0x%x,\n", job->frame.height);
+	wrap_log("\t.frame.fragment_stack_address = 0x%x,\n", job->frame.fragment_stack_address);
+	wrap_log("\t.frame.fragment_stack_size = 0x%x,\n", job->frame.fragment_stack_size);
+	wrap_log("\t.frame.one = 0x%x,\n", job->frame.one);
+	wrap_log("\t.frame.supersampled_height = 0x%x,\n", job->frame.supersampled_height);
+	wrap_log("\t.frame.dubya = 0x%x,\n", job->frame.dubya);
+	wrap_log("\t.frame.onscreen = 0x%x,\n", job->frame.onscreen);
+	wrap_log("\t.frame.blocking = 0x%x,\n", job->frame.blocking);
+	wrap_log("\t.frame.scale = 0x%x,\n", job->frame.scale);
+	wrap_log("\t.frame.foureight = 0x%x,\n", job->frame.foureight);
 
 	for (i = 0; i < 3; i++) {
-		wrap_log("\t.wb[%d] = {\n", i);
-		wrap_log("\t\t.type = 0x%x\n", job->wb[i].type);
-		wrap_log("\t\t.address = 0x%x\n", job->wb[i].address);
-		wrap_log("\t\t.pixel_format = 0x%x\n", job->wb[i].pixel_format);
-		wrap_log("\t\t.downsample_factor = 0x%x\n", job->wb[i].downsample_factor);
-		wrap_log("\t\t.pixel_layout = 0x%x\n", job->wb[i].pixel_layout);
-		wrap_log("\t\t.pitch = 0x%x\n", job->wb[i].pitch);
-		wrap_log("\t\t.mrt_bits = 0x%x\n", job->wb[i].mrt_bits);
-		wrap_log("\t\t.mrt_pitch = 0x%x\n", job->wb[i].mrt_pitch);
-		wrap_log("\t\t.zero = 0x%x\n", job->wb[i].zero);
-		wrap_log("\t},\n");
+		wrap_log("\t.wb[%d].type = 0x%x,\n", i, job->wb[i].type);
+		wrap_log("\t.wb[%d].address = 0x%x,\n", i, job->wb[i].address);
+		wrap_log("\t.wb[%d].pixel_format = 0x%x,\n", i, job->wb[i].pixel_format);
+		wrap_log("\t.wb[%d].downsample_factor = 0x%x,\n", i, job->wb[i].downsample_factor);
+		wrap_log("\t.wb[%d].pixel_layout = 0x%x,\n", i, job->wb[i].pixel_layout);
+		wrap_log("\t.wb[%d].pitch = 0x%x,\n", i, job->wb[i].pitch);
+		wrap_log("\t.wb[%d].mrt_bits = 0x%x,\n", i, job->wb[i].mrt_bits);
+		wrap_log("\t.wb[%d].mrt_pitch = 0x%x,\n", i, job->wb[i].mrt_pitch);
+		wrap_log("\t.wb[%d].zero = 0x%x,\n", i, job->wb[i].zero);
 	}
 
 	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
@@ -1223,7 +1212,7 @@ __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
 	wrap_log("\t.varying_stream = {\n");
 	hexdump(binary->varying_stream, binary->varying_stream_size);
 	wrap_log("\t},\n");
-	wrap_log("\t.varying_stream_size = 0x%x,\n", binary->uniform_stream_size);
+	wrap_log("\t.varying_stream_size = 0x%x,\n", binary->varying_stream_size);
 	wrap_log("\t.uniform_stream = {\n");
 	hexdump(binary->uniform_stream, binary->uniform_stream_size);
 	wrap_log("\t},\n");
