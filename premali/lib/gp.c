@@ -36,6 +36,7 @@
 #include "jobs.h"
 #include "vs.h"
 #include "plbu.h"
+#include "render_state.h"
 
 struct vs_info *
 vs_info_create(struct premali_state *state, void *address, int physical, int size)
@@ -567,14 +568,15 @@ plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size)
 int
 plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 {
-	int size;
+	struct render_state *state;
+	int size, i;
 
 	if (info->render_state) {
 		printf("%s: render_state already assigned\n", __func__);
 		return -1;
 	}
 
-	size = ALIGN(0x10 * 4, 0x40);
+	size = ALIGN(sizeof(struct render_state), 0x40);
 	if (size > (info->mem_size - info->mem_used)) {
 		printf("%s: no more space\n", __func__);
 		return -2;
@@ -591,25 +593,42 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 	info->mem_used += size;
 
 	/* this bit still needs some figuring out :) */
-	info->render_state[0x00] = 0;
-	info->render_state[0x01] = 0;
-	info->render_state[0x02] = 0xfc3b1ad2;
-	info->render_state[0x03] = 0x3E;
-	info->render_state[0x04] = 0xFFFF0000;
-	info->render_state[0x05] = 7;
-	info->render_state[0x06] = 7;
-	info->render_state[0x07] = 0;
-	info->render_state[0x08] = 0xF807;
-	info->render_state[0x09] = info->mem_physical + info->shader_offset +
-		info->shader_size;
-	info->render_state[0x0A] = 0x00000002;
-	info->render_state[0x0B] = 0x00000000;
+	state = info->render_state;
 
-	info->render_state[0x0C] = 0;
-	info->render_state[0x0D] = 0x301;
-	info->render_state[0x0E] = 0x2000;
+	state->unknown00 = 0;
+	state->unknown04 = 0;
+	state->unknown08 = 0xfc3b1ad2;
+	state->unknown0C = 0x3E;
+	state->depth_range = 0xFFFF0000;
+	state->unknown14 = 7;
+	state->unknown18 = 7;
+	state->unknown1C = 0;
+	state->unknown20 = 0xF807;
+	state->shader_address =
+		(info->mem_physical + info->shader_offset) | info->shader_size;
 
-	info->render_state[0x0F] = vs->varyings[0]->physical;
+	state->uniforms_address = 0x00000000;
+
+	state->textures_address = 0;
+	state->unknown34 = 0x300;
+	state->unknown38 = 0x2000;
+
+	if (vs->varying_count) {
+		state->varyings_address = vs->varyings[0]->physical;
+		state->unknown34 |= 0x01;
+		state->varying_types = 0;
+
+		for (i = 0; i < vs->varying_count; i++) {
+			if (i < 10)
+				state->varying_types |= 2 << (3 * i);
+			else if (i == 10) {
+				state->varying_types |= 2 << 30;
+				state->varyings_address |= 2 >> 2;
+			} else if (i == 11)
+				state->varyings_address |= 2 << 1;
+
+		}
+	}
 
 	return 0;
 }

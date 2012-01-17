@@ -63,7 +63,8 @@ struct vs_info {
 	struct symbol *attributes[0x10];
 	int attribute_count;
 
-	struct symbol *varyings[0x10];
+	/* fragment shader can only take up to 12 varyings. */
+	struct symbol *varyings[12];
 	int varying_count;
 	int varying_element_size;
 
@@ -96,7 +97,7 @@ struct plbu_info {
 	int commands_offset;
 	int commands_size;
 
-	unsigned int *render_state;
+	struct render_state *render_state;
 	int render_state_offset;
 	int render_state_size;
 
