@@ -140,45 +140,64 @@ struct stream_uniform_table {
 	struct stream_uniform *uniforms;
 };
 
-struct stream_attribute_table_start {
-	unsigned int tag; /* SATT */
-	int size;
-	int count;
-};
+static int
+stream_uniform_table_start_read(void *stream, struct stream_uniform_table *table)
+{
+	struct stream_uniform_table_start *start = stream;
 
-struct stream_attribute_start {
-	unsigned int tag; /* VATT */
-	int size;
-};
+	if (start->tag != STREAM_TAG_SUNI)
+		return 0;
 
-struct stream_attribute_data { /* 0x10 */
-	unsigned char type; /* 0x00 */
-	unsigned char unknown01; /* 0x01 */
-	unsigned short element_count; /* 0x02 */
-	unsigned short element_size; /* 0x04 */
-	unsigned short entry_count; /* 0x06. 0 == 1 */
-	unsigned short stride; /* 0x08 */
-	unsigned char unknown0A; /* 0x0A */
-	unsigned char precision; /* 0x0B */
-	unsigned short unknown0C; /* 0x0C */
-	unsigned short unknown0E; /* 0x0E */
-};
+	table->start = start;
+	return sizeof(struct stream_uniform_table_start);
+}
 
-struct stream_attribute {
-	struct stream_attribute *next;
+static int
+stream_uniform_start_read(void *stream, struct stream_uniform *uniform)
+{
+	struct stream_uniform_start *start = stream;
 
-	struct stream_attribute_start *start;
-	struct stream_string *string;
-	struct stream_attribute_data *data;
-};
+	if (start->tag != STREAM_TAG_VUNI)
+		return 0;
 
-struct stream_attribute_table {
-	struct stream_attribute_table_start *start;
+	uniform->start = start;
+	return sizeof(struct stream_uniform_start);
+}
 
-	struct stream_attribute *attributes;
-};
+static int
+stream_string_read(void *stream, struct stream_string **string)
+{
+	*string = stream;
 
-void
+	if ((*string)->tag == STREAM_TAG_STRI)
+		return sizeof(struct stream_string) + (*string)->size;
+
+	*string = NULL;
+	return 0;
+}
+
+static int
+stream_uniform_data_read(void *stream, struct stream_uniform *uniform)
+{
+	uniform->data = stream;
+
+	return sizeof(struct stream_uniform_data);
+}
+
+static int
+stream_uniform_init_read(void *stream, struct stream_uniform *uniform)
+{
+	struct stream_uniform_init *init = stream;
+
+	if (init->tag != STREAM_TAG_VINI)
+		return 0;
+
+	uniform->init = init;
+
+	return 8 + init->size;
+}
+
+static void
 stream_uniform_table_destroy(struct stream_uniform_table *table)
 {
 	if (table) {
@@ -193,64 +212,7 @@ stream_uniform_table_destroy(struct stream_uniform_table *table)
 	}
 }
 
-int
-stream_uniform_table_start_read(void *stream, struct stream_uniform_table *table)
-{
-	struct stream_uniform_table_start *start = stream;
-
-	if (start->tag != STREAM_TAG_SUNI)
-		return 0;
-
-	table->start = start;
-	return sizeof(struct stream_uniform_table_start);
-}
-
-int
-stream_uniform_start_read(void *stream, struct stream_uniform *uniform)
-{
-	struct stream_uniform_start *start = stream;
-
-	if (start->tag != STREAM_TAG_VUNI)
-		return 0;
-
-	uniform->start = start;
-	return sizeof(struct stream_uniform_start);
-}
-
-int
-stream_string_read(void *stream, struct stream_string **string)
-{
-	*string = stream;
-
-	if ((*string)->tag == STREAM_TAG_STRI)
-		return sizeof(struct stream_string) + (*string)->size;
-
-	*string = NULL;
-	return 0;
-}
-
-int
-stream_uniform_data_read(void *stream, struct stream_uniform *uniform)
-{
-	uniform->data = stream;
-
-	return sizeof(struct stream_uniform_data);
-}
-
-int
-stream_uniform_init_read(void *stream, struct stream_uniform *uniform)
-{
-	struct stream_uniform_init *init = stream;
-
-	if (init->tag != STREAM_TAG_VINI)
-		return 0;
-
-	uniform->init = init;
-
-	return 8 + init->size;
-}
-
-struct stream_uniform_table *
+static struct stream_uniform_table *
 stream_uniform_table_create(void *stream, int size)
 {
 	struct stream_uniform_table *table;
@@ -410,6 +372,256 @@ stream_uniform_table_to_symbols(struct stream_uniform_table *table,
 	return NULL;
 }
 
+/*
+ * Now for Attributes.
+ */
+struct stream_attribute_table_start {
+	unsigned int tag; /* SATT */
+	int size;
+	int count;
+};
+
+struct stream_attribute_start {
+	unsigned int tag; /* VATT */
+	int size;
+};
+
+struct stream_attribute_data { /* 0x14 */
+	unsigned char type; /* 0x00 */
+	unsigned char unknown01; /* 0x01 */
+	unsigned short element_count; /* 0x02 */
+	unsigned short element_size; /* 0x04 */
+	unsigned short entry_count; /* 0x06. 0 == 1 */
+	unsigned short stride; /* 0x08 */
+	unsigned char unknown0A; /* 0x0A */
+	unsigned char precision; /* 0x0B */
+	unsigned short unknown0C; /* 0x0C */
+	unsigned short offset; /* 0x0E */
+};
+
+struct stream_attribute_init {
+	unsigned int tag; /* VINI */
+	unsigned int size;
+	unsigned int count;
+	unsigned int data[];
+};
+
+struct stream_attribute {
+	struct stream_attribute *next;
+
+	struct stream_attribute_start *start;
+	struct stream_string *string;
+	struct stream_attribute_data *data;
+	struct stream_attribute_init *init;
+};
+
+struct stream_attribute_table {
+	struct stream_attribute_table_start *start;
+
+	struct stream_attribute *attributes;
+};
+
+static int
+stream_attribute_table_start_read(void *stream, struct stream_attribute_table *table)
+{
+	struct stream_attribute_table_start *start = stream;
+
+	if (start->tag != STREAM_TAG_SATT)
+		return 0;
+
+	table->start = start;
+	return sizeof(struct stream_attribute_table_start);
+}
+
+static int
+stream_attribute_start_read(void *stream, struct stream_attribute *attribute)
+{
+	struct stream_attribute_start *start = stream;
+
+	if (start->tag != STREAM_TAG_VATT)
+		return 0;
+
+	attribute->start = start;
+	return sizeof(struct stream_attribute_start);
+}
+
+static int
+stream_attribute_data_read(void *stream, struct stream_attribute *attribute)
+{
+	attribute->data = stream;
+
+	return sizeof(struct stream_attribute_data);
+}
+
+static void
+stream_attribute_table_destroy(struct stream_attribute_table *table)
+{
+	if (table) {
+		while (table->attributes) {
+			struct stream_attribute *attribute = table->attributes;
+
+			table->attributes = attribute->next;
+			free(attribute);
+		}
+
+		free(table);
+	}
+}
+
+static struct stream_attribute_table *
+stream_attribute_table_create(void *stream, int size)
+{
+	struct stream_attribute_table *table;
+	struct stream_attribute *attribute;
+	int offset = 0;
+	int i;
+
+	if (!stream || !size)
+		return NULL;
+
+	table = calloc(1, sizeof(struct stream_attribute_table));
+	if (!table) {
+		printf("%s: failed to allocate table\n", __func__);
+		return NULL;
+	}
+
+	offset += stream_attribute_table_start_read(stream + offset, table);
+	if (!table->start) {
+		printf("%s: Error: missing table start at 0x%x\n",
+		       __func__, offset);
+		goto corrupt;
+	}
+
+	for (i = 0; i < table->start->count; i++) {
+		attribute = calloc(1, sizeof(struct stream_attribute));
+		if (!table) {
+			printf("%s: failed to allocate attribute\n", __func__);
+			goto oom;
+		}
+
+		offset += stream_attribute_start_read(stream + offset, attribute);
+		if (!attribute->start) {
+			printf("%s: Error: missing attribute start at 0x%x\n",
+			       __func__, offset);
+			goto corrupt;
+		}
+
+		offset += stream_string_read(stream + offset, &attribute->string);
+		if (!attribute->string) {
+			printf("%s: Error: missing string at 0x%x\n",
+			       __func__, offset);
+			goto corrupt;
+		}
+
+		offset += stream_attribute_data_read(stream + offset, attribute);
+		if (!attribute->data) {
+			printf("%s: Error: missing attribute data at 0x%x\n",
+			       __func__, offset);
+			goto corrupt;
+		}
+
+		attribute->next = table->attributes;
+		table->attributes = attribute;
+	}
+
+	return table;
+ oom:
+	stream_attribute_table_destroy(table);
+	return NULL;
+ corrupt:
+	stream_attribute_table_destroy(table);
+	return NULL;
+}
+
+#if 0
+static void
+stream_attribute_table_print(struct stream_attribute_table *table)
+{
+	struct stream_attribute *attribute;
+
+	attribute = table->attributes;
+	while (attribute) {
+		printf("attribute \"%s\" = {\n", attribute->string->string);
+		printf("\t type 0x%02x, unknown01 0x%02x, element_count 0x%04x\n",
+		       attribute->data->type, attribute->data->unknown01,
+		       attribute->data->element_count);
+		printf("\t element_size 0x%04x, entry_count 0x%04x\n",
+		       attribute->data->element_size, attribute->data->entry_count);
+		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
+		       attribute->data->stride, attribute->data->unknown0A,
+		       attribute->data->precision);
+		printf("\t unknown0C 0x%04x, offset 0x%04x\n",
+		       attribute->data->unknown0C, attribute->data->offset);
+		printf("}\n");
+		attribute = attribute->next;
+	}
+}
+#endif
+
+static struct symbol **
+stream_attribute_table_to_symbols(struct stream_attribute_table *table,
+				int *count)
+{
+	struct stream_attribute *attribute;
+	struct symbol **symbols;
+	int i;
+
+	if (!table || !count)
+		return NULL;
+
+	*count = table->start->count;
+
+	if (!table->start->count)
+		return NULL;
+
+	symbols = calloc(*count, sizeof(struct symbol *));
+	if (!symbols) {
+		printf("%s: Error: failed to allocate symbols: %s\n",
+		       __func__, strerror(errno));
+		goto error;
+	}
+
+	for (i = 0, attribute = table->attributes;
+	     (i < table->start->count) && attribute;
+	     i++, attribute = attribute->next) {
+		if (attribute->init)
+			symbols[i] =
+				symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
+					      attribute->data->element_count * attribute->data->element_size,
+					      attribute->data->element_count, attribute->data->entry_count,
+					      attribute->init->data, 1);
+		else
+			symbols[i] =
+				symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
+					      attribute->data->element_count * attribute->data->element_size,
+					      attribute->data->element_count, attribute->data->entry_count,
+					      NULL, 0);
+		if (!symbols[i]) {
+			printf("%s: Error: failed to create symbol %s: %s\n",
+			       __func__, attribute->string->string, strerror(errno));
+			goto error;
+		}
+
+		symbols[i]->offset = attribute->data->offset;
+	}
+
+	return symbols;
+ error:
+	if (symbols) {
+		for (i = 0; i < *count; i++)
+			if (symbols[i])
+				symbol_destroy(symbols[i]);
+	}
+	free(symbols);
+
+	*count = 0;
+
+	return NULL;
+}
+
+/*
+ *
+ */
 static void
 vertex_shader_attributes_patch(unsigned int *shader, int size)
 {
@@ -526,6 +738,7 @@ vertex_shader_attach(struct premali_state *state, const char *source)
 {
 	struct mali_shader_binary *binary;
 	struct stream_uniform_table *uniform_table;
+	struct stream_attribute_table *attribute_table;
 
 	binary = premali_shader_compile(MALI_SHADER_VERTEX, source);
 	if (!binary)
@@ -540,6 +753,17 @@ vertex_shader_attach(struct premali_state *state, const char *source)
 							&state->vertex_uniform_count,
 							&state->vertex_uniform_size);
 		stream_uniform_table_destroy(uniform_table);
+	}
+
+	attribute_table =
+		stream_attribute_table_create(binary->attribute_stream,
+					      binary->attribute_stream_size);
+	if (attribute_table) {
+		state->vertex_attributes =
+			stream_attribute_table_to_symbols(attribute_table,
+							  &state->vertex_attribute_count);
+		stream_attribute_table_destroy(attribute_table);
+
 	}
 
 	{

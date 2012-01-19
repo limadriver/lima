@@ -27,7 +27,7 @@
 #ifndef PREMALI_PROGRAM_H
 #define PREMALI_PROGRAM_H 1
 
-int vertex_shader_compile(struct vs_info *info, const char *source);
-int fragment_shader_compile(struct plbu_info *info, const char *source);
+int vertex_shader_attach(struct premali_state *state, const char *source);
+int fragment_shader_attach(struct premali_state *state, const char *source);
 
 #endif /* PREMALI_PROGRAM_H */

@@ -99,8 +99,8 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	vertex_shader_compile(state->vs, vertex_shader_source);
-	fragment_shader_compile(state->plbu, fragment_shader_source);
+	vertex_shader_attach(state, vertex_shader_source);
+	fragment_shader_attach(state, fragment_shader_source);
 
 
 	vs_info_attach_standard_uniforms(state, state->vs);
