@@ -62,9 +62,15 @@ struct premali_state {
 	struct symbol **vertex_attributes;
 	int vertex_attribute_count;
 
+	struct symbol **vertex_varyings;
+	int vertex_varying_count;
+
 	struct symbol **fragment_uniforms;
 	int fragment_uniform_count;
 	int fragment_uniform_size;
+
+	struct symbol **fragment_varyings;
+	int fragment_varying_count;
 };
 
 /* from premali.c */

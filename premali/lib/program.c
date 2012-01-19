@@ -399,20 +399,12 @@ struct stream_attribute_data { /* 0x14 */
 	unsigned short offset; /* 0x0E */
 };
 
-struct stream_attribute_init {
-	unsigned int tag; /* VINI */
-	unsigned int size;
-	unsigned int count;
-	unsigned int data[];
-};
-
 struct stream_attribute {
 	struct stream_attribute *next;
 
 	struct stream_attribute_start *start;
 	struct stream_string *string;
 	struct stream_attribute_data *data;
-	struct stream_attribute_init *init;
 };
 
 struct stream_attribute_table {
@@ -584,18 +576,11 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 	for (i = 0, attribute = table->attributes;
 	     (i < table->start->count) && attribute;
 	     i++, attribute = attribute->next) {
-		if (attribute->init)
-			symbols[i] =
-				symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
-					      attribute->data->element_count * attribute->data->element_size,
-					      attribute->data->element_count, attribute->data->entry_count,
-					      attribute->init->data, 1);
-		else
-			symbols[i] =
-				symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
-					      attribute->data->element_count * attribute->data->element_size,
-					      attribute->data->element_count, attribute->data->entry_count,
-					      NULL, 0);
+		symbols[i] =
+			symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
+				      attribute->data->element_count * attribute->data->element_size,
+				      attribute->data->element_count, attribute->data->entry_count,
+				      NULL, 0);
 		if (!symbols[i]) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, attribute->string->string, strerror(errno));
@@ -603,6 +588,243 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 		}
 
 		symbols[i]->offset = attribute->data->offset;
+	}
+
+	return symbols;
+ error:
+	if (symbols) {
+		for (i = 0; i < *count; i++)
+			if (symbols[i])
+				symbol_destroy(symbols[i]);
+	}
+	free(symbols);
+
+	*count = 0;
+
+	return NULL;
+}
+
+/*
+ * Now for Varyings.
+ */
+#define STREAM_TAG_SVAR 0x52415653
+#define STREAM_TAG_VVAR 0x52415656
+
+struct stream_varying_table_start {
+	unsigned int tag; /* SATT */
+	int size;
+	int count;
+};
+
+struct stream_varying_start {
+	unsigned int tag; /* VATT */
+	int size;
+};
+
+struct stream_varying_data { /* 0x14 */
+	unsigned char type; /* 0x00 */
+	unsigned char unknown01; /* 0x01 */
+	unsigned short element_count; /* 0x02 */
+	unsigned short element_size; /* 0x04 */
+	unsigned short entry_count; /* 0x06. 0 == 1 */
+	unsigned short stride; /* 0x08 */
+	unsigned char unknown0A; /* 0x0A */
+	unsigned char precision; /* 0x0B */
+	unsigned short unknown0C; /* 0x0C */
+	unsigned short unknown0E; /* 0x0E */
+	unsigned short offset; /* 0x10 */
+	unsigned short index; /* 0x12 */
+};
+
+struct stream_varying {
+	struct stream_varying *next;
+
+	struct stream_varying_start *start;
+	struct stream_string *string;
+	struct stream_varying_data *data;
+};
+
+struct stream_varying_table {
+	struct stream_varying_table_start *start;
+
+	struct stream_varying *varyings;
+};
+
+static int
+stream_varying_table_start_read(void *stream, struct stream_varying_table *table)
+{
+	struct stream_varying_table_start *start = stream;
+
+	if (start->tag != STREAM_TAG_SVAR)
+		return 0;
+
+	table->start = start;
+	return sizeof(struct stream_varying_table_start);
+}
+
+static int
+stream_varying_start_read(void *stream, struct stream_varying *varying)
+{
+	struct stream_varying_start *start = stream;
+
+	if (start->tag != STREAM_TAG_VVAR)
+		return 0;
+
+	varying->start = start;
+	return sizeof(struct stream_varying_start);
+}
+
+static int
+stream_varying_data_read(void *stream, struct stream_varying *varying)
+{
+	varying->data = stream;
+
+	return sizeof(struct stream_varying_data);
+}
+
+static void
+stream_varying_table_destroy(struct stream_varying_table *table)
+{
+	if (table) {
+		while (table->varyings) {
+			struct stream_varying *varying = table->varyings;
+
+			table->varyings = varying->next;
+			free(varying);
+		}
+
+		free(table);
+	}
+}
+
+static struct stream_varying_table *
+stream_varying_table_create(void *stream, int size)
+{
+	struct stream_varying_table *table;
+	struct stream_varying *varying;
+	int offset = 0;
+	int i;
+
+	if (!stream || !size)
+		return NULL;
+
+	table = calloc(1, sizeof(struct stream_varying_table));
+	if (!table) {
+		printf("%s: failed to allocate table\n", __func__);
+		return NULL;
+	}
+
+	offset += stream_varying_table_start_read(stream + offset, table);
+	if (!table->start) {
+		printf("%s: Error: missing table start at 0x%x\n",
+		       __func__, offset);
+		goto corrupt;
+	}
+
+	for (i = 0; i < table->start->count; i++) {
+		varying = calloc(1, sizeof(struct stream_varying));
+		if (!table) {
+			printf("%s: failed to allocate varying\n", __func__);
+			goto oom;
+		}
+
+		offset += stream_varying_start_read(stream + offset, varying);
+		if (!varying->start) {
+			printf("%s: Error: missing varying start at 0x%x\n",
+			       __func__, offset);
+			goto corrupt;
+		}
+
+		offset += stream_string_read(stream + offset, &varying->string);
+		if (!varying->string) {
+			printf("%s: Error: missing string at 0x%x\n",
+			       __func__, offset);
+			goto corrupt;
+		}
+
+		offset += stream_varying_data_read(stream + offset, varying);
+		if (!varying->data) {
+			printf("%s: Error: missing varying data at 0x%x\n",
+			       __func__, offset);
+			goto corrupt;
+		}
+
+		varying->next = table->varyings;
+		table->varyings = varying;
+	}
+
+	return table;
+ oom:
+	stream_varying_table_destroy(table);
+	return NULL;
+ corrupt:
+	stream_varying_table_destroy(table);
+	return NULL;
+}
+
+#if 0
+static void
+stream_varying_table_print(struct stream_varying_table *table)
+{
+	struct stream_varying *varying;
+
+	varying = table->varyings;
+	while (varying) {
+		printf("varying \"%s\" = {\n", varying->string->string);
+		printf("\t type 0x%02x, unknown01 0x%02x, element_count 0x%04x\n",
+		       varying->data->type, varying->data->unknown01,
+		       varying->data->element_count);
+		printf("\t element_size 0x%04x, entry_count 0x%04x\n",
+		       varying->data->element_size, varying->data->entry_count);
+		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
+		       varying->data->stride, varying->data->unknown0A,
+		       varying->data->precision);
+		printf("\t unknown0C 0x%04x, offset 0x%04x\n",
+		       varying->data->unknown0C, varying->data->offset);
+		printf("}\n");
+		varying = varying->next;
+	}
+}
+#endif
+
+static struct symbol **
+stream_varying_table_to_symbols(struct stream_varying_table *table,
+				int *count)
+{
+	struct stream_varying *varying;
+	struct symbol **symbols;
+	int i;
+
+	if (!table || !count)
+		return NULL;
+
+	*count = table->start->count;
+
+	if (!table->start->count)
+		return NULL;
+
+	symbols = calloc(*count, sizeof(struct symbol *));
+	if (!symbols) {
+		printf("%s: Error: failed to allocate symbols: %s\n",
+		       __func__, strerror(errno));
+		goto error;
+	}
+
+	for (i = 0, varying = table->varyings;
+	     (i < table->start->count) && varying;
+	     i++, varying = varying->next) {
+			symbols[i] =
+				symbol_create(varying->string->string, SYMBOL_VARYING,
+					      varying->data->element_count * varying->data->element_size,
+					      varying->data->element_count, varying->data->entry_count,
+					      NULL, 0);
+		if (!symbols[i]) {
+			printf("%s: Error: failed to create symbol %s: %s\n",
+			       __func__, varying->string->string, strerror(errno));
+			goto error;
+		}
+
+		symbols[i]->offset = varying->data->offset;
 	}
 
 	return symbols;
@@ -739,6 +961,7 @@ vertex_shader_attach(struct premali_state *state, const char *source)
 	struct mali_shader_binary *binary;
 	struct stream_uniform_table *uniform_table;
 	struct stream_attribute_table *attribute_table;
+	struct stream_varying_table *varying_table;
 
 	binary = premali_shader_compile(MALI_SHADER_VERTEX, source);
 	if (!binary)
@@ -766,6 +989,23 @@ vertex_shader_attach(struct premali_state *state, const char *source)
 
 	}
 
+	varying_table =
+		stream_varying_table_create(binary->varying_stream,
+					      binary->varying_stream_size);
+	if (varying_table) {
+		state->vertex_varyings =
+			stream_varying_table_to_symbols(varying_table,
+							  &state->vertex_varying_count);
+		stream_varying_table_destroy(varying_table);
+
+		{
+			int i;
+
+			for (i = 0; i < state->vertex_varying_count; i++)
+				symbol_print(state->vertex_varyings[i]);
+		}
+	}
+
 	{
 		unsigned int *shader = binary->shader;
 		int size = binary->shader_size / 16;
@@ -784,6 +1024,7 @@ fragment_shader_attach(struct premali_state *state, const char *source)
 {
 	struct mali_shader_binary *binary;
 	struct stream_uniform_table *uniform_table;
+	struct stream_varying_table *varying_table;
 
 	binary = premali_shader_compile(MALI_SHADER_FRAGMENT, source);
 	if (!binary)
@@ -798,6 +1039,23 @@ fragment_shader_attach(struct premali_state *state, const char *source)
 							&state->fragment_uniform_count,
 							&state->fragment_uniform_size);
 		stream_uniform_table_destroy(uniform_table);
+	}
+
+	varying_table =
+		stream_varying_table_create(binary->varying_stream,
+					      binary->varying_stream_size);
+	if (varying_table) {
+		state->vertex_varyings =
+			stream_varying_table_to_symbols(varying_table,
+							  &state->vertex_varying_count);
+		stream_varying_table_destroy(varying_table);
+
+		{
+			int i;
+
+			for (i = 0; i < state->vertex_varying_count; i++)
+				symbol_print(state->vertex_varyings[i]);
+		}
 	}
 
 	{
