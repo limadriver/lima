@@ -1,22 +1,16 @@
-include ../Makefile.inc
+DIRS = info
 
-TOP=..
+.PHONY: all clean install $(DIRS)
 
-CFLAGS += -I$(TOP)/include
+all: MAKE = make all
+all: $(DIRS)
 
-all: mali_info
+$(DIRS):
+	$(MAKE) -C $@
 
-clean:
-	rm -f *.o
-	rm -f mali_info
+install: MAKE = make install
+install: $(DIRS)
 
-mali_info: mali_info.c
-	$(CC) $(CFLAGS) -o $@ $^
+clean: MAKE = make clean
+clean: $(DIRS)
 
-install: $(ADB) mali_info
-	$(ADB) push mali_info /system/bin
-
-run:	$(ADB)
-	$(ADB) shell mali_info
-
-include ../Makefile.post

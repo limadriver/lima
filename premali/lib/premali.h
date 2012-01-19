@@ -54,6 +54,14 @@ struct premali_state {
 	struct plb *plb;
 
 	struct pp_info *pp;
+
+	struct symbol **vertex_uniforms;
+	int vertex_uniform_count;
+	int vertex_uniform_size;
+
+	struct symbol **fragment_uniforms;
+	int fragment_uniform_count;
+	int fragment_uniform_size;
 };
 
 /* from premali.c */

@@ -30,8 +30,9 @@ enum symbol_type {
 };
 
 struct symbol {
+#define SYMBOL_STRING_SIZE 64
 	/* as referenced by the shaders and shader compiler binary streams */
-	const char *name;
+	char name[SYMBOL_STRING_SIZE + 1];
 
 	enum symbol_type type;
 
@@ -39,15 +40,22 @@ struct symbol {
 	int element_entries;
 	int element_count;
 
+	int size; /* size it takes in memory. */
+	int offset; /* offset from start of memory block */
+
 	void *address;
 	int physical; /* empty for uniforms */
 
 	void *data;
+	int data_allocated;
 };
 
 struct symbol *symbol_create(const char *name, enum symbol_type type,
 			     int element_size, int element_entries, int count,
 			     void *data, int copy);
+
+void symbol_destroy(struct symbol *symbol);
+void symbol_print(struct symbol *symbol);
 
 struct symbol *uniform_gl_mali_ViewPortTransform(float x0, float y0,
 						 float x1, float y1,

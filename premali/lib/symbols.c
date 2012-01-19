@@ -32,29 +32,87 @@ symbol_create(const char *name, enum symbol_type type, int element_size,
 {
 	struct symbol *symbol;
 
-	if (copy)
-		symbol = calloc(1, sizeof(struct symbol) + element_size * count);
-	else
-		symbol = calloc(1, sizeof(struct symbol));
+	if (!count)
+		count = 1;
+
+	symbol = calloc(1, sizeof(struct symbol));
 	if (!symbol) {
 		printf("%s: failed to allocate: %s\n", __func__, strerror(errno));
 		return NULL;
 	}
 
-	symbol->name = name;
+	if (copy) {
+		symbol->data = malloc(element_size * count);
+		if (!symbol->data) {
+			printf("%s: failed to allocate data: %s\n",
+			       __func__, strerror(errno));
+			free(symbol);
+			return NULL;
+		}
+		symbol->data_allocated = 1;
+	}
+
+	strncpy(symbol->name, name, SYMBOL_STRING_SIZE);
 	symbol->type = type;
 
 	symbol->element_size = element_size;
 	symbol->element_count = count;
 	symbol->element_entries = element_entries;
 
-	if (copy) {
-		symbol->data = &symbol[1];
+	symbol->size = element_size * count;
+
+	if (copy)
 		memcpy(symbol->data, data, element_size * count);
-	} else
+	else
 		symbol->data = data;
 
 	return symbol;
+}
+
+void
+symbol_destroy(struct symbol *symbol)
+{
+	if (symbol->data_allocated)
+		free(symbol->data);
+	free(symbol);
+}
+
+void
+symbol_print(struct symbol *symbol)
+{
+	char *type;
+	int i;
+
+	switch(symbol->type) {
+	case SYMBOL_UNIFORM:
+		type = "uniform";
+		break;
+	case SYMBOL_ATTRIBUTE:
+		type = "attribute";
+		break;
+	case SYMBOL_VARYING:
+		type = "varying";
+		break;
+	}
+
+	printf("Symbol %s (%s) = {\n", symbol->name, type);
+	printf("\t.element_size = %d,\n", symbol->element_size);
+	printf("\t.element_entries = %d,\n", symbol->element_entries);
+	printf("\t.element_count = %d,\n", symbol->element_count);
+	printf("\t.size = %d,\n", symbol->size);
+	printf("\t.offset = 0x%x,\n", symbol->offset);
+	printf("\t.address = %p,\n", symbol->address);
+	printf("\t.physical = 0x%x,\n", symbol->physical);
+
+	if (symbol->data) {
+		float *data = symbol->data;
+
+		for (i = 0; i < (symbol->size / 4); i++)
+			printf("\t.data[0x%02x] = %f\n",
+			       i, data[i]);
+	}
+
+	printf("};\n");
 }
 
 /*

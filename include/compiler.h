@@ -26,8 +26,8 @@ struct mali_shader_binary_vertex_parameters { /* 0x24 */
 	int unknown04; /* 0x04 */
 	int unknown08; /* 0x08 */
 	int unknown0C; /* 0x0C */
-	int unknown10; /* 0x10 */
-	int unknown14; /* 0x14 */
+	int attribute_count; /* 0x10 */
+	int varying_count; /* 0x14 */
 	int unknown18; /* 0x18 */
 	int size; /* 0x1C, commands are in 4 dwords */
 	int unknown20; /* 0x20 */
@@ -73,5 +73,5 @@ struct mali_shader_binary { /* 0x5C */
 #define MALI_SHADER_VERTEX   0x8B31
 
 int __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
-			       char *source, int *length, int count);
+			       const char *source, int *length, int count);
 #endif /* MALI_COMPILER_H */
