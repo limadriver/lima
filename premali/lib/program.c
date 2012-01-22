@@ -868,8 +868,8 @@ vertex_shader_attributes_patch(unsigned int *shader, int size)
 	}
 }
 
-static void
-vertex_shader_varyings_patch(unsigned int *shader, int size)
+static int
+vertex_shader_varyings_patch(unsigned int *shader, int size, int *indices)
 {
 	int i;
 
@@ -882,13 +882,14 @@ vertex_shader_varyings_patch(unsigned int *shader, int size)
 
 		if (tmp & 0x10) {
 			tmp &= 0x0F;
-			shader[4 * i + 2] &= ~(0x0F << 26);
+			if (indices[tmp] == -1) {
+				printf("%s: invalid index 0x%x at line %d\n",
+				       __func__, tmp, i);
+				return -1;
+			}
+			tmp = indices[tmp] & 0x0F;
 
-			/* program specific bit, for now */
-			if (!tmp)
-				tmp = 1;
-			else
-				tmp = 0;
+			shader[4 * i + 2] &= ~(0x0F << 26);
 
 			shader[4 * i + 2] |= tmp << 26;
 		}
@@ -898,19 +899,22 @@ vertex_shader_varyings_patch(unsigned int *shader, int size)
 
 		if (tmp & 0x10) {
 			tmp &= 0x0F;
+			if (indices[tmp] == -1) {
+				printf("%s: invalid index 0x%x at line %d\n",
+				       __func__, tmp, i);
+				return -1;
+			}
+			tmp = indices[tmp] & 0x0F;
+
 			shader[4 * i + 2] &= ~(0x01 << 31);
 			shader[4 * i + 3] &= ~0x07;
-
-			/* program specific bit, for now */
-			if (!tmp)
-				tmp = 1;
-			else
-				tmp = 0;
 
 			shader[4 * i + 2] |= tmp << 31;
 			shader[4 * i + 3] |= tmp >> 1;
 		}
 	}
+
+	return 0;
 }
 
 void
@@ -991,30 +995,15 @@ vertex_shader_attach(struct premali_state *state, const char *source)
 
 	varying_table =
 		stream_varying_table_create(binary->varying_stream,
-					      binary->varying_stream_size);
+					    binary->varying_stream_size);
 	if (varying_table) {
 		state->vertex_varyings =
 			stream_varying_table_to_symbols(varying_table,
-							  &state->vertex_varying_count);
+							&state->vertex_varying_count);
 		stream_varying_table_destroy(varying_table);
-
-		{
-			int i;
-
-			for (i = 0; i < state->vertex_varying_count; i++)
-				symbol_print(state->vertex_varyings[i]);
-		}
 	}
 
-	{
-		unsigned int *shader = binary->shader;
-		int size = binary->shader_size / 16;
-
-		vertex_shader_attributes_patch(shader, size);
-		vertex_shader_varyings_patch(shader, size);
-
-		vs_info_attach_shader(state->vs, shader, size);
-	}
+	state->vertex_binary = binary;
 
 	return 0;
 }
@@ -1043,27 +1032,208 @@ fragment_shader_attach(struct premali_state *state, const char *source)
 
 	varying_table =
 		stream_varying_table_create(binary->varying_stream,
-					      binary->varying_stream_size);
+					    binary->varying_stream_size);
 	if (varying_table) {
-		state->vertex_varyings =
+		state->fragment_varyings =
 			stream_varying_table_to_symbols(varying_table,
-							  &state->vertex_varying_count);
+							&state->fragment_varying_count);
 		stream_varying_table_destroy(varying_table);
+	}
 
-		{
-			int i;
+	state->fragment_binary = binary;
 
-			for (i = 0; i < state->vertex_varying_count; i++)
-				symbol_print(state->vertex_varyings[i]);
+	return 0;
+}
+
+void
+state_symbols_print(struct premali_state *state)
+{
+	int i;
+
+	printf("Vertex symbols:\n");
+	printf("\tAttributes: %d\n", state->vertex_attribute_count);
+	for (i = 0; i < state->vertex_attribute_count; i++)
+		symbol_print(state->vertex_attributes[i]);
+	printf("\tVaryings: %d\n", state->vertex_varying_count);
+	for (i = 0; i < state->vertex_varying_count; i++)
+		symbol_print(state->vertex_varyings[i]);
+	printf("\tUniforms: %d\n", state->vertex_uniform_count);
+	for (i = 0; i < state->vertex_uniform_count; i++)
+		symbol_print(state->vertex_uniforms[i]);
+
+	printf("Fragment symbols:\n");
+	printf("\tVaryings: %d\n", state->fragment_varying_count);
+	for (i = 0; i < state->fragment_varying_count; i++)
+		symbol_print(state->fragment_varyings[i]);
+	printf("\tUniforms: %d\n", state->fragment_uniform_count);
+	for (i = 0; i < state->fragment_uniform_count; i++)
+		symbol_print(state->fragment_uniforms[i]);
+}
+
+/*
+ * Remove varyings with an index of -1
+ */
+static void
+vertex_varyings_unused_remove(struct premali_state *state)
+{
+	int i, j;
+
+
+	/* first off, clear any varyings which are not present */
+	for (i = 0; i < state->vertex_varying_count; i++) {
+		if (state->vertex_varyings[i]->offset == -1) {
+			symbol_destroy(state->vertex_varyings[i]);
+			state->vertex_varyings[i] = NULL;
 		}
 	}
 
-	{
-		unsigned int *shader = binary->shader;
-		int size = binary->shader_size / 4;
-
-		plbu_info_attach_shader(state->plbu, shader, size);
+	/* defrag after clear */
+	for (i = 0, j = 0; i < state->vertex_varying_count; i++) {
+		if (state->vertex_varyings[i]) {
+			if (i != j)
+				state->vertex_varyings[j] =
+					state->vertex_varyings[i];
+			j++;
+		}
 	}
+	state->vertex_varying_count = j;
+}
+
+/*
+ * Checks whether vertex and fragment attributes match.
+ */
+static int
+premali_link_varyings_match(struct premali_state *state)
+{
+	int i, j;
+
+	/* now make sure that our varyings are present in both */
+	for (i = 0; i < state->fragment_varying_count; i++) {
+		struct symbol *fragment = state->fragment_varyings[i];
+
+		for (j = 0; j < state->vertex_varying_count; j++) {
+			struct symbol *vertex = state->vertex_varyings[j];
+
+			if (!strcmp(fragment->name, vertex->name)) {
+				if (fragment->element_size != vertex->element_size) {
+					printf("%s: Error: element_size mismatch for varying \"%s\".\n",
+					       __func__, fragment->name);
+					return -1;
+				}
+
+				if (fragment->element_entries != vertex->element_entries) {
+					printf("%s: Error: element_size mismatch for varying \"%s\".\n",
+					       __func__, fragment->name);
+					return -1;
+				}
+
+				if (fragment->element_count != vertex->element_count) {
+					printf("%s: Error: element_count mismatch for varying \"%s\".\n",
+					       __func__, fragment->name);
+					return -1;
+				}
+
+				if (fragment->size != vertex->size) {
+					printf("%s: Error: size mismatch for varying \"%s\".\n",
+					       __func__, fragment->name);
+					return -1;
+				}
+
+				break;
+			}
+		}
+
+		if (j == state->vertex_varying_count) {
+			printf("%s: Error: vertex shader does not provide "
+			       "varying \"%s\".\n", __func__, fragment->name);
+			return -1;
+		}
+	}
+
+	/* now check for standard varyings, which might not be defined in
+	 * the fragment symbol list */
+	if (state->fragment_varying_count != state->vertex_varying_count) {
+		for (i = 0, j = 0; i < state->vertex_varying_count; i++) {
+			struct symbol *vertex = state->vertex_varyings[i];
+
+			if (!strncmp(vertex->name, "gl_", 3))
+				j++;
+		}
+
+		if (state->fragment_varying_count >
+		    (state->vertex_varying_count + j)) {
+			printf("%s: superfluous vertex shader varyings detected.\n",
+			       __func__);
+			/* no error... yet... */
+		}
+
+	}
+
+	return 0;
+}
+
+/*
+ * TODO: when there are multiple varyings defined in the fragment shader
+ * how do we order then? Most likely from symbol->offset too.
+ */
+static void
+premali_link_varyings_indices_get(struct premali_state *state, int *varyings)
+{
+	int i, j;
+
+	for (i = 0; i < state->fragment_varying_count; i++) {
+		struct symbol *fragment = state->fragment_varyings[i];
+
+		for (j = 0; j < state->vertex_varying_count; j++) {
+			struct symbol *vertex = state->vertex_varyings[j];
+
+			if (!strcmp(fragment->name, vertex->name))
+				varyings[vertex->offset / 4] = i;
+		}
+	}
+
+	for (j = 0; j < state->vertex_varying_count; j++) {
+		if (varyings[j] == -1) {
+			struct symbol *vertex = state->vertex_varyings[j];
+
+			if (!strcmp(vertex->name, "gl_Position")) {
+				varyings[vertex->offset / 4] = state->fragment_varying_count;
+				break;
+			}
+		}
+	}
+
+#if 0
+	for (i = 0; i < 16; i++)
+		printf("varyings[%d] = %d\n", i, varyings[i]);
+#endif
+}
+
+int
+premali_link(struct premali_state *state)
+{
+	int varyings[16] = { -1, -1, -1, -1, -1, -1, -1, -1,
+			     -1, -1, -1, -1, -1, -1, -1, -1 };
+
+	vertex_varyings_unused_remove(state);
+	if (premali_link_varyings_match(state))
+		return -1;
+
+#if 1
+	vertex_shader_attributes_patch(state->vertex_binary->shader,
+				       state->vertex_binary->shader_size / 16);
+#endif
+
+	premali_link_varyings_indices_get(state, varyings);
+	vertex_shader_varyings_patch(state->vertex_binary->shader,
+				     state->vertex_binary->shader_size / 16,
+				     varyings);
+
+	vs_info_attach_shader(state->vs, state->vertex_binary->shader,
+			      state->vertex_binary->shader_size / 16);
+
+	plbu_info_attach_shader(state->plbu, state->fragment_binary->shader,
+				state->fragment_binary->shader_size / 4);
 
 	return 0;
 }

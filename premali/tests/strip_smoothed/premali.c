@@ -101,6 +101,7 @@ main(int argc, char *argv[])
 	vertex_shader_attach(state, vertex_shader_source);
 	fragment_shader_attach(state, fragment_shader_source);
 
+	premali_link(state);
 
 	vs_info_attach_standard_uniforms(state, state->vs);
 

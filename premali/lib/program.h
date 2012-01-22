@@ -30,4 +30,6 @@
 int vertex_shader_attach(struct premali_state *state, const char *source);
 int fragment_shader_attach(struct premali_state *state, const char *source);
 
+int premali_link(struct premali_state *state);
+
 #endif /* PREMALI_PROGRAM_H */

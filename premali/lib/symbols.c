@@ -100,7 +100,7 @@ symbol_print(struct symbol *symbol)
 	printf("\t.element_entries = %d,\n", symbol->element_entries);
 	printf("\t.element_count = %d,\n", symbol->element_count);
 	printf("\t.size = %d,\n", symbol->size);
-	printf("\t.offset = 0x%x,\n", symbol->offset);
+	printf("\t.offset = %d,\n", symbol->offset);
 	printf("\t.address = %p,\n", symbol->address);
 	printf("\t.physical = 0x%x,\n", symbol->physical);
 

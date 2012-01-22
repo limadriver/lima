@@ -41,7 +41,7 @@ struct symbol {
 	int element_count;
 
 	int size; /* size it takes in memory. */
-	int offset; /* offset from start of memory block */
+	short offset; /* offset from start of memory block */
 
 	void *address;
 	int physical; /* empty for uniforms */

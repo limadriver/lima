@@ -55,6 +55,8 @@ struct premali_state {
 
 	struct pp_info *pp;
 
+	struct mali_shader_binary *vertex_binary;
+
 	struct symbol **vertex_uniforms;
 	int vertex_uniform_count;
 	int vertex_uniform_size;
@@ -64,6 +66,8 @@ struct premali_state {
 
 	struct symbol **vertex_varyings;
 	int vertex_varying_count;
+
+	struct mali_shader_binary *fragment_binary;
 
 	struct symbol **fragment_uniforms;
 	int fragment_uniform_count;
