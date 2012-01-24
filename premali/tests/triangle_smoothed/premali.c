@@ -52,8 +52,6 @@ main(int argc, char *argv[])
 			  1.0, 0.0, 0.0, 1.0};
 	struct symbol *aColors =
 		symbol_create("aColors", SYMBOL_ATTRIBUTE, 16, 4, 3, colors, 0);
-	struct symbol *vColors =
-		symbol_create("vColors", SYMBOL_VARYING, 0, 16, 0, NULL, 0);
 
 	const char *vertex_shader_source =
 		"attribute vec4 aPosition;    \n"
@@ -95,8 +93,6 @@ main(int argc, char *argv[])
 
 	vs_info_attach_attribute(state->vs, aPosition);
 	vs_info_attach_attribute(state->vs, aColors);
-
-	vs_info_attach_varying(state->vs, vColors);
 
 	ret = premali_draw_arrays(state, GL_TRIANGLES, 3);
 	if (ret)

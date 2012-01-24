@@ -95,8 +95,8 @@ vs_info_create(struct premali_state *state, void *address, int physical, int siz
 
 	/* predefine an area for our vertex array */
 	info->vertex_array_offset = info->mem_used;
-	info->vertex_array_size = 0x40;
-	info->mem_used += 0x40;
+	info->vertex_array_size = 2 * 0x40;
+	info->mem_used += 2 * 0x40;
 
 	/* leave the rest empty for now */
 
@@ -199,12 +199,7 @@ vs_info_attach_varying(struct vs_info *info, struct symbol *varying)
 		return -1;
 	}
 
-	if (varying->element_size) {
-		printf("%s: invalid varying %s\n", __func__, varying->name);
-		return -3;
-	}
-
-	size = ALIGN(4 * varying->element_count, 0x40);
+	size = 2 * ALIGN(varying->size, 0x40);
 	if (size > (info->mem_size - info->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
@@ -333,7 +328,7 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 		for (i = 0; i < info->varying_count; i++) {
 			info->common->varyings[i].physical = info->varyings[i]->physical;
 			info->common->varyings[i].size = (8 << 11) |
-				(info->varyings[i]->element_entries - 1);
+				(info->varyings[i]->size - 1);
 		}
 
 		info->common->varyings[i].physical =
@@ -350,7 +345,7 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 		for (i = 0; i < info->varying_count; i++) {
 			info->varying_area[i].physical = info->varyings[i]->physical;
 			info->varying_area[i].size = (8 << 11) |
-				(info->varyings[i]->element_entries - 1);
+				(info->varyings[i]->size - 1);
 		}
 
 		info->varying_area[i].physical =

@@ -1214,6 +1214,7 @@ premali_link(struct premali_state *state)
 {
 	int varyings[16] = { -1, -1, -1, -1, -1, -1, -1, -1,
 			     -1, -1, -1, -1, -1, -1, -1, -1 };
+	int i;
 
 	vertex_varyings_unused_remove(state);
 	if (premali_link_varyings_match(state))
@@ -1223,6 +1224,11 @@ premali_link(struct premali_state *state)
 	vertex_shader_attributes_patch(state->vertex_binary->shader,
 				       state->vertex_binary->shader_size / 16);
 #endif
+
+	for (i = 0; i < state->fragment_varying_count; i++) {
+		symbol_print(state->fragment_varyings[i]);
+		vs_info_attach_varying(state->vs, state->fragment_varyings[i]);
+	}
 
 	premali_link_varyings_indices_get(state, varyings);
 	vertex_shader_varyings_patch(state->vertex_binary->shader,
