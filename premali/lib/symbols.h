@@ -36,9 +36,9 @@ struct symbol {
 
 	enum symbol_type type;
 
-	int element_size;
-	int element_entries;
-	int element_count;
+	int component_size;
+	int component_count;
+	int entry_count;
 
 	int size; /* size it takes in memory. */
 	short offset; /* offset from start of memory block */
@@ -51,8 +51,8 @@ struct symbol {
 };
 
 struct symbol *symbol_create(const char *name, enum symbol_type type,
-			     int element_size, int element_entries, int count,
-			     void *data, int copy);
+			     int component_size, int component_count,
+			     int entry_count, void *data, int copy);
 
 void symbol_destroy(struct symbol *symbol);
 void symbol_print(struct symbol *symbol);

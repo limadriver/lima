@@ -55,7 +55,7 @@ main(int argc, char *argv[])
 			      0.7,  0.7, 0.0,
 			      0.7,  0.2, 0.0};
 	struct symbol *aPosition =
-		symbol_create("aPosition", SYMBOL_ATTRIBUTE, 12, 3, 6, vertices, 0);
+		symbol_create("aPosition", SYMBOL_ATTRIBUTE, 4, 3, 6, vertices, 0);
 	float colors[] = {1.0, 0.0, 0.0, 1.0,
 			  1.0, 1.0, 0.0, 1.0,
 			  1.0, 0.0, 1.0, 1.0,
@@ -63,7 +63,7 @@ main(int argc, char *argv[])
 			  0.0, 0.0, 1.0, 1.0,
 			  0.0, 1.0, 1.0, 1.0};
 	struct symbol *aColors =
-		symbol_create("aColors", SYMBOL_ATTRIBUTE, 16, 4, 6, colors, 0);
+		symbol_create("aColors", SYMBOL_ATTRIBUTE, 4, 4, 6, colors, 0);
 
 	const char *vertex_shader_source =
 		"attribute vec4 aPosition;    \n"

@@ -106,8 +106,8 @@ struct stream_uniform_start {
 struct stream_uniform_data { /* 0x14 */
 	unsigned char type; /* 0x00 */
 	unsigned char unknown01; /* 0x01 */
-	unsigned short element_count; /* 0x02 */
-	unsigned short element_size; /* 0x04 */
+	unsigned short component_count; /* 0x02 */
+	unsigned short component_size; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
 	unsigned short stride; /* 0x08 */
 	unsigned char unknown0A; /* 0x0A */
@@ -291,11 +291,11 @@ stream_uniform_table_print(struct stream_uniform_table *table)
 	uniform = table->uniforms;
 	while (uniform) {
 		printf("uniform \"%s\" = {\n", uniform->string->string);
-		printf("\t type 0x%02x, unknown01 0x%02x, element_count 0x%04x\n",
+		printf("\t type 0x%02x, unknown01 0x%02x, component_count 0x%04x\n",
 		       uniform->data->type, uniform->data->unknown01,
-		       uniform->data->element_count);
-		printf("\t element_size 0x%04x, entry_count 0x%04x\n",
-		       uniform->data->element_size, uniform->data->entry_count);
+		       uniform->data->component_count);
+		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
+		       uniform->data->component_size, uniform->data->entry_count);
 		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
 		       uniform->data->stride, uniform->data->unknown0A,
 		       uniform->data->precision);
@@ -339,14 +339,16 @@ stream_uniform_table_to_symbols(struct stream_uniform_table *table,
 		if (uniform->init)
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
-					      uniform->data->element_count * uniform->data->element_size,
-					      uniform->data->element_count, uniform->data->entry_count,
+					      uniform->data->component_size,
+					      uniform->data->component_count,
+					      uniform->data->entry_count,
 					      uniform->init->data, 1);
 		else
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
-					      uniform->data->element_count * uniform->data->element_size,
-					      uniform->data->element_count, uniform->data->entry_count,
+					      uniform->data->component_size,
+					      uniform->data->component_count,
+					      uniform->data->entry_count,
 					      NULL, 0);
 		if (!symbols[i]) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
@@ -389,8 +391,8 @@ struct stream_attribute_start {
 struct stream_attribute_data { /* 0x14 */
 	unsigned char type; /* 0x00 */
 	unsigned char unknown01; /* 0x01 */
-	unsigned short element_count; /* 0x02 */
-	unsigned short element_size; /* 0x04 */
+	unsigned short component_count; /* 0x02 */
+	unsigned short component_size; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
 	unsigned short stride; /* 0x08 */
 	unsigned char unknown0A; /* 0x0A */
@@ -534,11 +536,11 @@ stream_attribute_table_print(struct stream_attribute_table *table)
 	attribute = table->attributes;
 	while (attribute) {
 		printf("attribute \"%s\" = {\n", attribute->string->string);
-		printf("\t type 0x%02x, unknown01 0x%02x, element_count 0x%04x\n",
+		printf("\t type 0x%02x, unknown01 0x%02x, component_count 0x%04x\n",
 		       attribute->data->type, attribute->data->unknown01,
-		       attribute->data->element_count);
-		printf("\t element_size 0x%04x, entry_count 0x%04x\n",
-		       attribute->data->element_size, attribute->data->entry_count);
+		       attribute->data->component_count);
+		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
+		       attribute->data->component_size, attribute->data->entry_count);
 		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
 		       attribute->data->stride, attribute->data->unknown0A,
 		       attribute->data->precision);
@@ -578,8 +580,9 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 	     i++, attribute = attribute->next) {
 		symbols[i] =
 			symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
-				      attribute->data->element_count * attribute->data->element_size,
-				      attribute->data->element_count, attribute->data->entry_count,
+				      attribute->data->component_size,
+				      attribute->data->component_count,
+				      attribute->data->entry_count,
 				      NULL, 0);
 		if (!symbols[i]) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
@@ -624,8 +627,8 @@ struct stream_varying_start {
 struct stream_varying_data { /* 0x14 */
 	unsigned char type; /* 0x00 */
 	unsigned char unknown01; /* 0x01 */
-	unsigned short element_count; /* 0x02 */
-	unsigned short element_size; /* 0x04 */
+	unsigned short component_count; /* 0x02 */
+	unsigned short component_size; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
 	unsigned short stride; /* 0x08 */
 	unsigned char unknown0A; /* 0x0A */
@@ -771,11 +774,11 @@ stream_varying_table_print(struct stream_varying_table *table)
 	varying = table->varyings;
 	while (varying) {
 		printf("varying \"%s\" = {\n", varying->string->string);
-		printf("\t type 0x%02x, unknown01 0x%02x, element_count 0x%04x\n",
+		printf("\t type 0x%02x, unknown01 0x%02x, component_count 0x%04x\n",
 		       varying->data->type, varying->data->unknown01,
-		       varying->data->element_count);
-		printf("\t element_size 0x%04x, entry_count 0x%04x\n",
-		       varying->data->element_size, varying->data->entry_count);
+		       varying->data->component_count);
+		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
+		       varying->data->component_size, varying->data->entry_count);
 		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
 		       varying->data->stride, varying->data->unknown0A,
 		       varying->data->precision);
@@ -815,8 +818,9 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 	     i++, varying = varying->next) {
 			symbols[i] =
 				symbol_create(varying->string->string, SYMBOL_VARYING,
-					      varying->data->element_count * varying->data->element_size,
-					      varying->data->element_count, varying->data->entry_count,
+					      varying->data->component_size,
+					      varying->data->component_count,
+					      varying->data->entry_count,
 					      NULL, 0);
 		if (!symbols[i]) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
@@ -1115,20 +1119,20 @@ premali_link_varyings_match(struct premali_state *state)
 			struct symbol *vertex = state->vertex_varyings[j];
 
 			if (!strcmp(fragment->name, vertex->name)) {
-				if (fragment->element_size != vertex->element_size) {
-					printf("%s: Error: element_size mismatch for varying \"%s\".\n",
+				if (fragment->component_size != vertex->component_size) {
+					printf("%s: Error: component_size mismatch for varying \"%s\".\n",
 					       __func__, fragment->name);
 					return -1;
 				}
 
-				if (fragment->element_entries != vertex->element_entries) {
-					printf("%s: Error: element_size mismatch for varying \"%s\".\n",
+				if (fragment->component_count != vertex->component_count) {
+					printf("%s: Error: component_count mismatch for varying \"%s\".\n",
 					       __func__, fragment->name);
 					return -1;
 				}
 
-				if (fragment->element_count != vertex->element_count) {
-					printf("%s: Error: element_count mismatch for varying \"%s\".\n",
+				if (fragment->entry_count != vertex->entry_count) {
+					printf("%s: Error: entry_count mismatch for varying \"%s\".\n",
 					       __func__, fragment->name);
 					return -1;
 				}

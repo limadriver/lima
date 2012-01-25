@@ -112,15 +112,12 @@ vs_info_create(struct premali_state *state, void *address, int physical, int siz
 int
 vs_info_attach_uniform(struct vs_info *info, struct symbol *uniform)
 {
-	int size;
-
 	if (info->uniform_count == 0x10) {
 		printf("%s: No more uniforms\n", __func__);
 		return -1;
 	}
 
-	size = uniform->element_size * uniform->element_count;
-	if (size > (info->uniform_size - info->uniform_used)) {
+	if (uniform->size > (info->uniform_size - info->uniform_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
 	}
@@ -128,12 +125,11 @@ vs_info_attach_uniform(struct vs_info *info, struct symbol *uniform)
 	uniform->address = info->mem_address + info->uniform_offset +
 		info->uniform_used;
 
-	info->uniform_used += size;
+	info->uniform_used += uniform->size;
 	info->uniforms[info->uniform_count] = uniform;
 	info->uniform_count++;
 
-	memcpy(uniform->address, uniform->data,
-	       uniform->element_size * uniform->element_count);
+	memcpy(uniform->address, uniform->data, uniform->size);
 
 	return 0;
 }
@@ -168,7 +164,7 @@ vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute)
 		return -1;
 	}
 
-	size = ALIGN(attribute->element_size * attribute->element_count, 0x40);
+	size = ALIGN(attribute->size, 0x40);
 	if (size > (info->mem_size - info->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
@@ -181,8 +177,7 @@ vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute)
 	info->attributes[info->attribute_count] = attribute;
 	info->attribute_count++;
 
-	memcpy(attribute->address, attribute->data,
-	       attribute->element_size * attribute->element_count);
+	memcpy(attribute->address, attribute->data, attribute->size);
 
 	return 0;
 }
@@ -321,8 +316,9 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 		for (i = 0; i < info->attribute_count; i++) {
 			info->common->attributes[i].physical = info->attributes[i]->physical;
 			info->common->attributes[i].size =
-				(info->attributes[i]->element_size << 11) |
-				(info->attributes[i]->element_entries - 1);
+				((info->attributes[i]->component_size *
+				  info->attributes[i]->component_count) << 11) |
+				(info->attributes[i]->component_count - 1);
 		}
 
 		for (i = 0; i < info->varying_count; i++) {
@@ -338,8 +334,9 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 		for (i = 0; i < info->attribute_count; i++) {
 			info->attribute_area[i].physical = info->attributes[i]->physical;
 			info->attribute_area[i].size =
-				(info->attributes[i]->element_size << 11) |
-				(info->attributes[i]->element_entries - 1);
+				((info->attributes[i]->component_size *
+				  info->attributes[i]->component_count) << 11) |
+				(info->attributes[i]->component_count - 1);
 		}
 
 		for (i = 0; i < info->varying_count; i++) {

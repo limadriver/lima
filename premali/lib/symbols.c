@@ -27,13 +27,17 @@
 #include "symbols.h"
 
 struct symbol *
-symbol_create(const char *name, enum symbol_type type, int element_size,
-	      int element_entries, int count, void *data, int copy)
+symbol_create(const char *name, enum symbol_type type,
+	      int component_size, int component_count,
+	      int entry_count, void *data, int copy)
 {
 	struct symbol *symbol;
+	int size;
 
-	if (!count)
-		count = 1;
+	if (!entry_count)
+		entry_count = 1;
+
+	size = component_size * component_count * entry_count;
 
 	symbol = calloc(1, sizeof(struct symbol));
 	if (!symbol) {
@@ -42,7 +46,7 @@ symbol_create(const char *name, enum symbol_type type, int element_size,
 	}
 
 	if (copy) {
-		symbol->data = malloc(element_size * count);
+		symbol->data = malloc(size);
 		if (!symbol->data) {
 			printf("%s: failed to allocate data: %s\n",
 			       __func__, strerror(errno));
@@ -55,14 +59,14 @@ symbol_create(const char *name, enum symbol_type type, int element_size,
 	strncpy(symbol->name, name, SYMBOL_STRING_SIZE);
 	symbol->type = type;
 
-	symbol->element_size = element_size;
-	symbol->element_count = count;
-	symbol->element_entries = element_entries;
+	symbol->component_size = component_size;
+	symbol->component_count = component_count;
+	symbol->entry_count = entry_count;
 
-	symbol->size = element_size * count;
+	symbol->size = size;
 
 	if (copy)
-		memcpy(symbol->data, data, element_size * count);
+		memcpy(symbol->data, data, size);
 	else
 		symbol->data = data;
 
@@ -96,9 +100,9 @@ symbol_print(struct symbol *symbol)
 	}
 
 	printf("Symbol %s (%s) = {\n", symbol->name, type);
-	printf("\t.element_size = %d,\n", symbol->element_size);
-	printf("\t.element_entries = %d,\n", symbol->element_entries);
-	printf("\t.element_count = %d,\n", symbol->element_count);
+	printf("\t.component_size = %d,\n", symbol->component_size);
+	printf("\t.component_count = %d,\n", symbol->component_count);
+	printf("\t.entry_count = %d,\n", symbol->entry_count);
 	printf("\t.size = %d,\n", symbol->size);
 	printf("\t.offset = %d,\n", symbol->offset);
 	printf("\t.address = %p,\n", symbol->address);
@@ -134,7 +138,7 @@ uniform_gl_mali_ViewPortTransform(float x0, float y0, float x1, float y1,
 	viewport[7] = depth_near;
 
 	return symbol_create("gl_mali_ViewportTransform", SYMBOL_UNIFORM,
-			     32, 8, 1, viewport, 1);
+			     4, 8, 1, viewport, 1);
 }
 
 struct symbol *
@@ -143,5 +147,5 @@ uniform___maligp2_constant_000(void)
 	float constant[] = {-1e+10, 1e+10, 0.0, 0.0};
 
 	return symbol_create("__maligp2_constant_000", SYMBOL_UNIFORM,
-			     16, 4, 1, constant, 1);
+			     4, 4, 1, constant, 1);
 }
