@@ -14,6 +14,8 @@ bmp.o: bmp.c bmp.h
 
 fb.o: fb.c fb.h
 
+hfloat.o: hfloat.c hfloat.h
+
 symbols.o: symbols.c symbols.h
 
 plb.o: plb.c plb.h premali.h
@@ -30,7 +32,7 @@ program.o: program.c program.h gp.h
 
 premali.o: premali.c premali.h
 
-libpremali.so: bmp.o fb.o plb.o symbols.o jobs.o dump.o gp.o pp.o program.o premali.o
+libpremali.so: bmp.o fb.o plb.o hfloat.o symbols.o jobs.o dump.o gp.o pp.o program.o premali.o
 	$(CC) -shared -Wall -o $@ $^ -lMali
 
 install: $(ADB) libpremali.so

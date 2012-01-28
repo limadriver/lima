@@ -103,13 +103,23 @@ struct plbu_info {
 	unsigned int *shader;
 	int shader_offset;
 	int shader_size;
+
+	int uniform_array_offset;
+	int uniform_array_size;
+
+	int uniform_offset;
+	int uniform_size;
 };
 
 void plbu_commands_create(struct premali_state *state, struct plbu_info *info,
 			  struct plb *plb, struct vs_info *vs,
 			  int draw_mode, int vertex_count);
 struct plbu_info *plbu_info_create(void *address, int physical, int size);
+
+
 int plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size);
+int plbu_info_attach_uniforms(struct plbu_info *info, struct symbol **uniforms,
+			    int count, int size);
 
 int plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs);
 int plbu_info_finalize(struct premali_state *state,

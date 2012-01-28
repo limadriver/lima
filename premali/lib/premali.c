@@ -203,6 +203,63 @@ premali_state_setup(struct premali_state *state, int width, int height,
 }
 
 int
+premali_uniform_attach(struct premali_state *state, char *name, int size,
+		       int count, void *data)
+{
+	int found = 0, i;
+
+	for (i = 0; i < state->vertex_uniform_count; i++) {
+		struct symbol *symbol = state->vertex_uniforms[i];
+
+		symbol_print(symbol);
+
+		if (!strcmp(symbol->name, name)) {
+			if ((symbol->component_size == size) &&
+			    (symbol->component_count == count)) {
+				symbol->data = data;
+				found = 1;
+				break;
+			}
+
+			printf("%s: Error: Uniform %s has wrong dimensions\n",
+			       __func__, name);
+			return -1;
+		}
+	}
+
+	for (i = 0; i < state->fragment_uniform_count; i++) {
+		struct symbol *symbol = state->fragment_uniforms[i];
+
+		symbol_print(symbol);
+
+		if (!strcmp(symbol->name, name)) {
+			if ((symbol->component_size == size) &&
+			    (symbol->component_count == count)) {
+				symbol->data = data;
+				found = 1;
+
+				printf("%s: found %s at fragment %d\n",
+				       __func__, symbol->name, i);
+
+				break;
+			}
+
+			printf("%s: Error: Uniform %s has wrong dimensions\n",
+			       __func__, name);
+			return -1;
+		}
+	}
+
+	if (!found) {
+		printf("%s: Error: Unable to find attribute %s\n",
+		       __func__, name);
+		return -1;
+	}
+
+	return 0;
+}
+
+int
 premali_attribute_pointer(struct premali_state *state, char *name, int size,
 			  int count, void *data)
 {
@@ -311,6 +368,11 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 	if (vs_info_attach_uniforms(state->vs, state->vertex_uniforms,
 				    state->vertex_uniform_count,
 				    state->vertex_uniform_size))
+		return -1;
+
+	if (plbu_info_attach_uniforms(state->plbu, state->fragment_uniforms,
+				      state->fragment_uniform_count,
+				      state->fragment_uniform_size))
 		return -1;
 
 	vs_commands_create(state, state->vs, vertex_count);

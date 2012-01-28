@@ -37,6 +37,7 @@
 #include "vs.h"
 #include "plbu.h"
 #include "render_state.h"
+#include "hfloat.h"
 
 struct vs_info *
 vs_info_create(struct premali_state *state, void *address, int physical, int size)
@@ -533,6 +534,40 @@ plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size)
 }
 
 int
+plbu_info_attach_uniforms(struct plbu_info *info, struct symbol **uniforms,
+			  int count, int size)
+{
+	void *address;
+	unsigned int *array;
+	int i;
+
+	info->uniform_array_offset = info->mem_used;
+	info->uniform_array_size = 4;
+	info->mem_used += 0x40;
+
+	array = info->mem_address + info->uniform_array_offset;
+
+	info->uniform_offset = info->mem_used;
+	info->uniform_size = size;
+	info->mem_used += ALIGN(size, 0x40);
+
+	address = info->mem_address + info->uniform_offset;
+	array[0] = info->mem_physical + info->uniform_offset;
+
+	for (i = 0; i < count; i++) {
+		struct symbol *symbol = uniforms[i];
+		hfloat *halves = address +
+			symbol->component_size * symbol->offset;
+		float *fulls = symbol->data;
+
+		for (i = 0; i < symbol->component_count; i++)
+			halves[i] = float_to_hfloat(fulls[i]);
+	}
+
+	return 0;
+}
+
+int
 plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 {
 	struct render_state *state;
@@ -574,7 +609,7 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 	state->shader_address =
 		(info->mem_physical + info->shader_offset) | info->shader_size;
 
-	state->uniforms_address = 0x00000000;
+	state->uniforms_address = 0;
 
 	state->textures_address = 0;
 	state->unknown34 = 0x300;
@@ -596,6 +631,22 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 
 		}
 	}
+
+#if 1
+	if (info->uniform_size) {
+		printf("%s: uniform_size %d (%d)\n", __func__, info->uniform_size,
+		       ALIGN(info->uniform_size, 4) - 1);
+
+		state->uniforms_address =
+			(int) info->mem_physical + info->uniform_array_offset;
+
+		state->uniforms_address |=
+			(ALIGN(info->uniform_size, 4) / 4) - 1;
+
+		state->unknown34 |= 0x80;
+		state->unknown38 |= 0x10000;
+	}
+#endif
 
 	return 0;
 }
