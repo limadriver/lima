@@ -54,16 +54,12 @@ main(int argc, char *argv[])
 			      0.0, -0.8, 0.0,
 			      0.6, -0.5, 0.0,
 			      0.8,  0.4, 0.0 };
-	struct symbol *aPosition =
-		symbol_create("aPosition", SYMBOL_ATTRIBUTE, 4, 3, 6, vertices, 0);
 	float colors[] = {1.0, 1.0, 1.0, 1.0,
 			  1.0, 0.0, 0.0, 1.0,
 			  1.0, 1.0, 0.0, 1.0,
 			  0.0, 1.0, 0.0, 1.0,
 			  0.0, 1.0, 1.0, 1.0,
 			  0.0, 0.0, 1.0, 1.0};
-	struct symbol *aColors =
-		symbol_create("aColors", SYMBOL_ATTRIBUTE, 4, 4, 6, colors, 0);
 
 	const char *vertex_shader_source =
 		"attribute vec4 aPosition;    \n"
@@ -103,8 +99,8 @@ main(int argc, char *argv[])
 
 	vs_info_attach_standard_uniforms(state, state->vs);
 
-	vs_info_attach_attribute(state->vs, aPosition);
-	vs_info_attach_attribute(state->vs, aColors);
+	premali_attribute_pointer(state, "aPosition", 4, 3, vertices);
+	premali_attribute_pointer(state, "aColor", 4, 4, colors);
 
 	ret = premali_draw_arrays(state, GL_TRIANGLE_FAN, 6);
 	if (ret)

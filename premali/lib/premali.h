@@ -81,6 +81,8 @@ struct premali_state {
 struct premali_state *premali_init(void);
 int premali_state_setup(struct premali_state *state, int width, int height,
 			unsigned int clear_color);
+int premali_attribute_pointer(struct premali_state *state, char *name, int size,
+			      int count, void *data);
 int premali_draw_arrays(struct premali_state *state, int mode, int vertex_count);
 int premali_flush(struct premali_state *state);
 void premali_finish(void);

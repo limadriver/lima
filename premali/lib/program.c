@@ -578,19 +578,22 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 	for (i = 0, attribute = table->attributes;
 	     (i < table->start->count) && attribute;
 	     i++, attribute = attribute->next) {
-		symbols[i] =
+		struct symbol *symbol;
+		symbol =
 			symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
 				      attribute->data->component_size,
 				      attribute->data->component_count,
 				      attribute->data->entry_count,
 				      NULL, 0);
-		if (!symbols[i]) {
+		if (!symbol) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, attribute->string->string, strerror(errno));
 			goto error;
 		}
 
-		symbols[i]->offset = attribute->data->offset;
+		symbol->offset = attribute->data->offset;
+
+		symbols[symbol->offset / 4] = symbol;
 	}
 
 	return symbols;
@@ -848,7 +851,7 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 /*
  *
  */
-static void
+void
 vertex_shader_attributes_patch(unsigned int *shader, int size)
 {
 	int i;
@@ -994,7 +997,6 @@ vertex_shader_attach(struct premali_state *state, const char *source)
 			stream_attribute_table_to_symbols(attribute_table,
 							  &state->vertex_attribute_count);
 		stream_attribute_table_destroy(attribute_table);
-
 	}
 
 	varying_table =
@@ -1224,15 +1226,8 @@ premali_link(struct premali_state *state)
 	if (premali_link_varyings_match(state))
 		return -1;
 
-#if 1
-	vertex_shader_attributes_patch(state->vertex_binary->shader,
-				       state->vertex_binary->shader_size / 16);
-#endif
-
-	for (i = 0; i < state->fragment_varying_count; i++) {
-		symbol_print(state->fragment_varyings[i]);
+	for (i = 0; i < state->fragment_varying_count; i++)
 		vs_info_attach_varying(state->vs, state->fragment_varyings[i]);
-	}
 
 	premali_link_varyings_indices_get(state, varyings);
 	vertex_shader_varyings_patch(state->vertex_binary->shader,

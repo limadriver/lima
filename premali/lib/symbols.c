@@ -73,6 +73,33 @@ symbol_create(const char *name, enum symbol_type type,
 	return symbol;
 }
 
+struct symbol *
+symbol_copy(struct symbol *original, int start, int count)
+{
+	struct symbol *symbol;
+
+	symbol = malloc(sizeof(struct symbol));
+	if (!symbol) {
+		printf("%s: failed to allocate: %s\n", __func__, strerror(errno));
+		return NULL;
+	}
+
+	memcpy(symbol, original, sizeof(struct symbol));
+
+	symbol->entry_count = count;
+	symbol->size = symbol->component_size * symbol->component_count *
+		symbol->entry_count;
+
+	symbol->data_allocated = 0;
+
+	if (original->data)
+		symbol->data = original->data +
+			symbol->component_size * symbol->component_count * start;
+
+	return symbol;
+}
+
+
 void
 symbol_destroy(struct symbol *symbol)
 {

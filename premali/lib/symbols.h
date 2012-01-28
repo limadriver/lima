@@ -54,6 +54,8 @@ struct symbol *symbol_create(const char *name, enum symbol_type type,
 			     int component_size, int component_count,
 			     int entry_count, void *data, int copy);
 
+struct symbol *symbol_copy(struct symbol *original, int start, int count);
+
 void symbol_destroy(struct symbol *symbol);
 void symbol_print(struct symbol *symbol);
 

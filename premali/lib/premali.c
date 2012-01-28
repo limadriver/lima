@@ -33,6 +33,7 @@
 #include "gp.h"
 #include "pp.h"
 #include "jobs.h"
+#include "symbols.h"
 
 static int
 premali_fd_open(struct premali_state *state)
@@ -202,8 +203,37 @@ premali_state_setup(struct premali_state *state, int width, int height,
 }
 
 int
+premali_attribute_pointer(struct premali_state *state, char *name, int size,
+			  int count, void *data)
+{
+	int i;
+
+	for (i = 0; i < state->vertex_attribute_count; i++) {
+		struct symbol *symbol = state->vertex_attributes[i];
+
+		if (!strcmp(symbol->name, name)) {
+			if (symbol->component_size == size) {
+				symbol->component_count = count;
+				symbol->data = data;
+				return 0;
+			}
+
+			printf("%s: Error: Attribute %s has different dimensions\n",
+			       __func__, name);
+			return -1;
+		}
+	}
+
+	printf("%s: Error: Unable to find attribute %s\n",
+	       __func__, name);
+	return -1;
+}
+
+int
 premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 {
+	int i;
+
 	if (!state->vs) {
 		printf("%s: Error: vs member is not set up yet.\n", __func__);
 		return -1;
@@ -217,6 +247,15 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 	if (!state->plb) {
 		printf("%s: Error: plb member is not set up yet.\n", __func__);
 		return -1;
+	}
+
+	for (i = 0; i < state->vertex_attribute_count; i++) {
+		struct symbol *symbol =
+			symbol_copy(state->vertex_attributes[i], 0, vertex_count);
+
+		if (symbol)
+			vs_info_attach_attribute(state->vs, symbol);
+
 	}
 
 	vs_commands_create(state, state->vs, vertex_count);
