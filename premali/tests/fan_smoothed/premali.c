@@ -97,8 +97,6 @@ main(int argc, char *argv[])
 	fragment_shader_attach(state, fragment_shader_source);
 	premali_link(state);
 
-	vs_info_attach_standard_uniforms(state, state->vs);
-
 	premali_attribute_pointer(state, "aPosition", 4, 3, vertices);
 	premali_attribute_pointer(state, "aColor", 4, 4, colors);
 

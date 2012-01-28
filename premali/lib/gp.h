@@ -54,10 +54,7 @@ struct vs_info {
 	int varying_area_offset;
 	int varying_area_size;
 
-	struct symbol *uniforms[0x10];
-	int uniform_count;
 	int uniform_offset;
-	int uniform_used;
 	int uniform_size;
 
 	struct symbol *attributes[0x10];
@@ -78,8 +75,10 @@ struct vs_info {
 };
 
 struct vs_info *vs_info_create(struct premali_state *sate, void *address, int physical, int size);
-int vs_info_attach_uniform(struct vs_info *info, struct symbol *uniform);
-int vs_info_attach_standard_uniforms(struct premali_state *state, struct vs_info *info);
+
+int vs_info_attach_uniforms(struct vs_info *info, struct symbol **uniforms,
+			    int count, int size);
+
 int vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute);
 int vs_info_attach_varying(struct vs_info *info, struct symbol *varying);
 int vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size);

@@ -88,11 +88,6 @@ vs_info_create(struct premali_state *state, void *address, int physical, int siz
 		info->mem_used += ALIGN(info->varying_area_size, 0x40);
 	}
 
-	/* predefine an area for the uniforms */
-	info->uniform_offset = info->mem_used;
-	info->uniform_size = 0x200;
-	info->mem_used += ALIGN(info->uniform_size, 0x40);
-
 	/* predefine an area for our vertex array */
 	info->vertex_array_offset = info->mem_used;
 	info->vertex_array_size = 2 * 0x40;
@@ -110,46 +105,24 @@ vs_info_create(struct premali_state *state, void *address, int physical, int siz
 }
 
 int
-vs_info_attach_uniform(struct vs_info *info, struct symbol *uniform)
+vs_info_attach_uniforms(struct vs_info *info, struct symbol **uniforms,
+			int count, int size)
 {
-	if (info->uniform_count == 0x10) {
-		printf("%s: No more uniforms\n", __func__);
-		return -1;
+	void *address;
+	int i;
+
+	info->uniform_offset = info->mem_used;
+	info->uniform_size = size;
+	info->mem_used += ALIGN(size, 0x40);
+
+	address = info->mem_address + info->uniform_offset;
+
+	for (i = 0; i < count; i++) {
+		struct symbol *symbol = uniforms[i];
+
+		memcpy(address + symbol->component_size * symbol->offset,
+		       symbol->data, symbol->size);
 	}
-
-	if (uniform->size > (info->uniform_size - info->uniform_used)) {
-		printf("%s: No more space\n", __func__);
-		return -2;
-	}
-
-	uniform->address = info->mem_address + info->uniform_offset +
-		info->uniform_used;
-
-	info->uniform_used += uniform->size;
-	info->uniforms[info->uniform_count] = uniform;
-	info->uniform_count++;
-
-	memcpy(uniform->address, uniform->data, uniform->size);
-
-	return 0;
-}
-
-int
-vs_info_attach_standard_uniforms(struct premali_state *state, struct vs_info *info)
-{
-	struct symbol *viewport =
-		uniform_gl_mali_ViewPortTransform(0.0, 0.0, state->width,
-						  state->height, 0.0, 1.0);
-	struct symbol *constant = uniform___maligp2_constant_000();
-	int ret;
-
-	ret = vs_info_attach_uniform(info, viewport);
-	if (ret)
-		return ret;
-
-	ret = vs_info_attach_uniform(info, constant);
-	if (ret)
-		return ret;
 
 	return 0;
 }
@@ -267,7 +240,7 @@ vs_commands_create(struct premali_state *state, struct vs_info *vs, int vertex_c
 
 	cmds[i].val = vs->mem_physical + vs->uniform_offset;
 	cmds[i].cmd = MALI_VS_CMD_UNIFORMS_ADDRESS |
-		(ALIGN(vs->uniform_used, 4) << 14);
+		(ALIGN(vs->uniform_size, 4) << 14);
 	i++;
 
 	if (state->type == PREMALI_TYPE_MALI200) {

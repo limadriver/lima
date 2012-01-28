@@ -230,6 +230,40 @@ premali_attribute_pointer(struct premali_state *state, char *name, int size,
 }
 
 int
+premali_gl_mali_ViewPortTransform(struct premali_state *state,
+				  struct symbol *symbol)
+{
+	float x0 = 0, y0 = 0, x1 = state->width, y1 = state->height;
+	float depth_near = 0, depth_far = 1.0;
+	float *viewport;
+
+	if (symbol->data) {
+		if (symbol->data_allocated)
+			free(symbol->data);
+	}
+
+	symbol->data = calloc(8, sizeof(float));
+	if (!symbol->data) {
+		printf("%s: Error: Failed to allocate data: %s\n",
+		       __func__, strerror(errno));
+		return -1;
+	}
+
+	viewport = symbol->data;
+
+	viewport[0] = x1 / 2;
+	viewport[1] = y1 / 2;
+	viewport[2] = (depth_far - depth_near) / 2;
+	viewport[3] = depth_far;
+	viewport[4] = (x0 + x1) / 2;
+	viewport[5] = (y0 + y1) / 2;
+	viewport[6] = (depth_near + depth_far) / 2;
+	viewport[7] = depth_near;
+
+	return 0;
+}
+
+int
 premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 {
 	int i;
@@ -249,6 +283,22 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 		return -1;
 	}
 
+	/* Todo, check whether attributes all have data attached! */
+
+	for (i = 0; i < state->vertex_uniform_count; i++) {
+		struct symbol *symbol = state->vertex_uniforms[i];
+
+		if (!strcmp(symbol->name, "gl_mali_ViewportTransform")) {
+			if (premali_gl_mali_ViewPortTransform(state, symbol))
+				return -1;
+		} else if (!symbol->data) {
+			printf("%s: Error: vertex uniform %s is empty.\n",
+			       __func__, symbol->name);
+
+			return -1;
+		}
+	}
+
 	for (i = 0; i < state->vertex_attribute_count; i++) {
 		struct symbol *symbol =
 			symbol_copy(state->vertex_attributes[i], 0, vertex_count);
@@ -257,6 +307,11 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 			vs_info_attach_attribute(state->vs, symbol);
 
 	}
+
+	if (vs_info_attach_uniforms(state->vs, state->vertex_uniforms,
+				    state->vertex_uniform_count,
+				    state->vertex_uniform_size))
+		return -1;
 
 	vs_commands_create(state, state->vs, vertex_count);
 	vs_info_finalize(state, state->vs);
