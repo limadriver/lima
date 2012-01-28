@@ -211,8 +211,6 @@ premali_uniform_attach(struct premali_state *state, char *name, int size,
 	for (i = 0; i < state->vertex_uniform_count; i++) {
 		struct symbol *symbol = state->vertex_uniforms[i];
 
-		symbol_print(symbol);
-
 		if (!strcmp(symbol->name, name)) {
 			if ((symbol->component_size == size) &&
 			    (symbol->component_count == count)) {
@@ -230,17 +228,11 @@ premali_uniform_attach(struct premali_state *state, char *name, int size,
 	for (i = 0; i < state->fragment_uniform_count; i++) {
 		struct symbol *symbol = state->fragment_uniforms[i];
 
-		symbol_print(symbol);
-
 		if (!strcmp(symbol->name, name)) {
 			if ((symbol->component_size == size) &&
 			    (symbol->component_count == count)) {
 				symbol->data = data;
 				found = 1;
-
-				printf("%s: found %s at fragment %d\n",
-				       __func__, symbol->name, i);
-
 				break;
 			}
 

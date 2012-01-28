@@ -632,11 +632,7 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 		}
 	}
 
-#if 1
 	if (info->uniform_size) {
-		printf("%s: uniform_size %d (%d)\n", __func__, info->uniform_size,
-		       ALIGN(info->uniform_size, 4) - 1);
-
 		state->uniforms_address =
 			(int) info->mem_physical + info->uniform_array_offset;
 
@@ -646,7 +642,6 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 		state->unknown34 |= 0x80;
 		state->unknown38 |= 0x10000;
 	}
-#endif
 
 	return 0;
 }
