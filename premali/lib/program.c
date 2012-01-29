@@ -819,19 +819,28 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 	for (i = 0, varying = table->varyings;
 	     (i < table->start->count) && varying;
 	     i++, varying = varying->next) {
-			symbols[i] =
-				symbol_create(varying->string->string, SYMBOL_VARYING,
-					      varying->data->component_size,
-					      varying->data->component_count,
-					      varying->data->entry_count,
-					      NULL, 0);
-		if (!symbols[i]) {
+		struct symbol *symbol;
+
+		if (varying->data->offset == 0xFFFF) {
+			(*count)--;
+			continue;
+		}
+
+		symbol = symbol_create(varying->string->string, SYMBOL_VARYING,
+				       varying->data->component_size,
+				       varying->data->component_count,
+				       varying->data->entry_count,
+				       NULL, 0);
+		if (!symbol) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, varying->string->string, strerror(errno));
 			goto error;
 		}
 
-		symbols[i]->offset = varying->data->offset;
+
+		symbol->offset = varying->data->offset;
+
+		symbols[symbol->offset / 4] = symbol;
 	}
 
 	return symbols;
@@ -1077,35 +1086,6 @@ state_symbols_print(struct premali_state *state)
 }
 
 /*
- * Remove varyings with an index of -1
- */
-static void
-vertex_varyings_unused_remove(struct premali_state *state)
-{
-	int i, j;
-
-
-	/* first off, clear any varyings which are not present */
-	for (i = 0; i < state->vertex_varying_count; i++) {
-		if (state->vertex_varyings[i]->offset == -1) {
-			symbol_destroy(state->vertex_varyings[i]);
-			state->vertex_varyings[i] = NULL;
-		}
-	}
-
-	/* defrag after clear */
-	for (i = 0, j = 0; i < state->vertex_varying_count; i++) {
-		if (state->vertex_varyings[i]) {
-			if (i != j)
-				state->vertex_varyings[j] =
-					state->vertex_varyings[i];
-			j++;
-		}
-	}
-	state->vertex_varying_count = j;
-}
-
-/*
  * Checks whether vertex and fragment attributes match.
  */
 static int
@@ -1215,24 +1195,38 @@ premali_link_varyings_indices_get(struct premali_state *state, int *varyings)
 #endif
 }
 
+void
+vertex_shader_varyings_reorder(struct premali_state *state, int *varyings)
+{
+	struct symbol *symbol;
+	struct symbol *symbols[16] = { 0 };
+	int i;
+
+	for (i = 0; i < state->vertex_varying_count; i++) {
+		symbol = state->vertex_varyings[i];
+
+		symbol->offset = varyings[i] * 4;
+		symbols[varyings[i]] = symbol;
+	}
+
+	memcpy(state->vertex_varyings, symbols,
+	       state->vertex_varying_count * sizeof(struct symbol *));
+}
+
 int
 premali_link(struct premali_state *state)
 {
 	int varyings[16] = { -1, -1, -1, -1, -1, -1, -1, -1,
 			     -1, -1, -1, -1, -1, -1, -1, -1 };
-	int i;
 
-	vertex_varyings_unused_remove(state);
 	if (premali_link_varyings_match(state))
 		return -1;
-
-	for (i = 0; i < state->fragment_varying_count; i++)
-		vs_info_attach_varying(state->vs, state->fragment_varyings[i]);
 
 	premali_link_varyings_indices_get(state, varyings);
 	vertex_shader_varyings_patch(state->vertex_binary->shader,
 				     state->vertex_binary->shader_size / 16,
 				     varyings);
+	vertex_shader_varyings_reorder(state, varyings);
 
 	vs_info_attach_shader(state->vs, state->vertex_binary->shader,
 			      state->vertex_binary->shader_size / 16);

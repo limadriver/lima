@@ -357,6 +357,14 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 
 	}
 
+	for (i = 0; i < state->vertex_varying_count; i++) {
+		struct symbol *symbol =
+			symbol_copy(state->vertex_varyings[i], 0, vertex_count);
+
+		if (symbol)
+			vs_info_attach_varying(state->vs, symbol);
+	}
+
 	if (vs_info_attach_uniforms(state->vs, state->vertex_uniforms,
 				    state->vertex_uniform_count,
 				    state->vertex_uniform_size))

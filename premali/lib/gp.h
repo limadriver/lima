@@ -60,14 +60,10 @@ struct vs_info {
 	struct symbol *attributes[0x10];
 	int attribute_count;
 
-	/* fragment shader can only take up to 12 varyings. */
-	struct symbol *varyings[12];
+	/* fragment shader can only take up to 13 varyings. */
+	struct symbol *varyings[13];
 	int varying_count;
 	int varying_element_size;
-
-	/* finishes off our varyings */
-	int vertex_array_offset;
-	int vertex_array_size;
 
 	unsigned int *shader;
 	int shader_offset;

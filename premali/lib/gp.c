@@ -89,11 +89,6 @@ vs_info_create(struct premali_state *state, void *address, int physical, int siz
 		info->mem_used += ALIGN(info->varying_area_size, 0x40);
 	}
 
-	/* predefine an area for our vertex array */
-	info->vertex_array_offset = info->mem_used;
-	info->vertex_array_size = 2 * 0x40;
-	info->mem_used += 2 * 0x40;
-
 	/* leave the rest empty for now */
 
 	if (info->mem_used > info->mem_size) {
@@ -162,13 +157,7 @@ vs_info_attach_varying(struct vs_info *info, struct symbol *varying)
 {
 	int size;
 
-	/* last varying is always the vertex array */
-	if (info->varying_count == 0x0C) {
-		printf("%s: No more varyings\n", __func__);
-		return -1;
-	}
-
-	size = 2 * ALIGN(varying->size, 0x40);
+	size = ALIGN(varying->size, 0x40);
 	if (size > (info->mem_size - info->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
@@ -298,12 +287,14 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 		for (i = 0; i < info->varying_count; i++) {
 			info->common->varyings[i].physical = info->varyings[i]->physical;
 			info->common->varyings[i].size = (8 << 11) |
-				(info->varyings[i]->size - 1);
+				(info->varyings[i]->component_count *
+				 info->varyings[i]->component_size - 1);
 		}
 
-		info->common->varyings[i].physical =
-			info->mem_physical + info->vertex_array_offset;
+		/* fix up gl_Position */
+		i--;
 		info->common->varyings[i].size = (16 << 11) | (1 - 1) | 0x20;
+
 	} else if (state->type == PREMALI_TYPE_MALI400) {
 		for (i = 0; i < info->attribute_count; i++) {
 			info->attribute_area[i].physical = info->attributes[i]->physical;
@@ -316,11 +307,12 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 		for (i = 0; i < info->varying_count; i++) {
 			info->varying_area[i].physical = info->varyings[i]->physical;
 			info->varying_area[i].size = (8 << 11) |
-				(info->varyings[i]->size - 1);
+				(info->varyings[i]->component_count *
+				 info->varyings[i]->component_size - 1);
 		}
 
-		info->varying_area[i].physical =
-			info->mem_physical + info->vertex_array_offset;
+		/* fix up gl_Position */
+		i--;
 		info->varying_area[i].size = (16 << 11) | (1 - 1) | 0x20;
 	}
 }
@@ -406,8 +398,8 @@ plbu_commands_create(struct premali_state *state, struct plbu_info *info,
 	i++;
 
 	cmds[i].val = info->mem_physical + info->render_state_offset;
-	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY |
-		((vs->mem_physical + vs->vertex_array_offset) >> 4);
+	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY;
+	cmds[i].cmd |= vs->varyings[vs->varying_count - 1]->physical >> 4;
 	i++;
 
 	cmds[i].val = 0x00000000;
