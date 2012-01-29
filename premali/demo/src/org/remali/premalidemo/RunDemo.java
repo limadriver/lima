@@ -23,7 +23,6 @@ import java.io.IOException;
 import android.app.Activity;
 import android.util.Log;
 import android.os.Bundle;
-import android.view.WindowManager;
 import android.widget.TextView;
 import android.content.Intent;
 
@@ -38,9 +37,6 @@ public class RunDemo extends Activity
 	super.onCreate(savedInstanceState);
 
 	setContentView(R.layout.run);
-
-	getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-			     WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
 	Intent intent = getIntent();
 	String program = intent.getStringExtra("org.remali.premalidemo.program");

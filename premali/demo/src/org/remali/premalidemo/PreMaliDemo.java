@@ -24,7 +24,6 @@ import android.app.Activity;
 import android.util.Log;
 import android.os.Bundle;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.ListView;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -43,9 +42,6 @@ public class PreMaliDemo extends Activity
 	Log.i("PreMaliDemo", "create");
 
 	setContentView(R.layout.main);
-
-	getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-			     WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
 	loadPrograms();
 
