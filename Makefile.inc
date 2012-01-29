@@ -1,5 +1,5 @@
 TOOLCHAIN ?= ~/android/toolchain/
-SDK ?= ~/android/android-sdk-linux_x86/
+SDK ?= ~/android/android-sdk-linux/
 ANDROID_TARGET ?= android-10
 
 CC = $(TOOLCHAIN)/bin/arm-linux-androideabi-gcc

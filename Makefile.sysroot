@@ -39,7 +39,7 @@ sysroot:
 	$(ADB) pull /system/lib/libwpa_client.so $(SYSROOT)/usr/lib
 	$(ADB) pull /system/lib/libjpeg.so $(SYSROOT)/usr/lib
 	$(ADB) pull /system/lib/libnfc_ndef.so $(SYSROOT)/usr/lib
-	$(ADB) pull /system/lib/libbluedroid.so $(SYSROOT)/usr/lib
+	#$(ADB) pull /system/lib/libbluedroid.so $(SYSROOT)/usr/lib
 	$(ADB) pull /system/lib/libdbus.so $(SYSROOT)/usr/lib
 	$(ADB) pull /system/lib/libemoji.so $(SYSROOT)/usr/lib
 	$(ADB) pull /system/lib/libm.so $(SYSROOT)/usr/lib
