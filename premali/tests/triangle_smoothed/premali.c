@@ -96,8 +96,7 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	bmp_dump(state->pp->frame_address, 0,
-		 state->width, state->height, "/sdcard/premali.bmp");
+	bmp_dump(state->pp->frame_address, state, "/sdcard/premali.bmp");
 
 	fb_dump(state->pp->frame_address, 0, state->width, state->height);
 

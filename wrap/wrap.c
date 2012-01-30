@@ -268,7 +268,7 @@ ioctl(int fd, int request, ...)
 		orig_ioctl = libc_dlsym(__func__);
 
 	/* hack around badly defined fbdev ioctls */
-	if (ioc_size || (request == 0x4600)) {
+	if (ioc_size || ((request & 0xFFC8) == 0x4600)) {
 		va_list args;
 		void *ptr;
 
@@ -438,7 +438,7 @@ dev_mali_get_system_info_pre(void *data)
 	wrap_log("};\n");
 }
 
-static int mali_type = 200;
+static int mali_type = 0;
 
 static void
 dev_mali_get_system_info_post(void *data)
@@ -456,7 +456,7 @@ dev_mali_get_system_info_post(void *data)
 		wrap_log("\t\t\t.type = 0x%x,\n", core->type);
 		if (core->type == 7)
 			mali_type = 400;
-		else
+		else if (core->type == 5)
 			mali_type = 200;
 		wrap_log("\t\t\t.version = 0x%x,\n", core->version);
 		wrap_log("\t\t\t.reg_address = 0x%x,\n", core->reg_address);
@@ -1079,7 +1079,9 @@ mali_bmp_dump(void)
 
 	if (render_height < 16) {
 		wrap_log("%s: invalid height: %d\n", __func__, render_height);
-		return;
+		//return;
+		render_pitch = 400 * 4;
+		render_height = 240 * 2;
 	}
 
 	bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/sdcard/premali.wrap.bmp");
@@ -1179,11 +1181,11 @@ wrap_dump_shader(unsigned int *shader, int size)
 }
 
 int (*orig__mali_compile_essl_shader)(struct mali_shader_binary *binary, int type,
-				      char *source, int *length, int count);
+				      const char *source, int *length, int count);
 
 int
 __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
-			   char *source, int *length, int count)
+			   const char *source, int *length, int count)
 {
 	int ret;
 	int i, offset = 0;
@@ -1228,8 +1230,8 @@ __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
 		wrap_log("\t\t.unknown04 = 0x%x,\n", binary->parameters.vertex.unknown04);
 		wrap_log("\t\t.unknown08 = 0x%x,\n", binary->parameters.vertex.unknown08);
 		wrap_log("\t\t.unknown0C = 0x%x,\n", binary->parameters.vertex.unknown0C);
-		wrap_log("\t\t.unknown10 = 0x%x,\n", binary->parameters.vertex.unknown10);
-		wrap_log("\t\t.unknown14 = 0x%x,\n", binary->parameters.vertex.unknown14);
+		wrap_log("\t\t.attribute_count = 0x%x,\n", binary->parameters.vertex.attribute_count);
+		wrap_log("\t\t.varying_count = 0x%x,\n", binary->parameters.vertex.varying_count);
 		wrap_log("\t\t.unknown18 = 0x%x,\n", binary->parameters.vertex.unknown18);
 		wrap_log("\t\t.size = 0x%x,\n", binary->parameters.vertex.size);
 		wrap_log("\t\t.unknown20 = 0x%x,\n", binary->parameters.vertex.unknown20);

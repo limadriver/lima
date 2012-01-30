@@ -242,7 +242,8 @@ premali_m400_pp_job_start(struct premali_state *state, struct pp_info *info)
 	job->wb[0].downsample_factor = 0;
 	job->wb[0].pixel_layout = 0;
 	job->wb[0].pitch = info->pitch / 8;
-	job->wb[0].mrt_bits = 0;
+	/* todo: infrastructure to read fbdev and see whether, we need to swap R/B */
+	job->wb[0].mrt_bits = 4; /* set to RGBA instead of BGRA */
 	job->wb[0].mrt_pitch = 0;
 	job->wb[0].zero = 0;
 

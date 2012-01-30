@@ -3,6 +3,10 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
+#include <android/native_window.h>
+
+ANativeWindow *android_createDisplaySurface(void);
+
 static EGLint const config_attribute_list[] = {
 	EGL_RED_SIZE, 8,
 	EGL_GREEN_SIZE, 8,
@@ -17,7 +21,7 @@ static EGLint const pbuffer_attribute_list[] = {
 	EGL_WIDTH, 400,
 	EGL_HEIGHT, 240,
 	EGL_LARGEST_PBUFFER, EGL_TRUE,
-    EGL_NONE
+	EGL_NONE
 };
 
 static const EGLint context_attribute_list[] = {
@@ -56,6 +60,7 @@ main(int argc, char *argv[])
 	EGLConfig config;
 	EGLint num_config;
 	EGLContext context;
+	ANativeWindow *window;
 	EGLSurface surface;
 	GLuint vertex_shader;
 	GLuint fragment_shader;
@@ -65,33 +70,25 @@ main(int argc, char *argv[])
 	const char *vertex_shader_source =
 		"precision mediump float;     \n"
 		"attribute vec4 aPosition;    \n"
-                "varying vec4 vColor;         \n"
 		"                             \n"
                 "void main()                  \n"
                 "{                            \n"
                 "    gl_Position = aPosition; \n"
-		"    vColor = aPosition; \n"
                 "}                            \n";
+
 	const char *fragment_shader_source =
 		"precision mediump float;     \n"
 		"uniform vec4 uColor;         \n"
-		"varying vec4 vColor;         \n"
 		"                             \n"
 		"void main()                  \n"
 		"{                            \n"
-		"    gl_FragColor = uColor + vColor;   \n"
+		"    gl_FragColor = uColor;   \n"
 		"}                            \n";
 	GLfloat vVertices[] = { -0.45, -0.75, 0.0,
 			         0.45, -0.75, 0.0,
 				-0.45,  0.75, 0.0,
 				 0.45,  0.75, 0.0 };
 	GLfloat uColor[] = {1.0, 0.0, 0.0, 1.0 };
-	GLfloat uColor1[] = {0.0, 1.0, 0.0, 1.0 };
-	GLfloat uColor2[] = {0.0, 0.0, 0.5, 1.0 };
-	GLfloat uColor3[] = {0.0, 0.0, 0.4, 1.0 };
-
-	GLfloat uShift[] = {0.0, 0.0, -1.0, 1.0 };
-
 
 	display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 	if (display == EGL_NO_DISPLAY) {
@@ -121,12 +118,28 @@ main(int argc, char *argv[])
 		return -1;
 	}
 
+#if 0
+        window = android_createDisplaySurface();
+        if (window == EGL_NO_SURFACE) {
+                printf("Error: android_createDisplaySurface failed: %x (%s)\n",
+                       eglGetError(), eglStrError(eglGetError()));
+                return -1;
+        }
+
+        surface = eglCreateWindowSurface(display, config, window, NULL);
+        if (surface == EGL_NO_SURFACE) {
+                printf("Error: eglCreateWindowSurface failed: %d (%s)\n",
+                       eglGetError(), eglStrError(eglGetError()));
+                return -1;
+        }
+#else
 	surface = eglCreatePbufferSurface(display, config, pbuffer_attribute_list);
 	if (surface == EGL_NO_SURFACE) {
 		printf("Error: eglCreatePbufferSurface failed: %d (%s)\n",
 		       eglGetError(), eglStrError(eglGetError()));
 		return -1;
 	}
+#endif
 
 	if (!eglQuerySurface(display, surface, EGL_WIDTH, &width) ||
 	    !eglQuerySurface(display, surface, EGL_HEIGHT, &height)) {
@@ -245,38 +258,12 @@ main(int argc, char *argv[])
 
 		glUniform4fv(location, 1, uColor);
 	}
-	{
-		int location;
-
-		location = glGetUniformLocation(program, "uColor1");
-
-		glUniform4fv(location, 1, uColor1);
-	}
-	{
-		int location;
-
-		location = glGetUniformLocation(program, "uColor2");
-
-		glUniform4fv(location, 1, uColor2);
-	}
-	{
-		int location;
-
-		location = glGetUniformLocation(program, "uColor3");
-
-		glUniform4fv(location, 1, uColor3);
-	}
-	{
-		int location;
-
-		location = glGetUniformLocation(program, "uShift");
-
-		glUniform4fv(location, 1, uShift);
-	}
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glFlush();
+
+	eglSwapBuffers(display, surface);
 
 	usleep(1000000);
 

@@ -2,8 +2,8 @@
 
 dump: premali_$(NAME)
 
-premali_$(NAME): premali.c dumped_stream.c
-	$(CC) $(CFLAGS) -o $@ premali.c -lpremali
+premali_$(NAME): dump.c dumped_stream.c
+	$(CC) $(CFLAGS) -o $@ dump.c -lpremali
 
 install: $(ADB) premali_$(NAME)
 	$(ADB) push premali_$(NAME) $(INSTALL_DIR)/premali/$(NAME)

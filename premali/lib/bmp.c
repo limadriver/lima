@@ -32,6 +32,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include "premali.h"
+
 #define FILENAME_SIZE 1024
 
 struct bmp_header {
@@ -62,7 +64,7 @@ struct dib_header {
 } __attribute__((__packed__));
 
 static int
-bmp_header_write(int fd, int width, int height)
+bmp_header_write(int fd, int width, int height, int bgra)
 {
 	struct bmp_header bmp_header = {
 		.magic = 0x4d42,
@@ -82,12 +84,17 @@ bmp_header_write(int fd, int width, int height)
 		.v_res = 0xB13,
 		.colours = 0,
 		.important_colours = 0,
-		.red_mask = 0x00FF0000,
+		.red_mask = 0x000000FF,
 		.green_mask = 0x0000FF00,
-		.blue_mask = 0x000000FF,
+		.blue_mask = 0x00FF0000,
 		.alpha_mask = 0xFF000000,
 		.colour_space = 0x57696E20,
 	};
+
+	if (bgra) {
+		dib_header.red_mask = 0x00FF0000;
+		dib_header.blue_mask = 0x000000FF;
+	}
 
 	write(fd, &bmp_header, sizeof(struct bmp_header));
 	write(fd, &dib_header, sizeof(struct dib_header));
@@ -96,7 +103,7 @@ bmp_header_write(int fd, int width, int height)
 }
 
 void
-bmp_dump(char *buffer, int size, int width, int height, char *filename)
+bmp_dump(char *buffer, struct premali_state *state, char *filename)
 {
 	int fd;
 
@@ -106,9 +113,12 @@ bmp_dump(char *buffer, int size, int width, int height, char *filename)
 		return;
 	}
 
-	bmp_header_write(fd, width, height);
+	/* HORRIBLE HACK */
+	if (state->type == 400)
+		bmp_header_write(fd, state->width, state->height, 0);
+	else
+		bmp_header_write(fd, state->width, state->height, 1);
 
-	write(fd, buffer, width * height * 4);
-
+	write(fd, buffer, state->width * state->height * 4);
 }
 

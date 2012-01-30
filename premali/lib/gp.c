@@ -223,8 +223,7 @@ vs_commands_create(struct premali_state *state, struct vs_info *vs, int vertex_c
 	cmds[i].cmd = 0x10000040;
 	i++;
 
-	/* Since there is an implicit varying for position, we don't do - 1 */
-	cmds[i].val = (vs->varying_count << 8) | ((vs->attribute_count - 1) << 24);
+	cmds[i].val = ((vs->varying_count - 1) << 8) | ((vs->attribute_count - 1) << 24);
 	cmds[i].cmd = MALI_VS_CMD_VARYING_ATTRIBUTE_COUNT;
 	i++;
 
@@ -607,12 +606,12 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 	state->unknown34 = 0x300;
 	state->unknown38 = 0x2000;
 
-	if (vs->varying_count) {
+	if (vs->varying_count > 1) {
 		state->varyings_address = vs->varyings[0]->physical;
 		state->unknown34 |= 0x01;
 		state->varying_types = 0;
 
-		for (i = 0; i < vs->varying_count; i++) {
+		for (i = 0; i < (vs->varying_count - 1); i++) {
 			if (i < 10)
 				state->varying_types |= 2 << (3 * i);
 			else if (i == 10) {
