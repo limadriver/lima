@@ -121,7 +121,7 @@ premali_mem_init(struct premali_state *state)
 	}
 
 	state->mem_physical = mem_init.mali_address_base;
-	state->mem_size = 0x80000;
+	state->mem_size = 0x100000;
 	state->mem_address = mmap(NULL, state->mem_size, PROT_READ | PROT_WRITE,
 				  MAP_SHARED, state->fd, state->mem_physical);
 	if (state->mem_address == MAP_FAILED) {
@@ -164,6 +164,7 @@ premali_init(void)
 	return NULL;
 }
 
+/* here we still hardcode our memory addresses. */
 int
 premali_state_setup(struct premali_state *state, int width, int height,
 		    unsigned int clear_color)
@@ -176,27 +177,34 @@ premali_state_setup(struct premali_state *state, int width, int height,
 
 	state->clear_color = clear_color;
 
-	state->vs = vs_info_create(state, state->mem_address + 0x0000,
-				   state->mem_physical + 0x0000, 0x1000);
-	if (!state->vs)
-		return -1;
-
+	/* first, set up the plb, this is unchanged between draws. */
 	state->plb = plb_create(state, state->mem_physical, state->mem_address,
-				0x3000, 0x7D000);
+				0x00000, 0x80000);
 	if (!state->plb)
 		return -1;
 
-	state->plbu = plbu_info_create(state->mem_address + 0x1000,
-				       state->mem_physical + 0x1000,
-				       0x1000);
-	if (!state->plbu)
+	/* now add the area for the pp, again, unchanged between draws. */
+	state->pp = pp_info_create(state, state->mem_address + 0x80000,
+				   state->mem_physical + 0x80000,
+				   0x1000, state->mem_physical + 0x100000);
+	if (!state->pp)
+		return -1;
+
+	/* now the two command queues */
+	if (vs_command_queue_create(state, 0x81000, 0x4000) ||
+	    plbu_command_queue_create(state, 0x85000, 0x4000))
 		return -1;
 
 
-	state->pp = pp_info_create(state, state->mem_address + 0x2000,
-				   state->mem_physical + 0x2000,
-				   0x1000, state->mem_physical + 0x80000);
-	if (!state->pp)
+	state->vs = vs_info_create(state, state->mem_address + 0x89000,
+				   state->mem_physical + 0x89000, 0x1000);
+	if (!state->vs)
+		return -1;
+
+	state->plbu = plbu_info_create(state->mem_address + 0x8A000,
+				       state->mem_physical + 0x8A000,
+				       0x1000);
+	if (!state->plbu)
 		return -1;
 
 	return 0;
@@ -375,7 +383,7 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 				      state->fragment_uniform_size))
 		return -1;
 
-	vs_commands_create(state, state->vs, vertex_count);
+	vs_commands_create(state, vertex_count);
 	vs_info_finalize(state, state->vs);
 
 	plbu_info_render_state_create(state->plbu, state->vs);

@@ -55,6 +55,17 @@ struct premali_state {
 
 	struct pp_info *pp;
 
+	struct mali_cmd *vs_commands;
+	int vs_commands_physical;
+	int vs_commands_count;
+	int vs_commands_size;
+
+	struct mali_cmd *plbu_commands;
+	int plbu_commands_physical;
+	int plbu_commands_count;
+	int plbu_commands_size;
+
+	/* program */
 	struct mali_shader_binary *vertex_binary;
 
 	struct symbol **vertex_uniforms;

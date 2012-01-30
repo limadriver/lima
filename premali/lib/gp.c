@@ -39,6 +39,30 @@
 #include "render_state.h"
 #include "hfloat.h"
 
+int
+vs_command_queue_create(struct premali_state *state, int offset, int size)
+{
+	state->vs_commands = state->mem_address + offset;
+	state->vs_commands_physical = state->mem_physical + offset;
+	state->vs_commands_count = 0;
+	state->vs_commands_size = size / 8;
+
+	return 0;
+}
+
+int
+plbu_command_queue_create(struct premali_state *state, int offset, int size)
+{
+	int i = 0;
+
+	state->plbu_commands = state->mem_address + offset;
+	state->plbu_commands_physical = state->mem_physical + offset;
+	state->plbu_commands_count = 0;
+	state->plbu_commands_size = size / 8;
+
+	return 0;
+}
+
 struct vs_info *
 vs_info_create(struct premali_state *state, void *address, int physical, int size)
 {
@@ -55,11 +79,6 @@ vs_info_create(struct premali_state *state, void *address, int physical, int siz
 	info->mem_address = address;
 	info->mem_physical = physical;
 	info->mem_size = size;
-
-	info->commands = info->mem_address + info->mem_used;
-	info->commands_offset = info->mem_used;
-	info->commands_size = 0x10 * sizeof(struct mali_cmd);
-	info->mem_used += ALIGN(info->commands_size, 0x40);
 
 	if (state->type == PREMALI_TYPE_MALI200) {
 		/* mali200 has a common area for attributes and varyings. */
@@ -201,10 +220,11 @@ vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size)
 }
 
 void
-vs_commands_create(struct premali_state *state, struct vs_info *vs, int vertex_count)
+vs_commands_create(struct premali_state *state, int vertex_count)
 {
-	struct mali_cmd *cmds = vs->commands;
-	int i = 0;
+	struct vs_info *vs = state->vs;
+	struct mali_cmd *cmds = state->vs_commands;
+	int i = state->vs_commands_count;
 
 	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
 	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
@@ -266,7 +286,7 @@ vs_commands_create(struct premali_state *state, struct vs_info *vs, int vertex_c
 	i++;
 
 	/* update our size so we can set the gp job properly */
-	vs->commands_size = i * sizeof(struct mali_cmd);
+	state->vs_commands_count = i * sizeof(struct mali_cmd);
 }
 
 void
@@ -682,9 +702,9 @@ premali_gp_job_start(struct premali_state *state)
 
 	state->gp_job = job;
 
-	job->frame.vs_commands_start = vs->mem_physical + vs->commands_offset;
-	job->frame.vs_commands_end = vs->mem_physical +
-		vs->commands_offset + vs->commands_size;
+	job->frame.vs_commands_start = state->vs_commands_physical;
+	job->frame.vs_commands_end =
+		state->vs_commands_physical + 8 * state->vs_commands_count;
 	job->frame.plbu_commands_start = plbu->mem_physical + plbu->commands_offset;
 	job->frame.plbu_commands_end = plbu->mem_physical +
 		plbu->commands_offset + plbu->commands_size;

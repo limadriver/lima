@@ -35,10 +35,6 @@ struct vs_info {
 	int mem_used;
 	int mem_size;
 
-	struct mali_cmd *commands;
-	int commands_offset;
-	int commands_size;
-
 	/* for mali200: attributes and varyings are shared. */
 	struct gp_common *common;
 	int common_offset;
@@ -79,7 +75,7 @@ int vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute);
 int vs_info_attach_varying(struct vs_info *info, struct symbol *varying);
 int vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size);
 
-void vs_commands_create(struct premali_state *state, struct vs_info *info, int vertex_count);
+void vs_commands_create(struct premali_state *state, int vertex_count);
 void vs_info_finalize(struct premali_state *state, struct vs_info *info);
 
 struct plbu_info {
@@ -106,6 +102,9 @@ struct plbu_info {
 	int uniform_offset;
 	int uniform_size;
 };
+
+int vs_command_queue_create(struct premali_state *state, int offset, int size);
+int plbu_command_queue_create(struct premali_state *state, int offset, int size);
 
 void plbu_commands_create(struct premali_state *state, struct plbu_info *info,
 			  struct plb *plb, struct vs_info *vs,
