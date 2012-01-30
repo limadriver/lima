@@ -53,12 +53,91 @@ vs_command_queue_create(struct premali_state *state, int offset, int size)
 int
 plbu_command_queue_create(struct premali_state *state, int offset, int size)
 {
+	struct plb *plb = state->plb;
+	struct mali_cmd *cmds;
 	int i = 0;
 
 	state->plbu_commands = state->mem_address + offset;
 	state->plbu_commands_physical = state->mem_physical + offset;
 	state->plbu_commands_count = 0;
 	state->plbu_commands_size = size / 8;
+
+	cmds = state->plbu_commands;
+
+	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
+	if (state->type == PREMALI_TYPE_MALI400) {
+		int block_max;
+
+		if (plb->shift_h > plb->shift_w)
+			block_max = plb->shift_h;
+		else
+			block_max = plb->shift_w;
+
+		if (block_max > 2)
+			block_max = 2;
+
+		cmds[i].val |= block_max << 28;
+	}
+	cmds[i].cmd = MALI_PLBU_CMD_BLOCK_STEP;
+	i++;
+
+	cmds[i].val = ((plb->width - 1) << 24) | ((plb->height - 1) << 8);
+	cmds[i].cmd = MALI_PLBU_CMD_TILED_DIMENSIONS;
+	i++;
+
+	cmds[i].val = plb->width >> plb->shift_w;
+	cmds[i].cmd = MALI_PLBU_CMD_PLBU_BLOCK_STRIDE;
+	i++;
+
+	cmds[i].val = plb->mem_physical + plb->plbu_offset;
+	if (state->type == PREMALI_TYPE_MALI200)
+		cmds[i].cmd = MALI200_PLBU_CMD_PLBU_ARRAY_ADDRESS;
+	else if (state->type == PREMALI_TYPE_MALI400) {
+		cmds[i].cmd = MALI400_PLBU_CMD_PLBU_ARRAY_ADDRESS;
+		cmds[i].cmd |= ((plb->width * plb->height) >>
+				(plb->shift_w + plb->shift_h)) - 1;
+	}
+	i++;
+
+#if 0
+	cmds[i].val = 0x40100000;
+	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_START;
+	i++;
+
+	cmds[i].val = 0x40150000;
+	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_END;
+	i++;
+#endif
+
+	cmds[i].val = from_float(0.0);
+	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_Y;
+	i++;
+
+	cmds[i].val = from_float(state->height);
+	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_H;
+	i++;
+
+	cmds[i].val = from_float(0.0);
+	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_X;
+	i++;
+
+	cmds[i].val = from_float(state->width);
+	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_W;
+	i++;
+
+	cmds[i].val = 0x00000000;
+	cmds[i].cmd = 0x1000010a;
+	i++;
+
+	cmds[i].val = from_float(0.0);
+	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_NEAR;
+	i++;
+
+	cmds[i].val = from_float(1.0);
+	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_FAR;
+	i++;
+
+	state->plbu_commands_count = i;
 
 	return 0;
 }
@@ -341,83 +420,9 @@ plbu_commands_create(struct premali_state *state, int draw_mode,
 		     int vertex_count)
 {
 	struct plbu_info *info = state->plbu;
-	struct plb *plb = state->plb;
 	struct vs_info *vs = state->vs;
 	struct mali_cmd *cmds = state->plbu_commands;
 	int i = state->plbu_commands_count;
-
-	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
-	if (state->type == PREMALI_TYPE_MALI400) {
-		int block_max;
-
-		if (plb->shift_h > plb->shift_w)
-			block_max = plb->shift_h;
-		else
-			block_max = plb->shift_w;
-
-		if (block_max > 2)
-			block_max = 2;
-
-		cmds[i].val |= block_max << 28;
-	}
-	cmds[i].cmd = MALI_PLBU_CMD_BLOCK_STEP;
-	i++;
-
-	cmds[i].val = ((plb->width - 1) << 24) | ((plb->height - 1) << 8);
-	cmds[i].cmd = MALI_PLBU_CMD_TILED_DIMENSIONS;
-	i++;
-
-	cmds[i].val = plb->width >> plb->shift_w;
-	cmds[i].cmd = MALI_PLBU_CMD_PLBU_BLOCK_STRIDE;
-	i++;
-
-	cmds[i].val = plb->mem_physical + plb->plbu_offset;
-	if (state->type == PREMALI_TYPE_MALI200)
-		cmds[i].cmd = MALI200_PLBU_CMD_PLBU_ARRAY_ADDRESS;
-	else if (state->type == PREMALI_TYPE_MALI400) {
-		cmds[i].cmd = MALI400_PLBU_CMD_PLBU_ARRAY_ADDRESS;
-		cmds[i].cmd |= ((plb->width * plb->height) >>
-				(plb->shift_w + plb->shift_h)) - 1;
-	}
-	i++;
-
-#if 0
-	cmds[i].val = 0x40100000;
-	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_START;
-	i++;
-
-	cmds[i].val = 0x40150000;
-	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_END;
-	i++;
-#endif
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_Y;
-	i++;
-
-	cmds[i].val = from_float(state->height);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_H;
-	i++;
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_X;
-	i++;
-
-	cmds[i].val = from_float(state->width);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_W;
-	i++;
-
-	cmds[i].val = 0x00000000;
-	cmds[i].cmd = 0x1000010a;
-	i++;
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_NEAR;
-	i++;
-
-	cmds[i].val = from_float(1.0);
-	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_FAR;
-	i++;
 
 	/*
 	 *
@@ -442,6 +447,16 @@ plbu_commands_create(struct premali_state *state, int draw_mode,
 	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_END;
 	cmds[i].cmd = MALI_PLBU_CMD_ARRAYS_SEMAPHORE;
 	i++;
+
+	/* update our size so we can set the gp job properly */
+	state->plbu_commands_count = i;
+}
+
+void
+plbu_commands_finish(struct premali_state *state)
+{
+	struct mali_cmd *cmds = state->plbu_commands;
+	int i = state->plbu_commands_count;
 
 	/*
 	 * Some inter-frame communication apparently.
@@ -487,6 +502,7 @@ plbu_commands_create(struct premali_state *state, int draw_mode,
 	/* update our size so we can set the gp job properly */
 	state->plbu_commands_count = i;
 }
+
 
 struct plbu_info *
 plbu_info_create(void *address, int physical, int size)
@@ -669,6 +685,8 @@ plbu_info_finalize(struct premali_state *state, int draw_mode,
 	}
 
 	plbu_commands_create(state, draw_mode, vertex_count);
+
+	plbu_commands_finish(state);
 
 	return 0;
 }
