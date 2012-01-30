@@ -150,10 +150,10 @@ vs_info_setup(struct premali_state *state, struct draw_info *draw)
 
 	if (state->type == PREMALI_TYPE_MALI200) {
 		/* mali200 has a common area for attributes and varyings. */
-		info->common = info->mem_address + info->mem_used;
-		info->common_offset = info->mem_used;
+		info->common = draw->mem_address + draw->mem_used;
+		info->common_offset = draw->mem_used;
 		info->common_size = sizeof(struct gp_common);
-		info->mem_used += ALIGN(info->common_size, 0x40);
+		draw->mem_used += ALIGN(info->common_size, 0x40);
 
 		/* initialize common */
 		for (i = 0; i < 0x10; i++) {
@@ -165,30 +165,31 @@ vs_info_setup(struct premali_state *state, struct draw_info *draw)
 			info->common->varyings[i].size = 0x3F;
 		}
 	} else if (state->type == PREMALI_TYPE_MALI400) {
-		info->attribute_area = info->mem_address + info->mem_used;
+		info->attribute_area = draw->mem_address + draw->mem_used;
 		info->attribute_area_size = 0x10 * sizeof(struct gp_common_entry);
-		info->attribute_area_offset = info->mem_used;
-		info->mem_used += ALIGN(info->attribute_area_size, 0x40);
+		info->attribute_area_offset = draw->mem_used;
+		draw->mem_used += ALIGN(info->attribute_area_size, 0x40);
 
-		info->varying_area = info->mem_address + info->mem_used;
+		info->varying_area = draw->mem_address + draw->mem_used;
 		info->varying_area_size = 0x10 * sizeof(struct gp_common_entry);
-		info->varying_area_offset = info->mem_used;
-		info->mem_used += ALIGN(info->varying_area_size, 0x40);
+		info->varying_area_offset = draw->mem_used;
+		draw->mem_used += ALIGN(info->varying_area_size, 0x40);
 	}
 }
 
 int
-vs_info_attach_uniforms(struct vs_info *info, struct symbol **uniforms,
+vs_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			int count, int size)
 {
+	struct vs_info *info = draw->vs;
 	void *address;
 	int i;
 
-	info->uniform_offset = info->mem_used;
+	info->uniform_offset = draw->mem_used;
 	info->uniform_size = size;
-	info->mem_used += ALIGN(size, 0x40);
+	draw->mem_used += ALIGN(size, 0x40);
 
-	address = info->mem_address + info->uniform_offset;
+	address = draw->mem_address + info->uniform_offset;
 
 	for (i = 0; i < count; i++) {
 		struct symbol *symbol = uniforms[i];
@@ -201,8 +202,9 @@ vs_info_attach_uniforms(struct vs_info *info, struct symbol **uniforms,
 }
 
 int
-vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute)
+vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute)
 {
+	struct vs_info *info = draw->vs;
 	int size;
 
 	if (info->attribute_count == 0x10) {
@@ -211,14 +213,14 @@ vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute)
 	}
 
 	size = ALIGN(attribute->size, 0x40);
-	if (size > (info->mem_size - info->mem_used)) {
+	if (size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
 	}
 
-	attribute->address = info->mem_address + info->mem_used;
-	attribute->physical = info->mem_physical + info->mem_used;
-	info->mem_used += size;
+	attribute->address = draw->mem_address + draw->mem_used;
+	attribute->physical = draw->mem_physical + draw->mem_used;
+	draw->mem_used += size;
 
 	info->attributes[info->attribute_count] = attribute;
 	info->attribute_count++;
@@ -230,18 +232,19 @@ vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute)
 
 /* varyings are still a bit of black magic at this point */
 int
-vs_info_attach_varying(struct vs_info *info, struct symbol *varying)
+vs_info_attach_varying(struct draw_info *draw, struct symbol *varying)
 {
+	struct vs_info *info = draw->vs;
 	int size;
 
 	size = ALIGN(varying->size, 0x40);
-	if (size > (info->mem_size - info->mem_used)) {
+	if (size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
 	}
 
-	varying->physical = info->mem_physical + info->mem_used;
-	info->mem_used += size;
+	varying->physical = draw->mem_physical + draw->mem_used;
+	draw->mem_used += size;
 
 	info->varyings[info->varying_count] = varying;
 	info->varying_count++;
@@ -252,8 +255,9 @@ vs_info_attach_varying(struct vs_info *info, struct symbol *varying)
 }
 
 int
-vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size)
+vs_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size)
 {
+	struct vs_info *info = draw->vs;
 	int mem_size;
 
 	if (info->shader != NULL) {
@@ -262,15 +266,15 @@ vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size)
 	}
 
 	mem_size = ALIGN(size * 16, 0x40);
-	if (mem_size > (info->mem_size - info->mem_used)) {
+	if (mem_size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: no more space\n", __func__);
 		return -2;
 	}
 
-	info->shader = info->mem_address + info->mem_used;
-	info->shader_offset = info->mem_used;
+	info->shader = draw->mem_address + draw->mem_used;
+	info->shader_offset = draw->mem_used;
 	info->shader_size = size;
-	info->mem_used += mem_size;
+	draw->mem_used += mem_size;
 
 	memcpy(info->shader, shader, 16 * size);
 
@@ -292,7 +296,7 @@ vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
-	cmds[i].val = vs->mem_physical + vs->shader_offset;
+	cmds[i].val = draw->mem_physical + vs->shader_offset;
 	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (vs->shader_size << 16);
 	i++;
 
@@ -305,23 +309,23 @@ vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	cmds[i].cmd = MALI_VS_CMD_VARYING_ATTRIBUTE_COUNT;
 	i++;
 
-	cmds[i].val = vs->mem_physical + vs->uniform_offset;
+	cmds[i].val = draw->mem_physical + vs->uniform_offset;
 	cmds[i].cmd = MALI_VS_CMD_UNIFORMS_ADDRESS |
 		(ALIGN(vs->uniform_size, 4) << 14);
 	i++;
 
 	if (state->type == PREMALI_TYPE_MALI200) {
-		cmds[i].val = vs->mem_physical + vs->common_offset;
+		cmds[i].val = draw->mem_physical + vs->common_offset;
 		cmds[i].cmd = MALI_VS_CMD_COMMON_ADDRESS |
 			(vs->common_size << 14);
 		i++;
 	} else if (state->type == PREMALI_TYPE_MALI400) {
-		cmds[i].val = vs->mem_physical + vs->attribute_area_offset;
+		cmds[i].val = draw->mem_physical + vs->attribute_area_offset;
 		cmds[i].cmd = MALI_VS_CMD_ATTRIBUTES_ADDRESS |
 			(vs->attribute_area_size << 11);
 		i++;
 
-		cmds[i].val = vs->mem_physical + vs->varying_area_offset;
+		cmds[i].val = draw->mem_physical + vs->varying_area_offset;
 		cmds[i].cmd = MALI_VS_CMD_VARYINGS_ADDRESS |
 			(vs->varying_area_size << 11);
 		i++;
@@ -413,7 +417,7 @@ plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	cmds[i].cmd = MALI_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
-	cmds[i].val = info->mem_physical + info->render_state_offset;
+	cmds[i].val = draw->mem_physical + info->render_state_offset;
 	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY;
 	cmds[i].cmd |= vs->varyings[vs->varying_count - 1]->physical >> 4;
 	i++;
@@ -481,37 +485,10 @@ plbu_commands_finish(struct premali_state *state)
 	state->plbu_commands_count = i;
 }
 
-
-struct plbu_info *
-plbu_info_create(void *address, int physical, int size)
-{
-	struct plbu_info *info;
-
-	info = calloc(1, sizeof(struct plbu_info));
-	if (!info) {
-		printf("%s: Error allocating structure: %s\n",
-		       __func__, strerror(errno));
-		return NULL;
-	}
-
-	info->mem_address = address;
-	info->mem_physical = physical;
-	info->mem_size = size;
-
-	/* leave the rest empty for now */
-
-	if (info->mem_used > info->mem_size) {
-		printf("%s: Not enough memory\n", __func__);
-		free(info);
-		return NULL;
-	}
-
-	return info;
-}
-
 int
-plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size)
+plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size)
 {
+	struct plbu_info *info = draw->plbu;
 	int mem_size;
 
 	if (info->shader != NULL) {
@@ -520,15 +497,15 @@ plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size)
 	}
 
 	mem_size = ALIGN(size * 4, 0x40);
-	if (mem_size > (info->mem_size - info->mem_used)) {
+	if (mem_size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: no more space\n", __func__);
 		return -2;
 	}
 
-	info->shader = info->mem_address + info->mem_used;
-	info->shader_offset = info->mem_used;
+	info->shader = draw->mem_address + draw->mem_used;
+	info->shader_offset = draw->mem_used;
 	info->shader_size = size;
-	info->mem_used += mem_size;
+	draw->mem_used += mem_size;
 
 	memcpy(info->shader, shader, 4 * size);
 
@@ -536,25 +513,26 @@ plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size)
 }
 
 int
-plbu_info_attach_uniforms(struct plbu_info *info, struct symbol **uniforms,
+plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			  int count, int size)
 {
+	struct plbu_info *info = draw->plbu;
 	void *address;
 	unsigned int *array;
 	int i;
 
-	info->uniform_array_offset = info->mem_used;
+	info->uniform_array_offset = draw->mem_used;
 	info->uniform_array_size = 4;
-	info->mem_used += 0x40;
+	draw->mem_used += 0x40;
 
-	array = info->mem_address + info->uniform_array_offset;
+	array = draw->mem_address + info->uniform_array_offset;
 
-	info->uniform_offset = info->mem_used;
+	info->uniform_offset = draw->mem_used;
 	info->uniform_size = size;
-	info->mem_used += ALIGN(size, 0x40);
+	draw->mem_used += ALIGN(size, 0x40);
 
-	address = info->mem_address + info->uniform_offset;
-	array[0] = info->mem_physical + info->uniform_offset;
+	address = draw->mem_address + info->uniform_offset;
+	array[0] = draw->mem_physical + info->uniform_offset;
 
 	for (i = 0; i < count; i++) {
 		struct symbol *symbol = uniforms[i];
@@ -570,8 +548,10 @@ plbu_info_attach_uniforms(struct plbu_info *info, struct symbol **uniforms,
 }
 
 int
-plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
+plbu_info_render_state_create(struct draw_info *draw)
 {
+	struct plbu_info *info = draw->plbu;
+	struct vs_info *vs = draw->vs;
 	struct render_state *state;
 	int size, i;
 
@@ -581,7 +561,7 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 	}
 
 	size = ALIGN(sizeof(struct render_state), 0x40);
-	if (size > (info->mem_size - info->mem_used)) {
+	if (size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: no more space\n", __func__);
 		return -2;
 	}
@@ -591,10 +571,10 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 		return -3;
 	}
 
-	info->render_state = info->mem_address + info->mem_used;
-	info->render_state_offset = info->mem_used;
+	info->render_state = draw->mem_address + draw->mem_used;
+	info->render_state_offset = draw->mem_used;
 	info->render_state_size = size;
-	info->mem_used += size;
+	draw->mem_used += size;
 
 	/* this bit still needs some figuring out :) */
 	state = info->render_state;
@@ -609,7 +589,7 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 	state->unknown1C = 0;
 	state->unknown20 = 0xF807;
 	state->shader_address =
-		(info->mem_physical + info->shader_offset) | info->shader_size;
+		(draw->mem_physical + info->shader_offset) | info->shader_size;
 
 	state->uniforms_address = 0;
 
@@ -636,7 +616,7 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 
 	if (info->uniform_size) {
 		state->uniforms_address =
-			(int) info->mem_physical + info->uniform_array_offset;
+			(int) draw->mem_physical + info->uniform_array_offset;
 
 		state->uniforms_address |=
 			(ALIGN(info->uniform_size, 4) / 4) - 1;
@@ -687,18 +667,7 @@ draw_create_new(struct premali_state *state, int offset, int size,
 	draw->vertex_start = vertex_start;
 	draw->vertex_count = vertex_count;
 
-
-	draw->vs->mem_address = draw->mem_address;
-	draw->vs->mem_physical = draw->mem_physical;
-	draw->vs->mem_used = 0;
-	draw->vs->mem_size = draw->mem_size / 2;
-
 	vs_info_setup(state, draw);
-
-	draw->plbu->mem_address = draw->mem_address + draw->mem_size / 2;
-	draw->plbu->mem_physical = draw->mem_physical + draw->mem_size / 2;
-	draw->plbu->mem_used = 0;
-	draw->plbu->mem_size = draw->mem_size / 2;
 
 	return draw;
 }

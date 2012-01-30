@@ -343,10 +343,10 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 	draw = draw_create_new(state, 0x8B000, 0x2000, mode, start, count);
 	state->draw = draw;
 
-	vs_info_attach_shader(draw->vs, state->vertex_binary->shader,
+	vs_info_attach_shader(draw, state->vertex_binary->shader,
 			      state->vertex_binary->shader_size / 16);
 
-	plbu_info_attach_shader(draw->plbu, state->fragment_binary->shader,
+	plbu_info_attach_shader(draw, state->fragment_binary->shader,
 				state->fragment_binary->shader_size / 4);
 
 	for (i = 0; i < state->vertex_attribute_count; i++) {
@@ -354,7 +354,7 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 			symbol_copy(state->vertex_attributes[i], start, count);
 
 		if (symbol)
-			vs_info_attach_attribute(draw->vs, symbol);
+			vs_info_attach_attribute(draw, symbol);
 
 	}
 
@@ -363,15 +363,15 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 			symbol_copy(state->vertex_varyings[i], 0, count);
 
 		if (symbol)
-			vs_info_attach_varying(draw->vs, symbol);
+			vs_info_attach_varying(draw, symbol);
 	}
 
-	if (vs_info_attach_uniforms(draw->vs, state->vertex_uniforms,
+	if (vs_info_attach_uniforms(draw, state->vertex_uniforms,
 				    state->vertex_uniform_count,
 				    state->vertex_uniform_size))
 		return -1;
 
-	if (plbu_info_attach_uniforms(draw->plbu, state->fragment_uniforms,
+	if (plbu_info_attach_uniforms(draw, state->fragment_uniforms,
 				      state->fragment_uniform_count,
 				      state->fragment_uniform_size))
 		return -1;
@@ -379,7 +379,7 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 	vs_commands_draw_add(state, draw);
 	vs_info_finalize(state, draw->vs);
 
-	plbu_info_render_state_create(draw->plbu, draw->vs);
+	plbu_info_render_state_create(draw);
 	plbu_commands_draw_add(state, draw);
 
 	plbu_commands_finish(state);

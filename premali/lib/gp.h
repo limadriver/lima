@@ -30,11 +30,6 @@ struct gp_common {
 };
 
 struct vs_info {
-	void *mem_address;
-	int mem_physical;
-	int mem_used;
-	int mem_size;
-
 	/* for mali200: attributes and varyings are shared. */
 	struct gp_common *common;
 	int common_offset;
@@ -66,22 +61,17 @@ struct vs_info {
 	int shader_size;
 };
 
-int vs_info_attach_uniforms(struct vs_info *info, struct symbol **uniforms,
+int vs_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			    int count, int size);
 
-int vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute);
-int vs_info_attach_varying(struct vs_info *info, struct symbol *varying);
-int vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size);
+int vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute);
+int vs_info_attach_varying(struct draw_info *draw, struct symbol *varying);
+int vs_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size);
 
 void vs_commands_draw_add(struct premali_state *state, struct draw_info *draw);
 void vs_info_finalize(struct premali_state *state, struct vs_info *info);
 
 struct plbu_info {
-	void *mem_address;
-	int mem_physical;
-	int mem_used;
-	int mem_size;
-
 	struct render_state *render_state;
 	int render_state_offset;
 	int render_state_size;
@@ -103,11 +93,11 @@ int plbu_command_queue_create(struct premali_state *state, int offset, int size)
 void plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw);
 void plbu_commands_finish(struct premali_state *state);
 
-int plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size);
-int plbu_info_attach_uniforms(struct plbu_info *info, struct symbol **uniforms,
+int plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size);
+int plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			    int count, int size);
 
-int plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs);
+int plbu_info_render_state_create(struct draw_info *draw);
 
 struct draw_info {
 	unsigned int mem_physical;
