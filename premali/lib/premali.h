@@ -96,7 +96,8 @@ int premali_uniform_attach(struct premali_state *state, char *name, int size,
 			   int count, void *data);
 int premali_attribute_pointer(struct premali_state *state, char *name, int size,
 			      int count, void *data);
-int premali_draw_arrays(struct premali_state *state, int mode, int vertex_count);
+int premali_draw_arrays(struct premali_state *state, int mode,
+			int vertex_start, int vertex_count);
 int premali_flush(struct premali_state *state);
 void premali_finish(void);
 

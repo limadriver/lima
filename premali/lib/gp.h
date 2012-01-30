@@ -102,8 +102,8 @@ struct plbu_info {
 int vs_command_queue_create(struct premali_state *state, int offset, int size);
 int plbu_command_queue_create(struct premali_state *state, int offset, int size);
 
-void plbu_commands_create(struct premali_state *state, int draw_mode,
-			  int vertex_count);
+void plbu_commands_draw_add(struct premali_state *state, int draw_mode,
+			    int start, int count);
 struct plbu_info *plbu_info_create(void *address, int physical, int size);
 
 
@@ -113,7 +113,7 @@ int plbu_info_attach_uniforms(struct plbu_info *info, struct symbol **uniforms,
 
 int plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs);
 int plbu_info_finalize(struct premali_state *state, int draw_mode,
-		       int vertex_count);
+		       int start, int count);
 
 int premali_gp_job_start(struct premali_state *state);
 

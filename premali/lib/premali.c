@@ -321,7 +321,7 @@ premali_gl_mali_ViewPortTransform(struct premali_state *state,
 }
 
 int
-premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
+premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 {
 	int i;
 
@@ -358,7 +358,7 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 
 	for (i = 0; i < state->vertex_attribute_count; i++) {
 		struct symbol *symbol =
-			symbol_copy(state->vertex_attributes[i], 0, vertex_count);
+			symbol_copy(state->vertex_attributes[i], start, count);
 
 		if (symbol)
 			vs_info_attach_attribute(state->vs, symbol);
@@ -367,7 +367,7 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 
 	for (i = 0; i < state->vertex_varying_count; i++) {
 		struct symbol *symbol =
-			symbol_copy(state->vertex_varyings[i], 0, vertex_count);
+			symbol_copy(state->vertex_varyings[i], 0, count);
 
 		if (symbol)
 			vs_info_attach_varying(state->vs, symbol);
@@ -383,11 +383,11 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 				      state->fragment_uniform_size))
 		return -1;
 
-	vs_commands_create(state, vertex_count);
+	vs_commands_create(state, count);
 	vs_info_finalize(state, state->vs);
 
 	plbu_info_render_state_create(state->plbu, state->vs);
-	plbu_info_finalize(state, mode, vertex_count);
+	plbu_info_finalize(state, mode, start, count);
 
 	return 0;
 }

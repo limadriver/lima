@@ -416,8 +416,8 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 }
 
 void
-plbu_commands_create(struct premali_state *state, int draw_mode,
-		     int vertex_count)
+plbu_commands_draw_add(struct premali_state *state, int draw_mode,
+		       int start, int count)
 {
 	struct plbu_info *info = state->plbu;
 	struct vs_info *vs = state->vs;
@@ -440,8 +440,8 @@ plbu_commands_create(struct premali_state *state, int draw_mode,
 	cmds[i].cmd |= vs->varyings[vs->varying_count - 1]->physical >> 4;
 	i++;
 
-	cmds[i].val = (vertex_count << 24);
-	cmds[i].cmd = ((draw_mode & 0x1F) << 16) | (vertex_count >> 8);
+	cmds[i].val = (count << 24); // | start;
+	cmds[i].cmd = ((draw_mode & 0x1F) << 16) | (count >> 8);
 	i++;
 
 	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_END;
@@ -672,7 +672,7 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 
 int
 plbu_info_finalize(struct premali_state *state, int draw_mode,
-		   int vertex_count)
+		   int start, int count)
 {
 	if (!state->plbu->render_state) {
 		printf("%s: Missing render_state\n", __func__);
@@ -684,7 +684,7 @@ plbu_info_finalize(struct premali_state *state, int draw_mode,
 		return -1;
 	}
 
-	plbu_commands_create(state, draw_mode, vertex_count);
+	plbu_commands_draw_add(state, draw_mode, start, count);
 
 	plbu_commands_finish(state);
 
