@@ -100,7 +100,7 @@ main(int argc, char *argv[])
 	premali_attribute_pointer(state, "aPosition", 4, 3, vertices);
 	premali_attribute_pointer(state, "aColor", 4, 4, colors);
 
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 6);
+	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 0, 6);
 	if (ret)
 		return ret;
 
@@ -108,7 +108,7 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	bmp_dump(state->pp->frame_address, state->width, "/sdcard/premali.bmp");
+	bmp_dump(state->pp->frame_address, state, "/sdcard/premali.bmp");
 
 	fb_dump(state->pp->frame_address, 0, state->width, state->height);
 

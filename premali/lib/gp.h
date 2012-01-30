@@ -66,8 +66,6 @@ struct vs_info {
 	int shader_size;
 };
 
-struct vs_info *vs_info_create(struct premali_state *sate, void *address, int physical, int size);
-
 int vs_info_attach_uniforms(struct vs_info *info, struct symbol **uniforms,
 			    int count, int size);
 
@@ -75,7 +73,7 @@ int vs_info_attach_attribute(struct vs_info *info, struct symbol *attribute);
 int vs_info_attach_varying(struct vs_info *info, struct symbol *varying);
 int vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size);
 
-void vs_commands_create(struct premali_state *state, int vertex_count);
+void vs_commands_draw_add(struct premali_state *state, struct draw_info *draw);
 void vs_info_finalize(struct premali_state *state, struct vs_info *info);
 
 struct plbu_info {
@@ -102,18 +100,33 @@ struct plbu_info {
 int vs_command_queue_create(struct premali_state *state, int offset, int size);
 int plbu_command_queue_create(struct premali_state *state, int offset, int size);
 
-void plbu_commands_draw_add(struct premali_state *state, int draw_mode,
-			    int start, int count);
-struct plbu_info *plbu_info_create(void *address, int physical, int size);
-
+void plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw);
+void plbu_commands_finish(struct premali_state *state);
 
 int plbu_info_attach_shader(struct plbu_info *info, unsigned int *shader, int size);
 int plbu_info_attach_uniforms(struct plbu_info *info, struct symbol **uniforms,
 			    int count, int size);
 
 int plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs);
-int plbu_info_finalize(struct premali_state *state, int draw_mode,
-		       int start, int count);
+
+struct draw_info {
+	unsigned int mem_physical;
+	unsigned int mem_size;
+	int mem_used;
+	void *mem_address;
+
+	int draw_mode;
+	int vertex_start;
+	int vertex_count;
+
+	struct vs_info vs[1];
+
+	struct plbu_info plbu[1];
+};
+
+struct draw_info *draw_create_new(struct premali_state *state, int offset,
+				  int size, int draw_mode, int vertex_start,
+				  int vertex_count);
 
 int premali_gp_job_start(struct premali_state *state);
 

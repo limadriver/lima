@@ -1228,11 +1228,5 @@ premali_link(struct premali_state *state)
 				     varyings);
 	vertex_shader_varyings_reorder(state, varyings);
 
-	vs_info_attach_shader(state->vs, state->vertex_binary->shader,
-			      state->vertex_binary->shader_size / 16);
-
-	plbu_info_attach_shader(state->plbu, state->fragment_binary->shader,
-				state->fragment_binary->shader_size / 4);
-
 	return 0;
 }

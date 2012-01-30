@@ -48,8 +48,8 @@ struct premali_state {
 	unsigned int clear_color;
 
 	struct mali_gp_job_start *gp_job;
-	struct vs_info *vs;
-	struct plbu_info *plbu;
+
+	struct draw_info *draw;
 
 	struct plb *plb;
 

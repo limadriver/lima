@@ -91,7 +91,7 @@ main(int argc, char *argv[])
 
 	premali_uniform_attach(state, "uColor", 4, 4, color);
 
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 4);
+	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 0, 4);
 	if (ret)
 		return ret;
 

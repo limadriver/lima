@@ -34,6 +34,7 @@
 #include "pp.h"
 #include "jobs.h"
 #include "symbols.h"
+#include "compiler.h"
 
 static int
 premali_fd_open(struct premali_state *state)
@@ -195,18 +196,6 @@ premali_state_setup(struct premali_state *state, int width, int height,
 	    plbu_command_queue_create(state, 0x85000, 0x4000))
 		return -1;
 
-
-	state->vs = vs_info_create(state, state->mem_address + 0x89000,
-				   state->mem_physical + 0x89000, 0x1000);
-	if (!state->vs)
-		return -1;
-
-	state->plbu = plbu_info_create(state->mem_address + 0x8A000,
-				       state->mem_physical + 0x8A000,
-				       0x1000);
-	if (!state->plbu)
-		return -1;
-
 	return 0;
 }
 
@@ -323,32 +312,27 @@ premali_gl_mali_ViewPortTransform(struct premali_state *state,
 int
 premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 {
+	struct draw_info *draw;
 	int i;
-
-	if (!state->vs) {
-		printf("%s: Error: vs member is not set up yet.\n", __func__);
-		return -1;
-	}
-
-	if (!state->plbu) {
-		printf("%s: Error: plbu member is not set up yet.\n", __func__);
-		return -1;
-	}
 
 	if (!state->plb) {
 		printf("%s: Error: plb member is not set up yet.\n", __func__);
 		return -1;
 	}
 
+
 	/* Todo, check whether attributes all have data attached! */
 
 	for (i = 0; i < state->vertex_uniform_count; i++) {
 		struct symbol *symbol = state->vertex_uniforms[i];
 
+		if (symbol->data)
+			continue;
+
 		if (!strcmp(symbol->name, "gl_mali_ViewportTransform")) {
 			if (premali_gl_mali_ViewPortTransform(state, symbol))
 				return -1;
-		} else if (!symbol->data) {
+		} else {
 			printf("%s: Error: vertex uniform %s is empty.\n",
 			       __func__, symbol->name);
 
@@ -356,12 +340,21 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 		}
 	}
 
+	draw = draw_create_new(state, 0x8B000, 0x2000, mode, start, count);
+	state->draw = draw;
+
+	vs_info_attach_shader(draw->vs, state->vertex_binary->shader,
+			      state->vertex_binary->shader_size / 16);
+
+	plbu_info_attach_shader(draw->plbu, state->fragment_binary->shader,
+				state->fragment_binary->shader_size / 4);
+
 	for (i = 0; i < state->vertex_attribute_count; i++) {
 		struct symbol *symbol =
 			symbol_copy(state->vertex_attributes[i], start, count);
 
 		if (symbol)
-			vs_info_attach_attribute(state->vs, symbol);
+			vs_info_attach_attribute(draw->vs, symbol);
 
 	}
 
@@ -370,24 +363,26 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 			symbol_copy(state->vertex_varyings[i], 0, count);
 
 		if (symbol)
-			vs_info_attach_varying(state->vs, symbol);
+			vs_info_attach_varying(draw->vs, symbol);
 	}
 
-	if (vs_info_attach_uniforms(state->vs, state->vertex_uniforms,
+	if (vs_info_attach_uniforms(draw->vs, state->vertex_uniforms,
 				    state->vertex_uniform_count,
 				    state->vertex_uniform_size))
 		return -1;
 
-	if (plbu_info_attach_uniforms(state->plbu, state->fragment_uniforms,
+	if (plbu_info_attach_uniforms(draw->plbu, state->fragment_uniforms,
 				      state->fragment_uniform_count,
 				      state->fragment_uniform_size))
 		return -1;
 
-	vs_commands_create(state, count);
-	vs_info_finalize(state, state->vs);
+	vs_commands_draw_add(state, draw);
+	vs_info_finalize(state, draw->vs);
 
-	plbu_info_render_state_create(state->plbu, state->vs);
-	plbu_info_finalize(state, mode, start, count);
+	plbu_info_render_state_create(draw->plbu, draw->vs);
+	plbu_commands_draw_add(state, draw);
+
+	plbu_commands_finish(state);
 
 	return 0;
 }

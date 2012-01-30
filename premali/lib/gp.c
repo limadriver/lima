@@ -142,22 +142,11 @@ plbu_command_queue_create(struct premali_state *state, int offset, int size)
 	return 0;
 }
 
-struct vs_info *
-vs_info_create(struct premali_state *state, void *address, int physical, int size)
+void
+vs_info_setup(struct premali_state *state, struct draw_info *draw)
 {
-	struct vs_info *info;
+	struct vs_info *info = draw->vs;
 	int i;
-
-	info = calloc(1, sizeof(struct vs_info));
-	if (!info) {
-		printf("%s: Error allocating structure: %s\n",
-		       __func__, strerror(errno));
-		return NULL;
-	}
-
-	info->mem_address = address;
-	info->mem_physical = physical;
-	info->mem_size = size;
 
 	if (state->type == PREMALI_TYPE_MALI200) {
 		/* mali200 has a common area for attributes and varyings. */
@@ -186,16 +175,6 @@ vs_info_create(struct premali_state *state, void *address, int physical, int siz
 		info->varying_area_offset = info->mem_used;
 		info->mem_used += ALIGN(info->varying_area_size, 0x40);
 	}
-
-	/* leave the rest empty for now */
-
-	if (info->mem_used > info->mem_size) {
-		printf("%s: Not enough memory\n", __func__);
-		free(info);
-		return NULL;
-	}
-
-	return info;
 }
 
 int
@@ -299,9 +278,9 @@ vs_info_attach_shader(struct vs_info *info, unsigned int *shader, int size)
 }
 
 void
-vs_commands_create(struct premali_state *state, int vertex_count)
+vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 {
-	struct vs_info *vs = state->vs;
+	struct vs_info *vs = draw->vs;
 	struct mali_cmd *cmds = state->vs_commands;
 	int i = state->vs_commands_count;
 
@@ -352,7 +331,7 @@ vs_commands_create(struct premali_state *state, int vertex_count)
 	cmds[i].cmd = 0x10000041;
 	i++;
 
-	cmds[i].val = (vertex_count << 24);
+	cmds[i].val = (draw->vertex_count << 24);
 	cmds[i].cmd = 0x00000000;
 	i++;
 
@@ -416,11 +395,10 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 }
 
 void
-plbu_commands_draw_add(struct premali_state *state, int draw_mode,
-		       int start, int count)
+plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 {
-	struct plbu_info *info = state->plbu;
-	struct vs_info *vs = state->vs;
+	struct plbu_info *info = draw->plbu;
+	struct vs_info *vs = draw->vs;
 	struct mali_cmd *cmds = state->plbu_commands;
 	int i = state->plbu_commands_count;
 
@@ -440,8 +418,8 @@ plbu_commands_draw_add(struct premali_state *state, int draw_mode,
 	cmds[i].cmd |= vs->varyings[vs->varying_count - 1]->physical >> 4;
 	i++;
 
-	cmds[i].val = (count << 24); // | start;
-	cmds[i].cmd = ((draw_mode & 0x1F) << 16) | (count >> 8);
+	cmds[i].val = (draw->vertex_count << 24); // | start;
+	cmds[i].cmd = ((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
 	i++;
 
 	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_END;
@@ -671,45 +649,9 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 }
 
 int
-plbu_info_finalize(struct premali_state *state, int draw_mode,
-		   int start, int count)
-{
-	if (!state->plbu->render_state) {
-		printf("%s: Missing render_state\n", __func__);
-		return -1;
-	}
-
-	if (!state->plbu->shader) {
-		printf("%s: Missing shader\n", __func__);
-		return -1;
-	}
-
-	plbu_commands_draw_add(state, draw_mode, start, count);
-
-	plbu_commands_finish(state);
-
-	return 0;
-}
-
-int
 premali_gp_job_start(struct premali_state *state)
 {
 	struct mali_gp_job_start *job;
-	struct vs_info *vs;
-	struct plbu_info *plbu;
-
-	if (!state->vs) {
-		printf("%s: Error: vs member is not set up yet.\n", __func__);
-		return -1;
-	}
-
-	if (!state->plbu) {
-		printf("%s: Error: plbu member is not set up yet.\n", __func__);
-		return -1;
-	}
-
-	vs = state->vs;
-	plbu = state->plbu;
 
 	job = calloc(1, sizeof(struct mali_gp_job_start));
 
@@ -725,4 +667,38 @@ premali_gp_job_start(struct premali_state *state)
 	job->frame.tile_heap_end = 0;
 
 	return premali_gp_job_start_direct(state, job);
+}
+
+struct draw_info *
+draw_create_new(struct premali_state *state, int offset, int size,
+		int draw_mode, int vertex_start, int vertex_count)
+{
+	struct draw_info *draw = calloc(1, sizeof(struct draw_info));
+
+	if (!draw)
+		return NULL;
+
+	draw->mem_address = state->mem_address + offset;
+	draw->mem_physical = state->mem_physical + offset;
+	draw->mem_used = 0;
+	draw->mem_size = size;
+
+	draw->draw_mode = draw_mode;
+	draw->vertex_start = vertex_start;
+	draw->vertex_count = vertex_count;
+
+
+	draw->vs->mem_address = draw->mem_address;
+	draw->vs->mem_physical = draw->mem_physical;
+	draw->vs->mem_used = 0;
+	draw->vs->mem_size = draw->mem_size / 2;
+
+	vs_info_setup(state, draw);
+
+	draw->plbu->mem_address = draw->mem_address + draw->mem_size / 2;
+	draw->plbu->mem_physical = draw->mem_physical + draw->mem_size / 2;
+	draw->plbu->mem_used = 0;
+	draw->plbu->mem_size = draw->mem_size / 2;
+
+	return draw;
 }

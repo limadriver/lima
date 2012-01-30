@@ -100,7 +100,7 @@ main(int argc, char *argv[])
 	premali_attribute_pointer(state, "aPosition", 4, 3, vertices);
 	premali_attribute_pointer(state, "aColor", 4, 4, colors);
 
-	ret = premali_draw_arrays(state, GL_TRIANGLE_FAN, 6);
+	ret = premali_draw_arrays(state, GL_TRIANGLE_FAN, 0, 6);
 	if (ret)
 		return ret;
 
