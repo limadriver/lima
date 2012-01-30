@@ -47,7 +47,7 @@ static int mali_address_add(void *address, unsigned int size,
 			    unsigned int physical);
 static int mali_address_remove(void *address, int size);
 static void mali_memory_dump(void);
-static void mali_bmp_dump(void);
+static void mali_wrap_bmp_dump(void);
 
 static pthread_mutex_t serializer[1] = { PTHREAD_MUTEX_INITIALIZER };
 
@@ -116,7 +116,7 @@ remali_wrap_log_open(void)
 
 	remali_wrap_log = fopen(filename, "w");
 	if (!remali_wrap_log) {
-		printf("Error: failed to open %s: %s\n", filename,
+		printf("Error: failed to open wrap log %s: %s\n", filename,
 		       strerror(errno));
 		remali_wrap_log = stdout;
 	}
@@ -576,7 +576,7 @@ dev_mali_wait_for_notification_post(void *data)
 			//mali_memory_dump();
 
 			/* We finished a frame, we dump the result */
-			mali_bmp_dump();
+			mali_wrap_bmp_dump();
 		}
 		break;
 	case _MALI_NOTIFICATION_GP_STALLED:
@@ -1061,7 +1061,7 @@ mali_memory_dump(void)
 }
 
 static void
-mali_bmp_dump(void)
+mali_wrap_bmp_dump(void)
 {
 	void *address = mali_address_retrieve(render_address);
 
@@ -1084,7 +1084,7 @@ mali_bmp_dump(void)
 		render_height = 240 * 2;
 	}
 
-	bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/sdcard/premali.wrap.bmp");
+	wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/sdcard/premali.wrap.bmp");
 }
 
 /*

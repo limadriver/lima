@@ -96,7 +96,7 @@ bmp_header_write(int fd, int width, int height)
 }
 
 void
-bmp_dump(char *buffer, int size, int width, int height, char *filename)
+wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename)
 {
 	int fd;
 

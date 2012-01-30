@@ -49,7 +49,11 @@ struct premali_state {
 
 	struct mali_gp_job_start *gp_job;
 
-	struct draw_info *draw;
+	struct draw_info *draws[32];
+	int draw_count;
+
+	unsigned int draw_mem_offset;
+	int draw_mem_size;
 
 	struct plb *plb;
 

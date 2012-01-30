@@ -24,6 +24,6 @@
 #ifndef BMP_DUMP_H
 #define BMP_DUMP_H 1
 
-void bmp_dump(char *buffer, int size, int width, int height, char *filename);
+void wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename);
 
 #endif /* BMP_DUMP_H */

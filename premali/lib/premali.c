@@ -196,6 +196,9 @@ premali_state_setup(struct premali_state *state, int width, int height,
 	    plbu_command_queue_create(state, 0x85000, 0x4000))
 		return -1;
 
+	state->draw_mem_offset = 0x90000;
+	state->draw_mem_size = 0x70000;
+
 	return 0;
 }
 
@@ -340,8 +343,22 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 		}
 	}
 
-	draw = draw_create_new(state, 0x8B000, 0x2000, mode, start, count);
-	state->draw = draw;
+	if (state->draw_count >= 32) {
+		printf("%s: Error: too many draws already!\n", __func__);
+		return -1;
+	}
+
+	if (state->draw_mem_size < 0x1000) {
+		printf("%s: Error: no more space available!\n", __func__);
+		return -1;
+	}
+
+	draw = draw_create_new(state, state->draw_mem_offset, 0x1000, mode, start, count);
+	state->draws[state->draw_count] = draw;
+
+	state->draw_mem_offset += 0x1000;
+	state->draw_mem_size -= 0x1000;
+	state->draw_count++;
 
 	vs_info_attach_shader(draw, state->vertex_binary->shader,
 			      state->vertex_binary->shader_size / 16);
@@ -382,8 +399,6 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 	plbu_info_render_state_create(draw);
 	plbu_commands_draw_add(state, draw);
 
-	plbu_commands_finish(state);
-
 	return 0;
 }
 
@@ -391,6 +406,8 @@ int
 premali_flush(struct premali_state *state)
 {
 	int ret;
+
+	plbu_commands_finish(state);
 
 	ret = premali_gp_job_start(state);
 	if (ret)
@@ -401,6 +418,7 @@ premali_flush(struct premali_state *state)
 		return ret;
 
 	premali_jobs_wait();
+
 	return 0;
 }
 
