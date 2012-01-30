@@ -337,12 +337,14 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 }
 
 void
-plbu_commands_create(struct premali_state *state, struct plbu_info *info,
-		     struct plb *plb, struct vs_info *vs,
-		     int draw_mode, int vertex_count)
+plbu_commands_create(struct premali_state *state, int draw_mode,
+		     int vertex_count)
 {
-	struct mali_cmd *cmds = info->commands;
-	int i = 0;
+	struct plbu_info *info = state->plbu;
+	struct plb *plb = state->plb;
+	struct vs_info *vs = state->vs;
+	struct mali_cmd *cmds = state->plbu_commands;
+	int i = state->plbu_commands_count;
 
 	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
 	if (state->type == PREMALI_TYPE_MALI400) {
@@ -405,6 +407,18 @@ plbu_commands_create(struct premali_state *state, struct plbu_info *info,
 	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_W;
 	i++;
 
+	cmds[i].val = 0x00000000;
+	cmds[i].cmd = 0x1000010a;
+	i++;
+
+	cmds[i].val = from_float(0.0);
+	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_NEAR;
+	i++;
+
+	cmds[i].val = from_float(1.0);
+	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_FAR;
+	i++;
+
 	/*
 	 *
 	 */
@@ -419,18 +433,6 @@ plbu_commands_create(struct premali_state *state, struct plbu_info *info,
 	cmds[i].val = info->mem_physical + info->render_state_offset;
 	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY;
 	cmds[i].cmd |= vs->varyings[vs->varying_count - 1]->physical >> 4;
-	i++;
-
-	cmds[i].val = 0x00000000;
-	cmds[i].cmd = 0x1000010a;
-	i++;
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_NEAR;
-	i++;
-
-	cmds[i].val = from_float(1.0);
-	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_FAR;
 	i++;
 
 	cmds[i].val = (vertex_count << 24);
@@ -483,7 +485,7 @@ plbu_commands_create(struct premali_state *state, struct plbu_info *info,
 	i++;
 
 	/* update our size so we can set the gp job properly */
-	info->commands_size = i * sizeof(struct mali_cmd);
+	state->plbu_commands_count = i;
 }
 
 struct plbu_info *
@@ -501,11 +503,6 @@ plbu_info_create(void *address, int physical, int size)
 	info->mem_address = address;
 	info->mem_physical = physical;
 	info->mem_size = size;
-
-	info->commands = info->mem_address + info->mem_used;
-	info->commands_offset = info->mem_used;
-	info->commands_size = 0x20 * sizeof(struct mali_cmd);
-	info->mem_used += ALIGN(info->commands_size, 0x40);
 
 	/* leave the rest empty for now */
 
@@ -658,22 +655,20 @@ plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs)
 }
 
 int
-plbu_info_finalize(struct premali_state *state,
-		   struct plbu_info *info, struct plb *plb, struct vs_info *vs,
-		   int draw_mode, int vertex_count)
+plbu_info_finalize(struct premali_state *state, int draw_mode,
+		   int vertex_count)
 {
-	if (!info->render_state) {
+	if (!state->plbu->render_state) {
 		printf("%s: Missing render_state\n", __func__);
 		return -1;
 	}
 
-	if (!info->shader) {
+	if (!state->plbu->shader) {
 		printf("%s: Missing shader\n", __func__);
 		return -1;
 	}
 
-	plbu_commands_create(state, info, plb, vs,
-			     draw_mode, vertex_count);
+	plbu_commands_create(state, draw_mode, vertex_count);
 
 	return 0;
 }
@@ -705,9 +700,9 @@ premali_gp_job_start(struct premali_state *state)
 	job->frame.vs_commands_start = state->vs_commands_physical;
 	job->frame.vs_commands_end =
 		state->vs_commands_physical + 8 * state->vs_commands_count;
-	job->frame.plbu_commands_start = plbu->mem_physical + plbu->commands_offset;
-	job->frame.plbu_commands_end = plbu->mem_physical +
-		plbu->commands_offset + plbu->commands_size;
+	job->frame.plbu_commands_start = state->plbu_commands_physical;
+	job->frame.plbu_commands_end =
+		state->plbu_commands_physical + 8 * state->plbu_commands_count;
 	job->frame.tile_heap_start = 0;
 	job->frame.tile_heap_end = 0;
 

@@ -387,8 +387,7 @@ premali_draw_arrays(struct premali_state *state, int mode, int vertex_count)
 	vs_info_finalize(state, state->vs);
 
 	plbu_info_render_state_create(state->plbu, state->vs);
-	plbu_info_finalize(state, state->plbu, state->plb, state->vs,
-			   mode, vertex_count);
+	plbu_info_finalize(state, mode, vertex_count);
 
 	return 0;
 }

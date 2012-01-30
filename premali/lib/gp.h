@@ -84,10 +84,6 @@ struct plbu_info {
 	int mem_used;
 	int mem_size;
 
-	struct mali_cmd *commands;
-	int commands_offset;
-	int commands_size;
-
 	struct render_state *render_state;
 	int render_state_offset;
 	int render_state_size;
@@ -106,9 +102,8 @@ struct plbu_info {
 int vs_command_queue_create(struct premali_state *state, int offset, int size);
 int plbu_command_queue_create(struct premali_state *state, int offset, int size);
 
-void plbu_commands_create(struct premali_state *state, struct plbu_info *info,
-			  struct plb *plb, struct vs_info *vs,
-			  int draw_mode, int vertex_count);
+void plbu_commands_create(struct premali_state *state, int draw_mode,
+			  int vertex_count);
 struct plbu_info *plbu_info_create(void *address, int physical, int size);
 
 
@@ -117,9 +112,8 @@ int plbu_info_attach_uniforms(struct plbu_info *info, struct symbol **uniforms,
 			    int count, int size);
 
 int plbu_info_render_state_create(struct plbu_info *info, struct vs_info *vs);
-int plbu_info_finalize(struct premali_state *state,
-		       struct plbu_info *info, struct plb *plb, struct vs_info *vs,
-		       int draw_mode, int vertex_count);
+int plbu_info_finalize(struct premali_state *state, int draw_mode,
+		       int vertex_count);
 
 int premali_gp_job_start(struct premali_state *state);
 
