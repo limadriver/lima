@@ -10,6 +10,7 @@ static EGLint const config_attribute_list[] = {
 	EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
 	EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
 	EGL_DEPTH_SIZE, 8,
+	EGL_SAMPLES, 4,
 	EGL_NONE
 };
 

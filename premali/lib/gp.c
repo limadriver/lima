@@ -602,6 +602,8 @@ plbu_info_render_state_create(struct draw_info *draw)
 	state->unknown18 = 7;
 	state->unknown1C = 0;
 	state->unknown20 = 0xF807;
+	/* enable 4x MSAA */
+	state->unknown20 |= 0x68;
 	state->shader_address =
 		(draw->mem_physical + info->shader_offset) | info->shader_size;
 
