@@ -40,6 +40,9 @@ struct symbol {
 	int component_count;
 	int entry_count;
 
+	int src_stride;
+	int dst_stride;
+
 	int size; /* size it takes in memory. */
 	short offset; /* offset from start of memory block */
 
@@ -52,17 +55,12 @@ struct symbol {
 
 struct symbol *symbol_create(const char *name, enum symbol_type type,
 			     int component_size, int component_count,
-			     int entry_count, void *data, int copy);
+			     int entry_count, int src_stride, int dst_stride,
+			     void *data, int copy, int matrix);
 
 struct symbol *symbol_copy(struct symbol *original, int start, int count);
 
 void symbol_destroy(struct symbol *symbol);
 void symbol_print(struct symbol *symbol);
-
-struct symbol *uniform_gl_mali_ViewPortTransform(float x0, float y0,
-						 float x1, float y1,
-						 float depth_near,
-						 float depth_far);
-struct symbol *uniform___maligp2_constant_000(void);
 
 #endif /* PREMALI_SYMBOLS_H */

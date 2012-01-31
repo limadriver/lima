@@ -982,7 +982,7 @@ mali_memory_dump_block(unsigned int *address, int start, int stop,
 	for (i = start; i < stop; i += 4)
 		wrap_log("\t\t\t0x%08x, 0x%08x, 0x%08x, 0x%08x, /* 0x%08X */\n",
 			 address[i + 0], address[i + 1],
-			 address[i + 2], address[i + 3], 4 * i);
+			 address[i + 2], address[i + 3], 4 * (i - start));
 
 	wrap_log("\t}\n");
 	wrap_log("};\n");
@@ -1234,7 +1234,7 @@ __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
 		wrap_log("\t\t.varying_count = 0x%x,\n", binary->parameters.vertex.varying_count);
 		wrap_log("\t\t.unknown18 = 0x%x,\n", binary->parameters.vertex.unknown18);
 		wrap_log("\t\t.size = 0x%x,\n", binary->parameters.vertex.size);
-		wrap_log("\t\t.unknown20 = 0x%x,\n", binary->parameters.vertex.unknown20);
+		wrap_log("\t\t.varying_something = 0x%x,\n", binary->parameters.vertex.varying_something);
 		wrap_log("\t},\n");
 	} else {
 		wrap_log("\t.parameters (fragment) = {\n");

@@ -109,8 +109,8 @@ struct stream_uniform_data { /* 0x14 */
 	unsigned short component_count; /* 0x02 */
 	unsigned short component_size; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
-	unsigned short stride; /* 0x08 */
-	unsigned char unknown0A; /* 0x0A */
+	unsigned short src_stride; /* 0x08 */
+	unsigned char dst_stride; /* 0x0A */
 	unsigned char precision; /* 0x0B */
 	unsigned short unknown0C; /* 0x0C */
 	unsigned short unknown0E; /* 0x0E */
@@ -280,8 +280,7 @@ stream_uniform_table_create(void *stream, int size)
 	return NULL;
 }
 
-#if 0
-static void
+void
 stream_uniform_table_print(struct stream_uniform_table *table)
 {
 	struct stream_uniform *uniform;
@@ -296,8 +295,8 @@ stream_uniform_table_print(struct stream_uniform_table *table)
 		       uniform->data->component_count);
 		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
 		       uniform->data->component_size, uniform->data->entry_count);
-		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
-		       uniform->data->stride, uniform->data->unknown0A,
+		printf("\t src_stride 0x%04x, dst_stride 0x%02x, precision 0x%02x\n",
+		       uniform->data->src_stride, uniform->data->dst_stride,
 		       uniform->data->precision);
 		printf("\t unknown0C 0x%04x, unknown0E 0x%04x\n",
 		       uniform->data->unknown0C, uniform->data->unknown0E);
@@ -307,7 +306,6 @@ stream_uniform_table_print(struct stream_uniform_table *table)
 		uniform = uniform->next;
 	}
 }
-#endif
 
 static struct symbol **
 stream_uniform_table_to_symbols(struct stream_uniform_table *table,
@@ -336,20 +334,30 @@ stream_uniform_table_to_symbols(struct stream_uniform_table *table,
 	for (i = 0, uniform = table->uniforms;
 	     (i < table->start->count) && uniform;
 	     i++, uniform = uniform->next) {
+		int component_count = uniform->data->component_count;
+		int matrix = 0;
+
+		if (uniform->data->unknown01 == 4)
+			matrix = 1;
+
 		if (uniform->init)
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
 					      uniform->data->component_size,
-					      uniform->data->component_count,
+					      component_count,
 					      uniform->data->entry_count,
-					      uniform->init->data, 1);
+					      uniform->data->src_stride,
+					      uniform->data->dst_stride,
+					      uniform->init->data, 1, matrix);
 		else
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
 					      uniform->data->component_size,
-					      uniform->data->component_count,
+					      component_count,
 					      uniform->data->entry_count,
-					      NULL, 0);
+					      uniform->data->src_stride,
+					      uniform->data->dst_stride,
+					      NULL, 0, matrix);
 		if (!symbols[i]) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, uniform->string->string, strerror(errno));
@@ -584,7 +592,7 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 				      attribute->data->component_size,
 				      attribute->data->component_count,
 				      attribute->data->entry_count,
-				      NULL, 0);
+				      0, 0, NULL, 0, 0);
 		if (!symbol) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, attribute->string->string, strerror(errno));
@@ -830,7 +838,7 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 				       varying->data->component_size,
 				       varying->data->component_count,
 				       varying->data->entry_count,
-				       NULL, 0);
+				       0, 0, NULL, 0, 0);
 		if (!symbol) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, varying->string->string, strerror(errno));
@@ -1017,6 +1025,8 @@ vertex_shader_attach(struct premali_state *state, const char *source)
 							&state->vertex_varying_count);
 		stream_varying_table_destroy(varying_table);
 	}
+
+	state->vertex_varying_something = binary->parameters.vertex.varying_something;
 
 	state->vertex_binary = binary;
 

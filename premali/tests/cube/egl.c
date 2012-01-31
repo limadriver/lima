@@ -16,10 +16,8 @@ static EGLint const config_attribute_list[] = {
 };
 
 static EGLint const pbuffer_attribute_list[] = {
-//	EGL_WIDTH, 1024,
-//	EGL_HEIGHT, 768,
-	EGL_WIDTH, 384,
-	EGL_HEIGHT, 256,
+	EGL_WIDTH, 400,
+	EGL_HEIGHT, 240,
 	EGL_LARGEST_PBUFFER, EGL_TRUE,
     EGL_NONE
 };
@@ -360,7 +358,6 @@ main(int argc, char *argv[])
 	esRotate(&modelview, 10.0f, 0.0f, 0.0f, 1.0f);
 
 	GLfloat aspect = (GLfloat)(height) / (GLfloat)(width);
-	printf("aspect: %f\n", aspect);
 
 	ESMatrix projection;
 	esMatrixLoadIdentity(&projection);
@@ -385,25 +382,22 @@ main(int argc, char *argv[])
 	GLint modelviewprojectionmatrix_handle = glGetUniformLocation(program, "modelviewprojectionMatrix");
 	GLint normalmatrix_handle = glGetUniformLocation(program, "normalMatrix");
 
-	printf("handles: %d %d %d\n", modelviewmatrix_handle, modelviewprojectionmatrix_handle,
-	       normalmatrix_handle);
-
 	glUniformMatrix4fv(modelviewmatrix_handle, 1, GL_FALSE, &modelview.m[0][0]);
 	glUniformMatrix4fv(modelviewprojectionmatrix_handle, 1, GL_FALSE, &modelviewprojection.m[0][0]);
 	glUniformMatrix3fv(normalmatrix_handle, 1, GL_FALSE, normal);
 
 	glEnable(GL_CULL_FACE);
 
-	int i;
-	for (i = 0; i < 6; ++i)
-	  glDrawArrays(GL_TRIANGLE_STRIP, 4 * i, 4);
-#if 1
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glDrawArrays(GL_TRIANGLE_STRIP, 4, 4);
+	glDrawArrays(GL_TRIANGLE_STRIP, 8, 4);
+	glDrawArrays(GL_TRIANGLE_STRIP, 12, 4);
+	glDrawArrays(GL_TRIANGLE_STRIP, 16, 4);
+	glDrawArrays(GL_TRIANGLE_STRIP, 20, 4);
+
 	glFlush();
-#endif
 
 	usleep(1000000);
-
-	//printf("The End!\n");
 
 	fflush(stdout);
 

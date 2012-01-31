@@ -33,6 +33,8 @@
 #include "pp.h"
 #include "program.h"
 
+#include "esUtil.h"
+
 #define WIDTH 800
 #define HEIGHT 480
 
@@ -194,7 +196,55 @@ main(int argc, char *argv[])
 	premali_attribute_pointer(state, "in_color", 4, 3, vColors);
 	premali_attribute_pointer(state, "in_normal", 4, 3, vNormals);
 
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 4);
+	ESMatrix modelview;
+	esMatrixLoadIdentity(&modelview);
+	esTranslate(&modelview, 0.0f, 0.0f, -8.0f);
+	esRotate(&modelview, 45.0f, 1.0f, 0.0f, 0.0f);
+	esRotate(&modelview, 45.0f, 0.0f, 1.0f, 0.0f);
+	esRotate(&modelview, 10.0f, 0.0f, 0.0f, 1.0f);
+
+	GLfloat aspect = (GLfloat)(HEIGHT) / (GLfloat)(WIDTH);
+	printf("aspect: %f\n", aspect);
+
+	ESMatrix projection;
+	esMatrixLoadIdentity(&projection);
+	esFrustum(&projection, -2.8f, +2.8f, -2.8f * aspect, +2.8f * aspect, 6.0f, 10.0f);
+
+	ESMatrix modelviewprojection;
+	esMatrixLoadIdentity(&modelviewprojection);
+	esMatrixMultiply(&modelviewprojection, &modelview, &projection);
+
+	float normal[9];
+	normal[0] = modelview.m[0][0];
+	normal[1] = modelview.m[0][1];
+	normal[2] = modelview.m[0][2];
+	normal[3] = modelview.m[1][0];
+	normal[4] = modelview.m[1][1];
+	normal[5] = modelview.m[1][2];
+	normal[6] = modelview.m[2][0];
+	normal[7] = modelview.m[2][1];
+	normal[8] = modelview.m[2][2];
+
+	premali_uniform_attach(state, "modelviewMatrix", 4, 16, &modelview.m[0][0]);
+	premali_uniform_attach(state, "modelviewprojectionMatrix", 4, 16, &modelviewprojection.m[0][0]);
+	premali_uniform_attach(state, "normalMatrix", 4, 9, normal);
+
+	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP,  0, 4);
+	if (ret)
+		return ret;
+	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP,  4, 4);
+	if (ret)
+		return ret;
+	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP,  8, 4);
+	if (ret)
+		return ret;
+	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 12, 4);
+	if (ret)
+		return ret;
+	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 16, 4);
+	if (ret)
+		return ret;
+	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 20, 4);
 	if (ret)
 		return ret;
 
@@ -202,8 +252,7 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	bmp_dump(state->pp->frame_address, 0,
-		 state->width, state->height, "/sdcard/premali.bmp");
+	bmp_dump(state->pp->frame_address, state, "/sdcard/premali.bmp");
 
 	fb_dump(state->pp->frame_address, 0, state->width, state->height);
 

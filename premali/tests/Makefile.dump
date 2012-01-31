@@ -1,22 +1,22 @@
 .PHONY : dump install run wrap
 
-dump: premali_$(NAME)
+dump: premali_dump
 
-premali_$(NAME): dump.c dumped_stream.c
+premali_dump: dump.c dumped_stream.c
 	$(CC) $(CFLAGS) -o $@ dump.c -lpremali
 
-install: $(ADB) premali_$(NAME)
-	$(ADB) push premali_$(NAME) $(INSTALL_DIR)/premali/$(NAME)
+dump_install: $(ADB) premali_dump
+	$(ADB) push premali_dump $(INSTALL_DIR)/premali/dump
 
-wrap: $(ADB)
+dump_wrap: $(ADB)
 	$(ADB) shell "rm /sdcard/premali.bmp"
 	$(ADB) shell "rm $(WRAP_LOG)"
-	$(ADB) shell "LD_PRELOAD=libMali_wrap.so REMALI_WRAP_LOG=$(WRAP_LOG) $(INSTALL_DIR)/premali/$(NAME)"
+	$(ADB) shell "LD_PRELOAD=libMali_wrap.so REMALI_WRAP_LOG=$(WRAP_LOG) $(INSTALL_DIR)/premali/dump"
 	$(ADB) pull $(WRAP_LOG)
 	$(ADB) pull /sdcard/premali.bmp
 
-run: $(ADB)
-	$(ADB) shell $(INSTALL_DIR)premali/$(NAME)
+dump_run: $(ADB)
+	$(ADB) shell $(INSTALL_DIR)premali/dump
 
-clean:
+dump_clean:
 	rm -f premali_$(NAME)

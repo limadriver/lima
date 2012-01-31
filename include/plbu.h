@@ -42,6 +42,7 @@
  *         Set these according to cull face mode, and front face value.
  */
 #define MALI_PLBU_CMD_PRIMITIVE_SETUP    0x1000010B
+#define MALI_PLBU_CMD_PRIMITIVE_CULL_CCW         0x00040000
 
 /* Determines how to map tiles to blocks, in shifted values.
  *

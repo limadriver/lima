@@ -353,7 +353,8 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 		return -1;
 	}
 
-	draw = draw_create_new(state, state->draw_mem_offset, 0x1000, mode, start, count);
+	draw = draw_create_new(state, state->draw_mem_offset, 0x1000,
+			       mode, start, count);
 	state->draws[state->draw_count] = draw;
 
 	state->draw_mem_offset += 0x1000;

@@ -29,13 +29,17 @@
 struct symbol *
 symbol_create(const char *name, enum symbol_type type,
 	      int component_size, int component_count,
-	      int entry_count, void *data, int copy)
+	      int entry_count, int src_stride, int dst_stride,
+	      void *data, int copy, int matrix)
 {
 	struct symbol *symbol;
 	int size;
 
 	if (!entry_count)
 		entry_count = 1;
+
+	if (matrix)
+		component_count *= component_count;
 
 	size = component_size * component_count * entry_count;
 
@@ -62,6 +66,11 @@ symbol_create(const char *name, enum symbol_type type,
 	symbol->component_size = component_size;
 	symbol->component_count = component_count;
 	symbol->entry_count = entry_count;
+
+	if (matrix) {
+		symbol->src_stride = src_stride;
+		symbol->dst_stride = dst_stride;
+	}
 
 	symbol->size = size;
 
@@ -130,6 +139,8 @@ symbol_print(struct symbol *symbol)
 	printf("\t.component_size = %d,\n", symbol->component_size);
 	printf("\t.component_count = %d,\n", symbol->component_count);
 	printf("\t.entry_count = %d,\n", symbol->entry_count);
+	printf("\t.src_stride = %d,\n", symbol->src_stride);
+	printf("\t.dst_stride = %d,\n", symbol->dst_stride);
 	printf("\t.size = %d,\n", symbol->size);
 	printf("\t.offset = %d,\n", symbol->offset);
 	printf("\t.address = %p,\n", symbol->address);
@@ -139,40 +150,9 @@ symbol_print(struct symbol *symbol)
 		float *data = symbol->data;
 
 		for (i = 0; i < (symbol->size / 4); i++)
-			printf("\t.data[0x%02x] = %f\n",
-			       i, data[i]);
+			printf("\t.data[0x%02x] = %f (0x%x)\n",
+			       i, data[i], *((int *)(&data[i])));
 	}
 
 	printf("};\n");
-}
-
-/*
- * Standard symbols.
- */
-struct symbol *
-uniform_gl_mali_ViewPortTransform(float x0, float y0, float x1, float y1,
-				  float depth_near, float depth_far)
-{
-	float viewport[8];
-
-	viewport[0] = x1 / 2;
-	viewport[1] = y1 / 2;
-	viewport[2] = (depth_far - depth_near) / 2;
-	viewport[3] = depth_far;
-	viewport[4] = (x0 + x1) / 2;
-	viewport[5] = (y0 + y1) / 2;
-	viewport[6] = (depth_near + depth_far) / 2;
-	viewport[7] = depth_near;
-
-	return symbol_create("gl_mali_ViewportTransform", SYMBOL_UNIFORM,
-			     4, 8, 1, viewport, 1);
-}
-
-struct symbol *
-uniform___maligp2_constant_000(void)
-{
-	float constant[] = {-1e+10, 1e+10, 0.0, 0.0};
-
-	return symbol_create("__maligp2_constant_000", SYMBOL_UNIFORM,
-			     4, 4, 1, constant, 1);
 }

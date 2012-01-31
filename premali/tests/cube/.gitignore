@@ -1,4 +1,5 @@
-premali_triangle_smoothed
-egl_triangle_smoothed
+premali_cube
+egl_cube
+premali_dump
 *.bmp
 *.log

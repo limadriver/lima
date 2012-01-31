@@ -81,6 +81,7 @@ struct premali_state {
 
 	struct symbol **vertex_varyings;
 	int vertex_varying_count;
+	int vertex_varying_something;
 
 	struct mali_shader_binary *fragment_binary;
 

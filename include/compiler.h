@@ -30,7 +30,7 @@ struct mali_shader_binary_vertex_parameters { /* 0x24 */
 	int varying_count; /* 0x14 */
 	int unknown18; /* 0x18 */
 	int size; /* 0x1C, commands are in 4 dwords */
-	int unknown20; /* 0x20 */
+	int varying_something; /* 0x20 */
 };
 
 struct mali_shader_binary_fragment_parameters { /* 0x30 */

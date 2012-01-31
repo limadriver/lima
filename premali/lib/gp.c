@@ -187,15 +187,26 @@ vs_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 
 	info->uniform_offset = draw->mem_used;
 	info->uniform_size = size;
-	draw->mem_used += ALIGN(size, 0x40);
+	draw->mem_used += ALIGN(4 * size, 0x40);
 
 	address = draw->mem_address + info->uniform_offset;
 
 	for (i = 0; i < count; i++) {
 		struct symbol *symbol = uniforms[i];
 
-		memcpy(address + symbol->component_size * symbol->offset,
-		       symbol->data, symbol->size);
+		if (symbol->src_stride == symbol->dst_stride)
+			memcpy(address + symbol->component_size * symbol->offset,
+			       symbol->data, symbol->size);
+		else {
+			void *symbol_address = address +
+				symbol->component_size * symbol->offset;
+			int j;
+
+			for (j = 0; (j * symbol->src_stride) < symbol->size; j++)
+				memcpy(symbol_address + (j * symbol->dst_stride),
+				       symbol->data + (j * symbol->src_stride),
+				       symbol->src_stride);
+		}
 	}
 
 	return 0;
@@ -222,7 +233,7 @@ vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute)
 	attribute->physical = draw->mem_physical + draw->mem_used;
 	draw->mem_used += size;
 
-	info->attributes[info->attribute_count] = attribute;
+	info->attributes[attribute->offset / 4] = attribute;
 	info->attribute_count++;
 
 	memcpy(attribute->address, attribute->data, attribute->size);
@@ -300,7 +311,7 @@ vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (vs->shader_size << 16);
 	i++;
 
-	cmds[i].val = (5 - 1) << 20; /* will become clearer when linking */
+	cmds[i].val = (state->vertex_varying_something - 1) << 20;
 	cmds[i].val |= (vs->shader_size - 1) << 10;
 	cmds[i].cmd = 0x10000040;
 	i++;
@@ -322,12 +333,12 @@ vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	} else if (state->type == PREMALI_TYPE_MALI400) {
 		cmds[i].val = draw->mem_physical + vs->attribute_area_offset;
 		cmds[i].cmd = MALI_VS_CMD_ATTRIBUTES_ADDRESS |
-			(vs->attribute_area_size << 11);
+			(vs->attribute_count << 17);
 		i++;
 
 		cmds[i].val = draw->mem_physical + vs->varying_area_offset;
 		cmds[i].cmd = MALI_VS_CMD_VARYINGS_ADDRESS |
-			(vs->varying_area_size << 11);
+			(vs->varying_count << 17);
 		i++;
 	}
 
@@ -348,7 +359,7 @@ vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	i++;
 
 	/* update our size so we can set the gp job properly */
-	state->vs_commands_count = i * sizeof(struct mali_cmd);
+	state->vs_commands_count = i;
 }
 
 void
@@ -413,7 +424,7 @@ plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	cmds[i].cmd = MALI_PLBU_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
-	cmds[i].val = 0x00002200;
+	cmds[i].val = 0x00002200 | MALI_PLBU_CMD_PRIMITIVE_CULL_CCW;
 	cmds[i].cmd = MALI_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
@@ -422,7 +433,7 @@ plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	cmds[i].cmd |= vs->varyings[vs->varying_count - 1]->physical >> 4;
 	i++;
 
-	cmds[i].val = (draw->vertex_count << 24); // | start;
+	cmds[i].val = (draw->vertex_count << 24); /* | draw->vertex_start; */
 	cmds[i].cmd = ((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
 	i++;
 
@@ -521,6 +532,9 @@ plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 	unsigned int *array;
 	int i;
 
+	if (!count)
+		return 0;
+
 	info->uniform_array_offset = draw->mem_used;
 	info->uniform_array_size = 4;
 	draw->mem_used += 0x40;
@@ -529,7 +543,7 @@ plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 
 	info->uniform_offset = draw->mem_used;
 	info->uniform_size = size;
-	draw->mem_used += ALIGN(size, 0x40);
+	draw->mem_used += ALIGN(4 * size, 0x40);
 
 	address = draw->mem_address + info->uniform_offset;
 	array[0] = draw->mem_physical + info->uniform_offset;
