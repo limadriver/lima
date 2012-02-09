@@ -4,7 +4,7 @@ include $(TOP)Makefile.inc
 
 CFLAGS += -I$(TOP)include
 
-all: libpremali.so
+all: liblimare.so
 
 clean:
 	rm -f *.o
@@ -32,11 +32,11 @@ program.o: program.c program.h gp.h
 
 premali.o: premali.c premali.h
 
-libpremali.so: bmp.o fb.o plb.o hfloat.o symbols.o jobs.o dump.o gp.o pp.o program.o premali.o
+liblimare.so: bmp.o fb.o plb.o hfloat.o symbols.o jobs.o dump.o gp.o pp.o program.o premali.o
 	$(CC) -shared -Wall -o $@ $^ -lMali
 
-install: $(ADB) libpremali.so
-	cp libpremali.so $(SYSROOT)usr/lib/
-	$(ADB) push libpremali.so /system/lib/
+install: $(ADB) liblimare.so
+	cp liblimare.so $(SYSROOT)usr/lib/
+	$(ADB) push liblimare.so /system/lib/
 
 include $(TOP)Makefile.post

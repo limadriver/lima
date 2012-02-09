@@ -3,7 +3,7 @@
 dump: limare_dump
 
 limare_dump: dump.c dumped_stream.c
-	$(CC) $(CFLAGS) -o $@ dump.c -lpremali
+	$(CC) $(CFLAGS) -o $@ dump.c -llimare
 
 dump_install: $(ADB) limare_dump
 	$(ADB) push limare_dump $(INSTALL_DIR)/limare/dump

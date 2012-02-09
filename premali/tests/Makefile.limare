@@ -3,7 +3,7 @@
 limare: limare_$(NAME)
 
 limare_$(NAME): limare.c
-	$(CC) $(CFLAGS) -o $@ $^ -lpremali
+	$(CC) $(CFLAGS) -o $@ $^ -llimare
 
 install: $(ADB) limare_$(NAME)
 	$(ADB) push limare_$(NAME) $(INSTALL_DIR)/limare/$(NAME)
