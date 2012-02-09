@@ -4,4 +4,4 @@ NAME = fan_smoothed
 
 all: limare
 
-include ../Makefile.premali
+include ../Makefile.limare

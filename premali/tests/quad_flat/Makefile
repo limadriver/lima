@@ -4,5 +4,5 @@ NAME = quad_flat
 
 all: limare egl
 
-include ../Makefile.premali
+include ../Makefile.limare
 include ../Makefile.egl

@@ -4,5 +4,5 @@ NAME = triangle_quad
 
 all: limare egl
 
-include ../Makefile.premali
+include ../Makefile.limare
 include ../Makefile.egl
