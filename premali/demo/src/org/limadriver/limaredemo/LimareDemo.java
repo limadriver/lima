@@ -21,7 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package org.remali.premalidemo;
+package org.limadriver.limaredemo;
 
 import java.util.Vector;
 import java.io.File;
@@ -35,7 +35,7 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.content.Intent;
 
 
-public class PreMaliDemo extends Activity
+public class LimareDemo extends Activity
 {
     private Vector<String> programs = new Vector<String>();
 
@@ -44,7 +44,7 @@ public class PreMaliDemo extends Activity
     {
         super.onCreate(savedInstanceState);
 
-	Log.i("PreMaliDemo", "create");
+	Log.i("LimareDemo", "create");
 
 	setContentView(R.layout.main);
 
@@ -73,14 +73,14 @@ public class PreMaliDemo extends Activity
 	    {
 		if (file.canExecute())
 		{
-		    Log.i("PreMaliDemo", file.getAbsolutePath());
+		    Log.i("LimareDemo", file.getAbsolutePath());
 		    programs.add(file.getAbsolutePath());
 		}
 	    }
 	}
 	else
 	{
-	    Log.e("PreMaliDemo", "no programs found");
+	    Log.e("LimareDemo", "no programs found");
 	}
     }
 
@@ -89,7 +89,7 @@ public class PreMaliDemo extends Activity
 	String program = programs.get(position);
 
 	Intent intent = new Intent(this, RunDemo.class);
-	intent.putExtra("org.remali.premalidemo.program", program);
+	intent.putExtra("org.limadriver.limaredemo.program", program);
 	startActivity(intent);
     }
 }

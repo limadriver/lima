@@ -21,55 +21,43 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package org.remali.premalidemo;
+package org.limadriver.limaredemo;
 
-import java.lang.Runtime;
-import java.io.IOException;
-import android.app.Activity;
-import android.util.Log;
-import android.os.Bundle;
+import java.util.Vector;
+import java.io.File;
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.TextView;
-import android.content.Intent;
 
 
-public class RunDemo extends Activity
+public class Adapter extends ArrayAdapter<String>
 {
-    private Process process = null;
+    private Context context;
+    private Vector<String> programs;
 
-    @Override
-    public void onCreate(Bundle savedInstanceState)
+    public Adapter(Context context, Vector<String> programs)
     {
-	super.onCreate(savedInstanceState);
-
-	setContentView(R.layout.run);
-
-	Intent intent = getIntent();
-	String program = intent.getStringExtra("org.remali.premalidemo.program");
-
-	Log.i("PreMaliDemo", program);
-
-	((TextView) findViewById(R.id.run_message)).setText(program);
-
-	try
-	{
-	    process = Runtime.getRuntime().exec(program);
-	}
-	catch (IOException e)
-	{
-	    Log.e("PreMaliDemo", "exec failed");
-	    process = null;
-	}
+	super(context, R.layout.listitem, programs);
+	this.context = context;
+	this.programs = programs;
     }
 
     @Override
-    public void onStop()
+    public View getView(int position, View convertView, ViewGroup parent)
     {
-	super.onStop();
+	LayoutInflater inflater = (LayoutInflater)
+	    context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
-	if (process != null)
-	{
-	    process.destroy();
-	    process = null;
-	}
+	File file = new File(programs.get(position));
+
+	View view = inflater.inflate(R.layout.listitem, parent, false);
+
+	TextView textView = (TextView) view.findViewById(R.id.label);
+	textView.setText(file.getName());
+
+	return view;
     }
 }
