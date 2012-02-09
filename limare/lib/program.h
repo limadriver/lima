@@ -24,12 +24,12 @@
 /*
  * Dealing with shader programs, from compilation to linking.
  */
-#ifndef PREMALI_PROGRAM_H
-#define PREMALI_PROGRAM_H 1
+#ifndef LIMARE_PROGRAM_H
+#define LIMARE_PROGRAM_H 1
 
-int vertex_shader_attach(struct premali_state *state, const char *source);
-int fragment_shader_attach(struct premali_state *state, const char *source);
+int vertex_shader_attach(struct limare_state *state, const char *source);
+int fragment_shader_attach(struct limare_state *state, const char *source);
 
-int premali_link(struct premali_state *state);
+int limare_link(struct limare_state *state);
 
-#endif /* PREMALI_PROGRAM_H */
+#endif /* LIMARE_PROGRAM_H */

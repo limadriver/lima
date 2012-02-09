@@ -100,25 +100,25 @@ serialized_stop(void)
  * Basic log writing infrastructure.
  *
  */
-FILE *remali_wrap_log;
+FILE *lima_wrap_log;
 
 void
-remali_wrap_log_open(void)
+lima_wrap_log_open(void)
 {
 	char *filename;
 
-	if (remali_wrap_log)
+	if (lima_wrap_log)
 		return;
 
-	filename = getenv("REMALI_WRAP_LOG");
+	filename = getenv("LIMA_WRAP_LOG");
 	if (!filename)
-		filename = "/sdcard/remali.wrap.log";
+		filename = "/sdcard/lima.wrap.log";
 
-	remali_wrap_log = fopen(filename, "w");
-	if (!remali_wrap_log) {
+	lima_wrap_log = fopen(filename, "w");
+	if (!lima_wrap_log) {
 		printf("Error: failed to open wrap log %s: %s\n", filename,
 		       strerror(errno));
-		remali_wrap_log = stdout;
+		lima_wrap_log = stdout;
 	}
 }
 
@@ -128,10 +128,10 @@ wrap_log(const char *format, ...)
 	va_list args;
 	int ret;
 
-	remali_wrap_log_open();
+	lima_wrap_log_open();
 
 	va_start(args, format);
-	ret = vfprintf(remali_wrap_log, format, args);
+	ret = vfprintf(lima_wrap_log, format, args);
 	va_end(args);
 
 	return ret;
@@ -366,8 +366,8 @@ fflush(FILE *stream)
 
 	ret = orig_fflush(stream);
 
-	if (stream != remali_wrap_log)
-		orig_fflush(remali_wrap_log);
+	if (stream != lima_wrap_log)
+		orig_fflush(lima_wrap_log);
 
 	serialized_stop();
 
@@ -600,11 +600,11 @@ dev_mali_wait_for_notification_post(void *data)
 static void
 dev_mali_gp_job_start_pre(void *data)
 {
-	struct mali_gp_job_start *job = data;
+	struct lima_gp_job_start *job = data;
 
 	wrap_log("IOCTL MALI_IOC_GP2_START_JOB IN;\n");
 
-	wrap_log("struct mali_gp_job_start gp_job = {\n");
+	wrap_log("struct lima_gp_job_start gp_job = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
@@ -627,7 +627,7 @@ dev_mali_gp_job_start_pre(void *data)
 static void
 dev_mali_gp_job_start_post(void *data)
 {
-	struct mali_gp_job_start *job = data;
+	struct lima_gp_job_start *job = data;
 
 	wrap_log("IOCTL MALI_IOC_GP2_START_JOB OUT = {\n");
 
@@ -646,12 +646,12 @@ int render_format;
 static void
 dev_mali200_pp_job_start_pre(void *data)
 {
-	struct mali200_pp_job_start *job = data;
+	struct lima_m200_pp_job_start *job = data;
 	int i;
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
 
-	wrap_log("struct mali200_pp_job_start pp_job = {\n");
+	wrap_log("struct lima_m200_pp_job_start pp_job = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
@@ -701,7 +701,7 @@ dev_mali200_pp_job_start_pre(void *data)
 		render_height = job->frame.height;
 	else
 		render_height = job->frame.supersampled_height + 1;
-	render_format = MALI_PIXEL_FORMAT_RGBA_8888;
+	render_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 
 	//mali_memory_dump();
 }
@@ -709,12 +709,12 @@ dev_mali200_pp_job_start_pre(void *data)
 static void
 dev_mali400_pp_job_start_pre(void *data)
 {
-	struct mali400_pp_job_start *job = data;
+	struct lima_m400_pp_job_start *job = data;
 	int i;
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
 
-	wrap_log("struct mali400_pp_job_start pp_job = {\n");
+	wrap_log("struct lima_m400_pp_job_start pp_job = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
@@ -767,7 +767,7 @@ dev_mali400_pp_job_start_pre(void *data)
 		render_height = job->frame.height;
 	else
 		render_height = job->frame.supersampled_height + 1;
-	render_format = MALI_PIXEL_FORMAT_RGBA_8888;
+	render_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 
 	//mali_memory_dump();
 }
@@ -784,7 +784,7 @@ dev_mali_pp_job_start_pre(void *data)
 static void
 dev_mali200_pp_job_start_post(void *data)
 {
-	struct mali200_pp_job_start *job = data;
+	struct lima_m200_pp_job_start *job = data;
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB OUT = {\n");
 
@@ -798,7 +798,7 @@ dev_mali200_pp_job_start_post(void *data)
 static void
 dev_mali400_pp_job_start_post(void *data)
 {
-	struct mali400_pp_job_start *job = data;
+	struct lima_m400_pp_job_start *job = data;
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB OUT = {\n");
 
@@ -972,7 +972,7 @@ mali_memory_dump_block(unsigned int *address, int start, int stop,
 {
 	int i;
 
-	wrap_log("struct mali_dumped_mem_content mem_0x%08x_0x%08x = {\n",
+	wrap_log("struct lima_dumped_mem_content mem_0x%08x_0x%08x = {\n",
 	       physical, count);
 
 	wrap_log("\t0x%08x,\n", 4 * start);
@@ -1021,7 +1021,7 @@ mali_memory_dump_address(unsigned int *address, unsigned int size,
 		count++;
 	}
 
-	wrap_log("struct mali_dumped_mem_block mem_0x%08x = {\n", physical);
+	wrap_log("struct lima_dumped_mem_block mem_0x%08x = {\n", physical);
 	wrap_log("\tNULL,\n");
 	wrap_log("\t0x%08x,\n", physical);
 	wrap_log("\t0x%08x,\n", 4 * size);
@@ -1048,7 +1048,7 @@ mali_memory_dump(void)
 			count++;
 		}
 
-	wrap_log("struct mali_dumped_mem dumped_mem = {\n");
+	wrap_log("struct lima_dumped_mem dumped_mem = {\n");
 	wrap_log("\t0x%08x,\n", count);
 	wrap_log("\t{\n");
 
@@ -1071,7 +1071,7 @@ mali_wrap_bmp_dump(void)
 		return;
 	}
 
-	if (render_format != MALI_PIXEL_FORMAT_RGBA_8888) {
+	if (render_format != LIMA_PIXEL_FORMAT_RGBA_8888) {
 		wrap_log("%s: Pixel format 0x%x is currently not implemented\n",
 			 __func__, render_format);
 		return;
@@ -1084,7 +1084,7 @@ mali_wrap_bmp_dump(void)
 		render_height = 240 * 2;
 	}
 
-	wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/sdcard/premali.wrap.bmp");
+	wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/sdcard/lima.wrap.bmp");
 }
 
 /*
@@ -1180,11 +1180,11 @@ wrap_dump_shader(unsigned int *shader, int size)
 
 }
 
-int (*orig__mali_compile_essl_shader)(struct mali_shader_binary *binary, int type,
+int (*orig__mali_compile_essl_shader)(struct lima_shader_binary *binary, int type,
 				      const char *source, int *length, int count);
 
 int
-__mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
+__mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 			   const char *source, int *length, int count)
 {
 	int ret;
@@ -1204,7 +1204,7 @@ __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
 
 	ret = orig__mali_compile_essl_shader(binary, type, source, length, count);
 
-	wrap_log("struct mali_shader_binary %p = {\n", binary);
+	wrap_log("struct lima_shader_binary %p = {\n", binary);
 	wrap_log("\t.compile_status = %d,\n", binary->compile_status);
 	wrap_log("\t.error_log = \"%s\",\n", binary->error_log);
 	wrap_log("\t.shader = {\n");

@@ -21,8 +21,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef PREMALI_PREMALI_H
-#define PREMALI_PREMALI_H 1
+#ifndef LIMARE_LIMARE_H
+#define LIMARE_LIMARE_H 1
 
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 
@@ -32,16 +32,16 @@ from_float(float x)
 	return *((unsigned int *) &x);
 }
 
-struct mali_cmd {
+struct lima_cmd {
 	unsigned int val;
 	unsigned int cmd;
 };
 
-struct premali_state {
+struct limare_state {
 	int fd;
 
-#define PREMALI_TYPE_MALI200 200
-#define PREMALI_TYPE_MALI400 400
+#define LIMARE_TYPE_M200 200
+#define LIMARE_TYPE_M400 400
 	int type;
 
 	unsigned int mem_physical;
@@ -53,7 +53,7 @@ struct premali_state {
 
 	unsigned int clear_color;
 
-	struct mali_gp_job_start *gp_job;
+	struct lima_gp_job_start *gp_job;
 
 	struct draw_info *draws[32];
 	int draw_count;
@@ -65,18 +65,18 @@ struct premali_state {
 
 	struct pp_info *pp;
 
-	struct mali_cmd *vs_commands;
+	struct lima_cmd *vs_commands;
 	int vs_commands_physical;
 	int vs_commands_count;
 	int vs_commands_size;
 
-	struct mali_cmd *plbu_commands;
+	struct lima_cmd *plbu_commands;
 	int plbu_commands_physical;
 	int plbu_commands_count;
 	int plbu_commands_size;
 
 	/* program */
-	struct mali_shader_binary *vertex_binary;
+	struct lima_shader_binary *vertex_binary;
 
 	struct symbol **vertex_uniforms;
 	int vertex_uniform_count;
@@ -89,7 +89,7 @@ struct premali_state {
 	int vertex_varying_count;
 	int vertex_varying_something;
 
-	struct mali_shader_binary *fragment_binary;
+	struct lima_shader_binary *fragment_binary;
 
 	struct symbol **fragment_uniforms;
 	int fragment_uniform_count;
@@ -99,17 +99,17 @@ struct premali_state {
 	int fragment_varying_count;
 };
 
-/* from premali.c */
-struct premali_state *premali_init(void);
-int premali_state_setup(struct premali_state *state, int width, int height,
+/* from limare.c */
+struct limare_state *limare_init(void);
+int limare_state_setup(struct limare_state *state, int width, int height,
 			unsigned int clear_color);
-int premali_uniform_attach(struct premali_state *state, char *name, int size,
+int limare_uniform_attach(struct limare_state *state, char *name, int size,
 			   int count, void *data);
-int premali_attribute_pointer(struct premali_state *state, char *name, int size,
+int limare_attribute_pointer(struct limare_state *state, char *name, int size,
 			      int count, void *data);
-int premali_draw_arrays(struct premali_state *state, int mode,
+int limare_draw_arrays(struct limare_state *state, int mode,
 			int vertex_start, int vertex_count);
-int premali_flush(struct premali_state *state);
-void premali_finish(void);
+int limare_flush(struct limare_state *state);
+void limare_finish(void);
 
-#endif /* PREMALI_PREMALI_H */
+#endif /* LIMARE_LIMARE_H */

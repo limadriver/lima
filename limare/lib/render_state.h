@@ -21,8 +21,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef PREMALI_RENDER_STATE
-#define PREMALI_RENDER_STATE 1
+#ifndef LIMARE_RENDER_STATE
+#define LIMARE_RENDER_STATE 1
 
 struct render_state { /* 0x40 */
 	int unknown00; /* 0x00 */
@@ -43,4 +43,4 @@ struct render_state { /* 0x40 */
 	int varyings_address; /* 0x3C */
 };
 
-#endif /* PREMALI_RENDER_STATE */
+#endif /* LIMARE_RENDER_STATE */

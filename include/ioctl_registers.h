@@ -35,7 +35,7 @@
 /*
  * GP Start ioctl, with register names for easy typing and compiler checking.
  */
-struct mali_gp_frame_registers {
+struct lima_gp_frame_registers {
 	unsigned int vs_commands_start;
 	unsigned int vs_commands_end;
 	unsigned int plbu_commands_start;
@@ -46,13 +46,13 @@ struct mali_gp_frame_registers {
 
 /*
  * PP Start ioctl, with register names for easy typing and compiler checking.
- * One for mali200, one for mali400.
+ * One for m200, one for m400.
  */
-#define MALI_PP_FRAME_FLAGS_16BITS	0x01 /* Set when 16 bits per channel */
-#define MALI_PP_FRAME_FLAGS_ACTIVE	0x02 /* always set */
-#define MALI_PP_FRAME_FLAGS_ONSCREEN	0x20 /* set when not an FBO */
+#define LIMA_PP_FRAME_FLAGS_16BITS	0x01 /* Set when 16 bits per channel */
+#define LIMA_PP_FRAME_FLAGS_ACTIVE	0x02 /* always set */
+#define LIMA_PP_FRAME_FLAGS_ONSCREEN	0x20 /* set when not an FBO */
 
-struct mali200_pp_frame_registers {
+struct lima_m200_pp_frame_registers {
 	unsigned int plbu_array_address;
 	unsigned int render_address;
 	unsigned int unused_0;
@@ -77,7 +77,7 @@ struct mali200_pp_frame_registers {
 	unsigned int onscreen; /* 0 for FBO's, 1 for other rendering */
 };
 
-struct mali400_pp_frame_registers {
+struct lima_m400_pp_frame_registers {
 	unsigned int plbu_array_address;
 	unsigned int render_address;
 	unsigned int unused_0;
@@ -107,13 +107,13 @@ struct mali400_pp_frame_registers {
 	unsigned int foureight; /* always 0x8888, perhaps on 4x pp this is different? */
 };
 
-enum mali_pp_wb_type {
-	MALI_PP_WB_TYPE_DISABLED = 0,
-	MALI_PP_WB_TYPE_OTHER = 1, /* for depth, stencil buffers, and fbo's */
-	MALI_PP_WB_TYPE_COLOR = 2, /* for color buffers */
+enum lima_pp_wb_type {
+	LIMA_PP_WB_TYPE_DISABLED = 0,
+	LIMA_PP_WB_TYPE_OTHER = 1, /* for depth, stencil buffers, and fbo's */
+	LIMA_PP_WB_TYPE_COLOR = 2, /* for color buffers */
 };
 
-struct mali_pp_wb_registers {
+struct lima_pp_wb_registers {
 	unsigned int type;
 	unsigned int address;
 	unsigned int pixel_format; /* see formats.h */

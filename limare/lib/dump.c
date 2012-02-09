@@ -33,14 +33,14 @@
 #include "dump.h"
 
 static void
-mali_dumped_mem_content_load(void *address,
-			     struct mali_dumped_mem_content *contents[],
+lima_dumped_mem_content_load(void *address,
+			     struct lima_dumped_mem_content *contents[],
 			     int count)
 {
 	int i;
 
 	for (i = 0; i < count; i++) {
-		struct mali_dumped_mem_content *content = contents[i];
+		struct lima_dumped_mem_content *content = contents[i];
 
 		memcpy(address + content->offset,
 		       content->memory, content->size);
@@ -48,12 +48,12 @@ mali_dumped_mem_content_load(void *address,
 }
 
 int
-dumped_mem_load(int fd, struct mali_dumped_mem *dump)
+dumped_mem_load(int fd, struct lima_dumped_mem *dump)
 {
 	int i;
 
 	for (i = 0; i < dump->count; i++) {
-		struct mali_dumped_mem_block *block = dump->blocks[i];
+		struct lima_dumped_mem_block *block = dump->blocks[i];
 
 		block->address = mmap(NULL, block->size, PROT_READ | PROT_WRITE,
 				      MAP_SHARED, fd, block->physical);
@@ -65,7 +65,7 @@ dumped_mem_load(int fd, struct mali_dumped_mem *dump)
 			printf("Mapped 0x%x (0x%x) to %p\n", block->physical,
 			       block->size, block->address);
 
-		mali_dumped_mem_content_load(block->address, block->contents,
+		lima_dumped_mem_content_load(block->address, block->contents,
 					     block->count);
 	}
 

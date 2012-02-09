@@ -33,6 +33,7 @@
 #include <errno.h>
 
 #include "limare.h"
+#include "bmp.h"
 
 #define FILENAME_SIZE 1024
 
@@ -103,7 +104,7 @@ bmp_header_write(int fd, int width, int height, int bgra)
 }
 
 void
-bmp_dump(char *buffer, struct premali_state *state, char *filename)
+bmp_dump(char *buffer, struct limare_state *state, char *filename)
 {
 	int fd;
 

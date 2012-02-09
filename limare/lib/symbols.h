@@ -25,8 +25,8 @@
  * Some helpers to deal with symbols (uniforms, attributes, varyings).
  */
 
-#ifndef PREMALI_SYMBOLS_H
-#define PREMALI_SYMBOLS_H 1
+#ifndef LIMARE_SYMBOLS_H
+#define LIMARE_SYMBOLS_H 1
 
 enum symbol_type {
 	SYMBOL_UNIFORM,
@@ -68,4 +68,4 @@ struct symbol *symbol_copy(struct symbol *original, int start, int count);
 void symbol_destroy(struct symbol *symbol);
 void symbol_print(struct symbol *symbol);
 
-#endif /* PREMALI_SYMBOLS_H */
+#endif /* LIMARE_SYMBOLS_H */

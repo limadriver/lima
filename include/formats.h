@@ -23,32 +23,32 @@
 
 /*
  *
- * Pixel/Texel format and layout definitions for Mali 200/400.
+ * Pixel/Texel format and layout definitions for M200/M400.
  *
  */
-#ifndef MALI_FORMAT_H
-#define MALI_FORMAT_H 1
+#ifndef LIMA_FORMAT_H
+#define LIMA_FORMAT_H 1
 
-#define MALI_PIXEL_FORMAT_RGB_565		0x00
-#define MALI_PIXEL_FORMAT_RGBA_5551		0x01
-#define MALI_PIXEL_FORMAT_RGBA_4444		0x02
-#define MALI_PIXEL_FORMAT_RGBA_8888		0x03
-#define MALI_PIXEL_FORMAT_LUMINANCE		0x04 /* luminance 8bits */
-#define MALI_PIXEL_FORMAT_LUMINANCE_ALPHA	0x05 /* luminance, alpha, 8bits */
-#define MALI_PIXEL_FORMAT_RGBA64		0x06 /* rgba, 16bits */
-#define MALI_PIXEL_FORMAT_LUMINANCE_16		0x07 /* luminance 16bits */
-#define MALI_PIXEL_FORMAT_LUMINANCE_ALPHA_16	0x08 /* luminance, alpha 16bits */
+#define LIMA_PIXEL_FORMAT_RGB_565		0x00
+#define LIMA_PIXEL_FORMAT_RGBA_5551		0x01
+#define LIMA_PIXEL_FORMAT_RGBA_4444		0x02
+#define LIMA_PIXEL_FORMAT_RGBA_8888		0x03
+#define LIMA_PIXEL_FORMAT_LUMINANCE		0x04 /* luminance 8bits */
+#define LIMA_PIXEL_FORMAT_LUMINANCE_ALPHA	0x05 /* luminance, alpha, 8bits */
+#define LIMA_PIXEL_FORMAT_RGBA64		0x06 /* rgba, 16bits */
+#define LIMA_PIXEL_FORMAT_LUMINANCE_16		0x07 /* luminance 16bits */
+#define LIMA_PIXEL_FORMAT_LUMINANCE_ALPHA_16	0x08 /* luminance, alpha 16bits */
 /* 9, 10, 11, 12 seem zero sized and undefined */
-#define MALI_PIXEL_FORMAT_STENCIL		0x0D /* stencil, 8 bits */
-#define MALI_PIXEL_FORMAT_DEPTH_STENCIL		0x0E /* depth 16 bits, stencil 8 bits */
-#define MALI_PIXEL_FORMAT_DEPTH_STENCIL_32	0x0F /* depth 24 bits, stencil 8 bits */
+#define LIMA_PIXEL_FORMAT_STENCIL		0x0D /* stencil, 8 bits */
+#define LIMA_PIXEL_FORMAT_DEPTH_STENCIL		0x0E /* depth 16 bits, stencil 8 bits */
+#define LIMA_PIXEL_FORMAT_DEPTH_STENCIL_32	0x0F /* depth 24 bits, stencil 8 bits */
 
-#define MALI_TEXEL_FORMAT_RGB_555		0x0E
-#define MALI_TEXEL_FORMAT_RGBA_5551		0x0F
-#define MALI_TEXEL_FORMAT_RGBA_4444		0x10
-#define MALI_TEXEL_FORMAT_RGBA_8888		0x16
-#define MALI_TEXEL_FORMAT_RGBA64		0x26
-#define MALI_TEXEL_FORMAT_DEPTH_STENCIL_32	0x2C
-#define MALI_TEXEL_FORMAT_INVALID		0x3F
+#define LIMA_TEXEL_FORMAT_RGB_555		0x0E
+#define LIMA_TEXEL_FORMAT_RGBA_5551		0x0F
+#define LIMA_TEXEL_FORMAT_RGBA_4444		0x10
+#define LIMA_TEXEL_FORMAT_RGBA_8888		0x16
+#define LIMA_TEXEL_FORMAT_RGBA64		0x26
+#define LIMA_TEXEL_FORMAT_DEPTH_STENCIL_32	0x2C
+#define LIMA_TEXEL_FORMAT_INVALID		0x3F
 
-#endif /* MALI_FORMAT_H */
+#endif /* LIMA_FORMAT_H */

@@ -45,7 +45,7 @@
 #include "hfloat.h"
 
 int
-vs_command_queue_create(struct premali_state *state, int offset, int size)
+vs_command_queue_create(struct limare_state *state, int offset, int size)
 {
 	state->vs_commands = state->mem_address + offset;
 	state->vs_commands_physical = state->mem_physical + offset;
@@ -56,10 +56,10 @@ vs_command_queue_create(struct premali_state *state, int offset, int size)
 }
 
 int
-plbu_command_queue_create(struct premali_state *state, int offset, int size)
+plbu_command_queue_create(struct limare_state *state, int offset, int size)
 {
 	struct plb *plb = state->plb;
-	struct mali_cmd *cmds;
+	struct lima_cmd *cmds;
 	int i = 0;
 
 	state->plbu_commands = state->mem_address + offset;
@@ -70,7 +70,7 @@ plbu_command_queue_create(struct premali_state *state, int offset, int size)
 	cmds = state->plbu_commands;
 
 	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
-	if (state->type == PREMALI_TYPE_MALI400) {
+	if (state->type == LIMARE_TYPE_M400) {
 		int block_max;
 
 		if (plb->shift_h > plb->shift_w)
@@ -83,22 +83,22 @@ plbu_command_queue_create(struct premali_state *state, int offset, int size)
 
 		cmds[i].val |= block_max << 28;
 	}
-	cmds[i].cmd = MALI_PLBU_CMD_BLOCK_STEP;
+	cmds[i].cmd = LIMA_PLBU_CMD_BLOCK_STEP;
 	i++;
 
 	cmds[i].val = ((plb->width - 1) << 24) | ((plb->height - 1) << 8);
-	cmds[i].cmd = MALI_PLBU_CMD_TILED_DIMENSIONS;
+	cmds[i].cmd = LIMA_PLBU_CMD_TILED_DIMENSIONS;
 	i++;
 
 	cmds[i].val = plb->width >> plb->shift_w;
-	cmds[i].cmd = MALI_PLBU_CMD_PLBU_BLOCK_STRIDE;
+	cmds[i].cmd = LIMA_PLBU_CMD_PLBU_BLOCK_STRIDE;
 	i++;
 
 	cmds[i].val = plb->mem_physical + plb->plbu_offset;
-	if (state->type == PREMALI_TYPE_MALI200)
-		cmds[i].cmd = MALI200_PLBU_CMD_PLBU_ARRAY_ADDRESS;
-	else if (state->type == PREMALI_TYPE_MALI400) {
-		cmds[i].cmd = MALI400_PLBU_CMD_PLBU_ARRAY_ADDRESS;
+	if (state->type == LIMARE_TYPE_M200)
+		cmds[i].cmd = LIMA_M200_PLBU_CMD_PLBU_ARRAY_ADDRESS;
+	else if (state->type == LIMARE_TYPE_M400) {
+		cmds[i].cmd = LIMA_M400_PLBU_CMD_PLBU_ARRAY_ADDRESS;
 		cmds[i].cmd |= ((plb->width * plb->height) >>
 				(plb->shift_w + plb->shift_h)) - 1;
 	}
@@ -106,28 +106,28 @@ plbu_command_queue_create(struct premali_state *state, int offset, int size)
 
 #if 0
 	cmds[i].val = 0x40100000;
-	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_START;
+	cmds[i].cmd = LIMA_PLBU_CMD_TILE_HEAP_START;
 	i++;
 
 	cmds[i].val = 0x40150000;
-	cmds[i].cmd = MALI_PLBU_CMD_TILE_HEAP_END;
+	cmds[i].cmd = LIMA_PLBU_CMD_TILE_HEAP_END;
 	i++;
 #endif
 
 	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_Y;
+	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_Y;
 	i++;
 
 	cmds[i].val = from_float(state->height);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_H;
+	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_H;
 	i++;
 
 	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_X;
+	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_X;
 	i++;
 
 	cmds[i].val = from_float(state->width);
-	cmds[i].cmd = MALI_PLBU_CMD_VIEWPORT_W;
+	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_W;
 	i++;
 
 	cmds[i].val = 0x00000000;
@@ -135,11 +135,11 @@ plbu_command_queue_create(struct premali_state *state, int offset, int size)
 	i++;
 
 	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_NEAR;
+	cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_NEAR;
 	i++;
 
 	cmds[i].val = from_float(1.0);
-	cmds[i].cmd = MALI_PLBU_CMD_DEPTH_RANGE_FAR;
+	cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_FAR;
 	i++;
 
 	state->plbu_commands_count = i;
@@ -148,13 +148,13 @@ plbu_command_queue_create(struct premali_state *state, int offset, int size)
 }
 
 void
-vs_info_setup(struct premali_state *state, struct draw_info *draw)
+vs_info_setup(struct limare_state *state, struct draw_info *draw)
 {
 	struct vs_info *info = draw->vs;
 	int i;
 
-	if (state->type == PREMALI_TYPE_MALI200) {
-		/* mali200 has a common area for attributes and varyings. */
+	if (state->type == LIMARE_TYPE_M200) {
+		/* lima200 has a common area for attributes and varyings. */
 		info->common = draw->mem_address + draw->mem_used;
 		info->common_offset = draw->mem_used;
 		info->common_size = sizeof(struct gp_common);
@@ -169,7 +169,7 @@ vs_info_setup(struct premali_state *state, struct draw_info *draw)
 			info->common->varyings[i].physical = 0;
 			info->common->varyings[i].size = 0x3F;
 		}
-	} else if (state->type == PREMALI_TYPE_MALI400) {
+	} else if (state->type == LIMARE_TYPE_M400) {
 		info->attribute_area = draw->mem_address + draw->mem_used;
 		info->attribute_area_size = 0x10 * sizeof(struct gp_common_entry);
 		info->attribute_area_offset = draw->mem_used;
@@ -298,22 +298,22 @@ vs_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size)
 }
 
 void
-vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
+vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 {
 	struct vs_info *vs = draw->vs;
-	struct mali_cmd *cmds = state->vs_commands;
+	struct lima_cmd *cmds = state->vs_commands;
 	int i = state->vs_commands_count;
 
-	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
-	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
+	cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
+	cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
-	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_2;
-	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
+	cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_2;
+	cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
 	cmds[i].val = draw->mem_physical + vs->shader_offset;
-	cmds[i].cmd = MALI_VS_CMD_SHADER_ADDRESS | (vs->shader_size << 16);
+	cmds[i].cmd = LIMA_VS_CMD_SHADER_ADDRESS | (vs->shader_size << 16);
 	i++;
 
 	cmds[i].val = (state->vertex_varying_something - 1) << 20;
@@ -322,27 +322,27 @@ vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	i++;
 
 	cmds[i].val = ((vs->varying_count - 1) << 8) | ((vs->attribute_count - 1) << 24);
-	cmds[i].cmd = MALI_VS_CMD_VARYING_ATTRIBUTE_COUNT;
+	cmds[i].cmd = LIMA_VS_CMD_VARYING_ATTRIBUTE_COUNT;
 	i++;
 
 	cmds[i].val = draw->mem_physical + vs->uniform_offset;
-	cmds[i].cmd = MALI_VS_CMD_UNIFORMS_ADDRESS |
+	cmds[i].cmd = LIMA_VS_CMD_UNIFORMS_ADDRESS |
 		(ALIGN(vs->uniform_size, 4) << 14);
 	i++;
 
-	if (state->type == PREMALI_TYPE_MALI200) {
+	if (state->type == LIMARE_TYPE_M200) {
 		cmds[i].val = draw->mem_physical + vs->common_offset;
-		cmds[i].cmd = MALI_VS_CMD_COMMON_ADDRESS |
+		cmds[i].cmd = LIMA_VS_CMD_COMMON_ADDRESS |
 			(vs->common_size << 14);
 		i++;
-	} else if (state->type == PREMALI_TYPE_MALI400) {
+	} else if (state->type == LIMARE_TYPE_M400) {
 		cmds[i].val = draw->mem_physical + vs->attribute_area_offset;
-		cmds[i].cmd = MALI_VS_CMD_ATTRIBUTES_ADDRESS |
+		cmds[i].cmd = LIMA_VS_CMD_ATTRIBUTES_ADDRESS |
 			(vs->attribute_count << 17);
 		i++;
 
 		cmds[i].val = draw->mem_physical + vs->varying_area_offset;
-		cmds[i].cmd = MALI_VS_CMD_VARYINGS_ADDRESS |
+		cmds[i].cmd = LIMA_VS_CMD_VARYINGS_ADDRESS |
 			(vs->varying_count << 17);
 		i++;
 	}
@@ -359,8 +359,8 @@ vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	cmds[i].cmd = 0x60000000;
 	i++;
 
-	cmds[i].val = MALI_VS_CMD_ARRAYS_SEMAPHORE_END;
-	cmds[i].cmd = MALI_VS_CMD_ARRAYS_SEMAPHORE;
+	cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_END;
+	cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
 	/* update our size so we can set the gp job properly */
@@ -368,11 +368,11 @@ vs_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 }
 
 void
-vs_info_finalize(struct premali_state *state, struct vs_info *info)
+vs_info_finalize(struct limare_state *state, struct vs_info *info)
 {
 	int i;
 
-	if (state->type == PREMALI_TYPE_MALI200) {
+	if (state->type == LIMARE_TYPE_M200) {
 		for (i = 0; i < info->attribute_count; i++) {
 			info->common->attributes[i].physical = info->attributes[i]->physical;
 			info->common->attributes[i].size =
@@ -392,7 +392,7 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 		i--;
 		info->common->varyings[i].size = (16 << 11) | (1 - 1) | 0x20;
 
-	} else if (state->type == PREMALI_TYPE_MALI400) {
+	} else if (state->type == LIMARE_TYPE_M400) {
 		for (i = 0; i < info->attribute_count; i++) {
 			info->attribute_area[i].physical = info->attributes[i]->physical;
 			info->attribute_area[i].size =
@@ -415,26 +415,26 @@ vs_info_finalize(struct premali_state *state, struct vs_info *info)
 }
 
 void
-plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw)
+plbu_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 {
 	struct plbu_info *info = draw->plbu;
 	struct vs_info *vs = draw->vs;
-	struct mali_cmd *cmds = state->plbu_commands;
+	struct lima_cmd *cmds = state->plbu_commands;
 	int i = state->plbu_commands_count;
 
 	/*
 	 *
 	 */
-	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN;
-	cmds[i].cmd = MALI_PLBU_CMD_ARRAYS_SEMAPHORE;
+	cmds[i].val = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN;
+	cmds[i].cmd = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
-	cmds[i].val = 0x00002200 | MALI_PLBU_CMD_PRIMITIVE_CULL_CCW;
-	cmds[i].cmd = MALI_PLBU_CMD_PRIMITIVE_SETUP;
+	cmds[i].val = 0x00002200 | LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW;
+	cmds[i].cmd = LIMA_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
 	cmds[i].val = draw->mem_physical + info->render_state_offset;
-	cmds[i].cmd = MALI_PLBU_CMD_RSW_VERTEX_ARRAY;
+	cmds[i].cmd = LIMA_PLBU_CMD_RSW_VERTEX_ARRAY;
 	cmds[i].cmd |= vs->varyings[vs->varying_count - 1]->physical >> 4;
 	i++;
 
@@ -442,8 +442,8 @@ plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 	cmds[i].cmd = ((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
 	i++;
 
-	cmds[i].val = MALI_PLBU_CMD_ARRAYS_SEMAPHORE_END;
-	cmds[i].cmd = MALI_PLBU_CMD_ARRAYS_SEMAPHORE;
+	cmds[i].val = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE_END;
+	cmds[i].cmd = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
 	/* update our size so we can set the gp job properly */
@@ -451,9 +451,9 @@ plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw)
 }
 
 void
-plbu_commands_finish(struct premali_state *state)
+plbu_commands_finish(struct limare_state *state)
 {
-	struct mali_cmd *cmds = state->plbu_commands;
+	struct lima_cmd *cmds = state->plbu_commands;
 	int i = state->plbu_commands_count;
 
 	/*
@@ -494,7 +494,7 @@ plbu_commands_finish(struct premali_state *state)
 	i++;
 
 	cmds[i].val = 0;
-	cmds[i].cmd = MALI_PLBU_CMD_END;
+	cmds[i].cmd = LIMA_PLBU_CMD_END;
 	i++;
 
 	/* update our size so we can set the gp job properly */
@@ -650,11 +650,11 @@ plbu_info_render_state_create(struct draw_info *draw)
 }
 
 int
-premali_gp_job_start(struct premali_state *state)
+limare_gp_job_start(struct limare_state *state)
 {
-	struct mali_gp_job_start *job;
+	struct lima_gp_job_start *job;
 
-	job = calloc(1, sizeof(struct mali_gp_job_start));
+	job = calloc(1, sizeof(struct lima_gp_job_start));
 
 	state->gp_job = job;
 
@@ -667,11 +667,11 @@ premali_gp_job_start(struct premali_state *state)
 	job->frame.tile_heap_start = 0;
 	job->frame.tile_heap_end = 0;
 
-	return premali_gp_job_start_direct(state, job);
+	return limare_gp_job_start_direct(state, job);
 }
 
 struct draw_info *
-draw_create_new(struct premali_state *state, int offset, int size,
+draw_create_new(struct limare_state *state, int offset, int size,
 		int draw_mode, int vertex_start, int vertex_count)
 {
 	struct draw_info *draw = calloc(1, sizeof(struct draw_info));

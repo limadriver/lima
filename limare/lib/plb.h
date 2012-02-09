@@ -25,8 +25,8 @@
  * Some helpers to deal with the plb stream, and the plbu and pp plb
  * reference streams.
  */
-#ifndef PREMALI_PLB_H
-#define PREMALI_PLB_H 1
+#ifndef LIMARE_PLB_H
+#define LIMARE_PLB_H 1
 
 struct plb {
 	int block_size; /* 0x200 */
@@ -54,7 +54,7 @@ struct plb {
 	int mem_size;
 };
 
-struct plb *plb_create(struct premali_state *state, unsigned int physical,
+struct plb *plb_create(struct limare_state *state, unsigned int physical,
 		       void *address, int offset, int size);
 
-#endif /* PREMALI_PLB_H */
+#endif /* LIMARE_PLB_H */

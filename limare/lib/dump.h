@@ -24,28 +24,28 @@
 /*
  * Helpers to deal with dumped memory.
  */
-#ifndef PREMALI_DUMP_H
-#define PREMALI_DUMP_H
+#ifndef LIMARE_DUMP_H
+#define LIMARE_DUMP_H
 
-struct mali_dumped_mem_content {
+struct lima_dumped_mem_content {
 	unsigned int offset;
 	unsigned int size;
 	unsigned int memory[];
 };
 
-struct mali_dumped_mem_block {
+struct lima_dumped_mem_block {
 	void *address;
 	unsigned int physical;
 	unsigned int size;
 	int count;
-	struct mali_dumped_mem_content *contents[];
+	struct lima_dumped_mem_content *contents[];
 };
 
-struct mali_dumped_mem {
+struct lima_dumped_mem {
 	int count;
-	struct mali_dumped_mem_block *blocks[];
+	struct lima_dumped_mem_block *blocks[];
 };
 
-int dumped_mem_load(int fd, struct mali_dumped_mem *dump);
+int dumped_mem_load(int fd, struct lima_dumped_mem *dump);
 
-#endif /* PREMALI_DUMP_H */
+#endif /* LIMARE_DUMP_H */

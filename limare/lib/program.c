@@ -942,7 +942,7 @@ vertex_shader_varyings_patch(unsigned int *shader, int size, int *indices)
 }
 
 void
-premali_shader_binary_free(struct mali_shader_binary *binary)
+limare_shader_binary_free(struct lima_shader_binary *binary)
 {
 	free(binary->error_log);
 	free(binary->shader);
@@ -952,14 +952,14 @@ premali_shader_binary_free(struct mali_shader_binary *binary)
 	free(binary);
 }
 
-struct mali_shader_binary *
-premali_shader_compile(int type, const char *source)
+struct lima_shader_binary *
+limare_shader_compile(int type, const char *source)
 {
-	struct mali_shader_binary *binary;
+	struct lima_shader_binary *binary;
 	int length = strlen(source);
 	int ret;
 
-	binary = calloc(1, sizeof(struct mali_shader_binary));
+	binary = calloc(1, sizeof(struct lima_shader_binary));
 	if (!binary) {
 		printf("%s: Error: allocation failed: %s\n",
 		       __func__, strerror(errno));
@@ -976,7 +976,7 @@ premali_shader_compile(int type, const char *source)
 			printf("%s: compilation failed: %s\n",
 			       __func__, binary->oom_log);
 
-		premali_shader_binary_free(binary);
+		limare_shader_binary_free(binary);
 		return NULL;
 	}
 
@@ -984,14 +984,14 @@ premali_shader_compile(int type, const char *source)
 }
 
 int
-vertex_shader_attach(struct premali_state *state, const char *source)
+vertex_shader_attach(struct limare_state *state, const char *source)
 {
-	struct mali_shader_binary *binary;
+	struct lima_shader_binary *binary;
 	struct stream_uniform_table *uniform_table;
 	struct stream_attribute_table *attribute_table;
 	struct stream_varying_table *varying_table;
 
-	binary = premali_shader_compile(MALI_SHADER_VERTEX, source);
+	binary = limare_shader_compile(LIMA_SHADER_VERTEX, source);
 	if (!binary)
 		return -1;
 
@@ -1034,13 +1034,13 @@ vertex_shader_attach(struct premali_state *state, const char *source)
 }
 
 int
-fragment_shader_attach(struct premali_state *state, const char *source)
+fragment_shader_attach(struct limare_state *state, const char *source)
 {
-	struct mali_shader_binary *binary;
+	struct lima_shader_binary *binary;
 	struct stream_uniform_table *uniform_table;
 	struct stream_varying_table *varying_table;
 
-	binary = premali_shader_compile(MALI_SHADER_FRAGMENT, source);
+	binary = limare_shader_compile(LIMA_SHADER_FRAGMENT, source);
 	if (!binary)
 		return -1;
 
@@ -1071,7 +1071,7 @@ fragment_shader_attach(struct premali_state *state, const char *source)
 }
 
 void
-state_symbols_print(struct premali_state *state)
+state_symbols_print(struct limare_state *state)
 {
 	int i;
 
@@ -1099,7 +1099,7 @@ state_symbols_print(struct premali_state *state)
  * Checks whether vertex and fragment attributes match.
  */
 static int
-premali_link_varyings_match(struct premali_state *state)
+limare_link_varyings_match(struct limare_state *state)
 {
 	int i, j;
 
@@ -1173,7 +1173,7 @@ premali_link_varyings_match(struct premali_state *state)
  * how do we order then? Most likely from symbol->offset too.
  */
 static void
-premali_link_varyings_indices_get(struct premali_state *state, int *varyings)
+limare_link_varyings_indices_get(struct limare_state *state, int *varyings)
 {
 	int i, j;
 
@@ -1206,7 +1206,7 @@ premali_link_varyings_indices_get(struct premali_state *state, int *varyings)
 }
 
 void
-vertex_shader_varyings_reorder(struct premali_state *state, int *varyings)
+vertex_shader_varyings_reorder(struct limare_state *state, int *varyings)
 {
 	struct symbol *symbol;
 	struct symbol *symbols[16] = { 0 };
@@ -1224,15 +1224,15 @@ vertex_shader_varyings_reorder(struct premali_state *state, int *varyings)
 }
 
 int
-premali_link(struct premali_state *state)
+limare_link(struct limare_state *state)
 {
 	int varyings[16] = { -1, -1, -1, -1, -1, -1, -1, -1,
 			     -1, -1, -1, -1, -1, -1, -1, -1 };
 
-	if (premali_link_varyings_match(state))
+	if (limare_link_varyings_match(state))
 		return -1;
 
-	premali_link_varyings_indices_get(state, varyings);
+	limare_link_varyings_indices_get(state, varyings);
 	vertex_shader_varyings_patch(state->vertex_binary->shader,
 				     state->vertex_binary->shader_size / 16,
 				     varyings);

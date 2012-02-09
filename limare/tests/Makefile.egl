@@ -1,5 +1,7 @@
 .PHONY : egl egl_install egl_run egl_wrap
 
+EGL_LOG = /sdcard/egl.wrap.log
+
 egl: egl_$(NAME)
 
 egl_$(NAME): egl.c
@@ -9,11 +11,11 @@ egl_install: $(ADB) egl_$(NAME)
 	$(ADB) push egl_$(NAME) $(INSTALL_DIR)/egl/$(NAME)
 
 egl_wrap: $(ADB)
-	$(ADB) shell "rm $(WRAP_LOG)"
-	$(ADB) shell "rm /sdcard/premali.wrap.bmp"
-	$(ADB) shell "LD_PRELOAD=libMali_wrap.so REMALI_WRAP_LOG=$(WRAP_LOG) $(INSTALL_DIR)/egl/$(NAME)"
-	$(ADB) pull $(WRAP_LOG)
-	$(ADB) pull /sdcard/premali.wrap.bmp
+	$(ADB) shell "rm $(EGL_LOG)"
+	$(ADB) shell "rm /sdcard/lima.wrap.bmp"
+	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(EGL_LOG) $(INSTALL_DIR)/egl/$(NAME)"
+	$(ADB) pull $(EGL_LOG)
+	$(ADB) pull /sdcard/lima.wrap.bmp
 
 egl_run: $(ADB)
 	$(ADB) shell $(INSTALL_DIR)egl/$(NAME)

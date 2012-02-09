@@ -1,5 +1,5 @@
-How to set up the android ndk/sdk for building remali.
-------------------------------------------------------
+How to set up the android ndk/sdk for building Lima.
+----------------------------------------------------
 
 Create a separate directory for this, this README uses ~/android/, but of
 course, feel free to substitute with your own.
@@ -43,11 +43,11 @@ docs/STABLE-APIS.html in the ndk).
 ./android-ndk-r7/build/tools/make-standalone-toolchain.sh --platform=android-9 \
 			  --install-dir=/home/user/android/telechips-2.3/
 
-You can now edit Makefile.inc in the top remali directory to point to your
+You can now edit Makefile.inc in the top lima directory to point to your
 standalone toolchain and your SDK.
 
 Please verify that you now are able to build some things, by running make
-in the top remali directory. Linking will fail though as we are still missing
+in the top lima directory. Linking will fail though as we are still missing
 some libraries (we will resolve that in the next section).
 
 Getting ADB (android debug bridge):
@@ -63,7 +63,7 @@ Once this is done, you can verify that ADB works, by running:
  make remount
 
 This will run adb remount, which remounts the /system/ partition on your
-device so that it is writable. We will be installing remali bits to it
+device so that it is writable. We will be installing lima bits to it
 later on.
 
 This might fail, stating "error: insufficient permissions for device",
@@ -99,7 +99,7 @@ libraries from your device will be pulled in instead.
 
 make -f Makefile.sysroot sysroot
 
-If all went well, you should now be able to full build remali.
+If all went well, you should now be able to fully build lima.
 
 If linking failed, then pull in the necessary libraries from the device
 yourself.

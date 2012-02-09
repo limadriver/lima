@@ -25,14 +25,14 @@
  * Fills in and creates the pp info/job structure.
  */
 
-#ifndef PREMALI_PP_H
-#define PREMALI_PP_H 1
+#ifndef LIMARE_PP_H
+#define LIMARE_PP_H 1
 
 struct pp_info
 {
 	union {
-		struct mali200_pp_job_start *mali200;
-		struct mali400_pp_job_start *mali400;
+		struct lima_m200_pp_job_start *m200;
+		struct lima_m400_pp_job_start *m400;
 	} job;
 
 	int width;
@@ -59,9 +59,9 @@ struct pp_info
 	int frame_size;
 };
 
-struct pp_info *pp_info_create(struct premali_state *state, void *address,
+struct pp_info *pp_info_create(struct limare_state *state, void *address,
 			       unsigned int physical, int size,
 			       unsigned int frame_physical);
-int premali_pp_job_start(struct premali_state *state, struct pp_info *info);
+int limare_pp_job_start(struct limare_state *state, struct pp_info *info);
 
-#endif /* PREMALI_PP_H */
+#endif /* LIMARE_PP_H */

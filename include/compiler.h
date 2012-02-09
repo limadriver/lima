@@ -24,10 +24,10 @@
 /*
  * Interface to the shader compiler of libMali.so
  */
-#ifndef MALI_COMPILER_H
-#define MALI_COMPILER_H 1
+#ifndef LIMA_COMPILER_H
+#define LIMA_COMPILER_H 1
 
-struct mali_shader_binary_vertex_parameters { /* 0x24 */
+struct lima_shader_binary_vertex_parameters { /* 0x24 */
 	int unknown00; /* 0x00 */
 	int unknown04; /* 0x04 */
 	int unknown08; /* 0x08 */
@@ -39,7 +39,7 @@ struct mali_shader_binary_vertex_parameters { /* 0x24 */
 	int varying_something; /* 0x20 */
 };
 
-struct mali_shader_binary_fragment_parameters { /* 0x30 */
+struct lima_shader_binary_fragment_parameters { /* 0x30 */
 	int unknown00; /* 0x00 */
 	int unknown04; /* 0x04 */
 	int unknown08; /* 0x08 */
@@ -54,9 +54,9 @@ struct mali_shader_binary_fragment_parameters { /* 0x30 */
 	int unknown2C; /* 0x2C */
 };
 
-struct mali_shader_binary { /* 0x5C */
-#define MALI_SHADER_COMPILE_STATUS_CLEAR    0x00
-#define MALI_SHADER_COMPILE_STATUS_COMPILED 0x01
+struct lima_shader_binary { /* 0x5C */
+#define LIMA_SHADER_COMPILE_STATUS_CLEAR    0x00
+#define LIMA_SHADER_COMPILE_STATUS_COMPILED 0x01
 	int compile_status; /* 0x00 */
 	char *error_log; /* 0x04 - can be freed */
 	char *oom_log; /* 0x08 - static */
@@ -69,15 +69,15 @@ struct mali_shader_binary { /* 0x5C */
 	void *attribute_stream; /* 0x24 */
 	int attribute_stream_size; /* 0x28 */
 	union {
-		struct mali_shader_binary_vertex_parameters vertex;
-		struct mali_shader_binary_fragment_parameters fragment;
+		struct lima_shader_binary_vertex_parameters vertex;
+		struct lima_shader_binary_fragment_parameters fragment;
 	} parameters; /* 0x2C - 0x5C */
 };
 
 /* values from GL */
-#define MALI_SHADER_FRAGMENT 0x8B30
-#define MALI_SHADER_VERTEX   0x8B31
+#define LIMA_SHADER_FRAGMENT 0x8B30
+#define LIMA_SHADER_VERTEX   0x8B31
 
-int __mali_compile_essl_shader(struct mali_shader_binary *binary, int type,
+int __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 			       const char *source, int *length, int count);
-#endif /* MALI_COMPILER_H */
+#endif /* LIMA_COMPILER_H */

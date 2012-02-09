@@ -31,7 +31,7 @@
 
 #include "ioctl.h"
 #include "dump.h"
-#include "premali.h"
+#include "limare.h"
 #include "jobs.h"
 #include "bmp.h"
 #include "fb.h"
@@ -41,10 +41,10 @@
 int
 main(int argc, char *argv[])
 {
-	struct premali_state *state;
+	struct limare_state *state;
 	int ret;
 
-	state = premali_init();
+	state = limare_init();
 	if (!state)
 		return -1;
 
@@ -52,29 +52,29 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	ret = premali_gp_job_start_direct(state, &gp_job);
+	ret = limare_gp_job_start_direct(state, &gp_job);
 	if (ret)
 		return ret;
 
 	fb_clear();
 
-#ifdef MALI400
-	ret = premali_m400_pp_job_start_direct(state, &pp_job);
+#ifdef LIMA_M400
+	ret = limare_m400_pp_job_start_direct(state, &pp_job);
 #else
-	ret = premali_m200_pp_job_start_direct(state, &pp_job);
+	ret = limare_m200_pp_job_start_direct(state, &pp_job);
 #endif
 	if (ret)
 		return ret;
 
-	premali_jobs_wait();
+	limare_jobs_wait();
 
 	bmp_dump(mem_0x40080000.address, 0,
-		 dump_render_width, dump_render_height, "/sdcard/premali.bmp");
+		 dump_render_width, dump_render_height, "/sdcard/limare.bmp");
 
 	fb_dump(mem_0x40080000.address, 0,
 		dump_render_width, dump_render_height);
 
-	premali_finish();
+	limare_finish();
 
 	return 0;
 }

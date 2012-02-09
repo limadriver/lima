@@ -21,8 +21,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef PREMALI_GP_H
-#define PREMALI_GP_H 1
+#ifndef LIMARE_GP_H
+#define LIMARE_GP_H 1
 
 struct gp_common_entry {
 	unsigned int physical;
@@ -35,17 +35,17 @@ struct gp_common {
 };
 
 struct vs_info {
-	/* for mali200: attributes and varyings are shared. */
+	/* for m200: attributes and varyings are shared. */
 	struct gp_common *common;
 	int common_offset;
 	int common_size;
 
-	/* for mali400 */
+	/* for m400 */
 	struct gp_common_entry *attribute_area;
 	int attribute_area_offset;
 	int attribute_area_size;
 
-	/* for mali400 */
+	/* for m400 */
 	struct gp_common_entry *varying_area;
 	int varying_area_offset;
 	int varying_area_size;
@@ -73,8 +73,8 @@ int vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute);
 int vs_info_attach_varying(struct draw_info *draw, struct symbol *varying);
 int vs_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size);
 
-void vs_commands_draw_add(struct premali_state *state, struct draw_info *draw);
-void vs_info_finalize(struct premali_state *state, struct vs_info *info);
+void vs_commands_draw_add(struct limare_state *state, struct draw_info *draw);
+void vs_info_finalize(struct limare_state *state, struct vs_info *info);
 
 struct plbu_info {
 	struct render_state *render_state;
@@ -92,11 +92,11 @@ struct plbu_info {
 	int uniform_size;
 };
 
-int vs_command_queue_create(struct premali_state *state, int offset, int size);
-int plbu_command_queue_create(struct premali_state *state, int offset, int size);
+int vs_command_queue_create(struct limare_state *state, int offset, int size);
+int plbu_command_queue_create(struct limare_state *state, int offset, int size);
 
-void plbu_commands_draw_add(struct premali_state *state, struct draw_info *draw);
-void plbu_commands_finish(struct premali_state *state);
+void plbu_commands_draw_add(struct limare_state *state, struct draw_info *draw);
+void plbu_commands_finish(struct limare_state *state);
 
 int plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size);
 int plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
@@ -119,10 +119,10 @@ struct draw_info {
 	struct plbu_info plbu[1];
 };
 
-struct draw_info *draw_create_new(struct premali_state *state, int offset,
+struct draw_info *draw_create_new(struct limare_state *state, int offset,
 				  int size, int draw_mode, int vertex_start,
 				  int vertex_count);
 
-int premali_gp_job_start(struct premali_state *state);
+int limare_gp_job_start(struct limare_state *state);
 
-#endif /* PREMALI_GP_H */
+#endif /* LIMARE_GP_H */

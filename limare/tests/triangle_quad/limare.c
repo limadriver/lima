@@ -45,7 +45,7 @@
 int
 main(int argc, char *argv[])
 {
-	struct premali_state *state;
+	struct limare_state *state;
 	int ret;
 
 	float vertices[] = {
@@ -81,40 +81,40 @@ main(int argc, char *argv[])
 
 	fb_clear();
 
-	state = premali_init();
+	state = limare_init();
 	if (!state)
 		return -1;
 
-	ret = premali_state_setup(state, WIDTH, HEIGHT, 0xFF505050);
+	ret = limare_state_setup(state, WIDTH, HEIGHT, 0xFF505050);
 	if (ret)
 		return ret;
 
 	vertex_shader_attach(state, vertex_shader_source);
 	fragment_shader_attach(state, fragment_shader_source);
 
-	premali_link(state);
+	limare_link(state);
 
-	premali_attribute_pointer(state, "aPosition", 4, 3, vertices);
+	limare_attribute_pointer(state, "aPosition", 4, 3, vertices);
 
-	premali_uniform_attach(state, "uColor", 4, 4, triangle_color);
-	ret = premali_draw_arrays(state, GL_TRIANGLES, 0, 3);
+	limare_uniform_attach(state, "uColor", 4, 4, triangle_color);
+	ret = limare_draw_arrays(state, GL_TRIANGLES, 0, 3);
 	if (ret)
 		return ret;
 
-	premali_uniform_attach(state, "uColor", 4, 4, quad_color);
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 3, 4);
+	limare_uniform_attach(state, "uColor", 4, 4, quad_color);
+	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 3, 4);
 	if (ret)
 		return ret;
 
-	ret = premali_flush(state);
+	ret = limare_flush(state);
 	if (ret)
 		return ret;
 
-	bmp_dump(state->pp->frame_address, state, "/sdcard/premali.bmp");
+	bmp_dump(state->pp->frame_address, state, "/sdcard/limare.bmp");
 
 	fb_dump(state->pp->frame_address, 0, state->width, state->height);
 
-	premali_finish();
+	limare_finish();
 
 	return 0;
 }

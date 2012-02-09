@@ -41,7 +41,7 @@
 int
 main(int argc, char *argv[])
 {
-	struct premali_state *state;
+	struct limare_state *state;
 	int ret;
 
 	const char *vertex_shader_source =
@@ -179,22 +179,22 @@ main(int argc, char *argv[])
 
 	fb_clear();
 
-	state = premali_init();
+	state = limare_init();
 	if (!state)
 		return -1;
 
-	ret = premali_state_setup(state, WIDTH, HEIGHT, 0xFF505050);
+	ret = limare_state_setup(state, WIDTH, HEIGHT, 0xFF505050);
 	if (ret)
 		return ret;
 
 	vertex_shader_attach(state, vertex_shader_source);
 	fragment_shader_attach(state, fragment_shader_source);
 
-	premali_link(state);
+	limare_link(state);
 
-	premali_attribute_pointer(state, "in_position", 4, 3, vVertices);
-	premali_attribute_pointer(state, "in_color", 4, 3, vColors);
-	premali_attribute_pointer(state, "in_normal", 4, 3, vNormals);
+	limare_attribute_pointer(state, "in_position", 4, 3, vVertices);
+	limare_attribute_pointer(state, "in_color", 4, 3, vColors);
+	limare_attribute_pointer(state, "in_normal", 4, 3, vNormals);
 
 	ESMatrix modelview;
 	esMatrixLoadIdentity(&modelview);
@@ -225,38 +225,38 @@ main(int argc, char *argv[])
 	normal[7] = modelview.m[2][1];
 	normal[8] = modelview.m[2][2];
 
-	premali_uniform_attach(state, "modelviewMatrix", 4, 16, &modelview.m[0][0]);
-	premali_uniform_attach(state, "modelviewprojectionMatrix", 4, 16, &modelviewprojection.m[0][0]);
-	premali_uniform_attach(state, "normalMatrix", 4, 9, normal);
+	limare_uniform_attach(state, "modelviewMatrix", 4, 16, &modelview.m[0][0]);
+	limare_uniform_attach(state, "modelviewprojectionMatrix", 4, 16, &modelviewprojection.m[0][0]);
+	limare_uniform_attach(state, "normalMatrix", 4, 9, normal);
 
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP,  0, 4);
+	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP,  0, 4);
 	if (ret)
 		return ret;
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP,  4, 4);
+	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP,  4, 4);
 	if (ret)
 		return ret;
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP,  8, 4);
+	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP,  8, 4);
 	if (ret)
 		return ret;
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 12, 4);
+	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 12, 4);
 	if (ret)
 		return ret;
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 16, 4);
+	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 16, 4);
 	if (ret)
 		return ret;
-	ret = premali_draw_arrays(state, GL_TRIANGLE_STRIP, 20, 4);
-	if (ret)
-		return ret;
-
-	ret = premali_flush(state);
+	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 20, 4);
 	if (ret)
 		return ret;
 
-	bmp_dump(state->pp->frame_address, state, "/sdcard/premali.bmp");
+	ret = limare_flush(state);
+	if (ret)
+		return ret;
+
+	bmp_dump(state->pp->frame_address, state, "/sdcard/limare.bmp");
 
 	fb_dump(state->pp->frame_address, 0, state->width, state->height);
 
-	premali_finish();
+	limare_finish();
 
 	return 0;
 }

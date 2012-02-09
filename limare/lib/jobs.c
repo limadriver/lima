@@ -46,7 +46,7 @@ static pthread_mutex_t wait_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void *
 wait_for_notification(void *arg)
 {
-	struct premali_state *state = arg;
+	struct limare_state *state = arg;
 	int ret;
 
 	pthread_mutex_lock(&wait_mutex);
@@ -71,7 +71,7 @@ wait_for_notification(void *arg)
 }
 
 void
-wait_for_notification_start(struct premali_state *state)
+wait_for_notification_start(struct limare_state *state)
 {
 	pthread_t thread;
 
@@ -79,20 +79,20 @@ wait_for_notification_start(struct premali_state *state)
 }
 
 void
-premali_jobs_wait(void)
+limare_jobs_wait(void)
 {
 	pthread_mutex_lock(&wait_mutex);
 	pthread_mutex_unlock(&wait_mutex);
 }
 
 int
-premali_gp_job_start_direct(struct premali_state *state,
-			    struct mali_gp_job_start *job)
+limare_gp_job_start_direct(struct limare_state *state,
+			    struct lima_gp_job_start *job)
 {
 	int ret;
 
 	/* now run the job */
-	premali_jobs_wait();
+	limare_jobs_wait();
 
 	wait_for_notification_start(state);
 
@@ -101,7 +101,7 @@ premali_gp_job_start_direct(struct premali_state *state,
 	job->priority = 1;
 	job->watchdog_msecs = 0;
 	job->abort_id = 0;
-	ret = ioctl(state->fd, MALI_GP_START_JOB, job);
+	ret = ioctl(state->fd, LIMA_GP_START_JOB, job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));
@@ -112,12 +112,12 @@ premali_gp_job_start_direct(struct premali_state *state,
 }
 
 int
-premali_m200_pp_job_start_direct(struct premali_state *state,
-				 struct mali200_pp_job_start *job)
+limare_m200_pp_job_start_direct(struct limare_state *state,
+				struct lima_m200_pp_job_start *job)
 {
 	int ret;
 
-	premali_jobs_wait();
+	limare_jobs_wait();
 
 	wait_for_notification_start(state);
 
@@ -127,7 +127,7 @@ premali_m200_pp_job_start_direct(struct premali_state *state,
 	job->watchdog_msecs = 0;
 	job->abort_id = 0;
 
-	ret = ioctl(state->fd, MALI200_PP_START_JOB, job);
+	ret = ioctl(state->fd, LIMA_M200_PP_START_JOB, job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));
@@ -138,12 +138,12 @@ premali_m200_pp_job_start_direct(struct premali_state *state,
 }
 
 int
-premali_m400_pp_job_start_direct(struct premali_state *state,
-				 struct mali400_pp_job_start *job)
+limare_m400_pp_job_start_direct(struct limare_state *state,
+				struct lima_m400_pp_job_start *job)
 {
 	int ret;
 
-	premali_jobs_wait();
+	limare_jobs_wait();
 
 	wait_for_notification_start(state);
 
@@ -153,7 +153,7 @@ premali_m400_pp_job_start_direct(struct premali_state *state,
 	job->watchdog_msecs = 0;
 	job->abort_id = 0;
 
-	ret = ioctl(state->fd, MALI400_PP_START_JOB, job);
+	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB, job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));

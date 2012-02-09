@@ -103,9 +103,9 @@ dump_shader(unsigned int *shader, int size)
 }
 
 void
-dump_shader_binary(struct mali_shader_binary *binary, int type)
+dump_shader_binary(struct lima_shader_binary *binary, int type)
 {
-	printf("struct mali_shader_binary %p = {\n", binary);
+	printf("struct lima_shader_binary %p = {\n", binary);
 	printf("\t.compile_status = %d,\n", binary->compile_status);
 	printf("\t.error_log = \"%s\",\n", binary->error_log);
 	printf("\t.shader = {\n");
@@ -125,7 +125,7 @@ dump_shader_binary(struct mali_shader_binary *binary, int type)
 	printf("\t},\n");
 	printf("\t.attribute_stream_size = 0x%x,\n", binary->attribute_stream_size);
 
-	if (type == MALI_SHADER_VERTEX) {
+	if (type == LIMA_SHADER_VERTEX) {
 		printf("\t.parameters (vertex) = {\n");
 		printf("\t\t.unknown00 = 0x%x,\n", binary->parameters.vertex.unknown00);
 		printf("\t\t.unknown04 = 0x%x,\n", binary->parameters.vertex.unknown04);
@@ -135,7 +135,7 @@ dump_shader_binary(struct mali_shader_binary *binary, int type)
 		printf("\t\t.varying_count = 0x%x,\n", binary->parameters.vertex.varying_count);
 		printf("\t\t.unknown18 = 0x%x,\n", binary->parameters.vertex.unknown18);
 		printf("\t\t.size = 0x%x,\n", binary->parameters.vertex.size);
-		printf("\t\t.unknown20 = 0x%x,\n", binary->parameters.vertex.unknown20);
+		printf("\t\t.varying_something = 0x%x,\n", binary->parameters.vertex.varying_something);
 		printf("\t},\n");
 	} else {
 		printf("\t.parameters (fragment) = {\n");
@@ -162,7 +162,7 @@ dump_shader_binary(struct mali_shader_binary *binary, int type)
 int
 main(int argc, char *argv[])
 {
-	struct mali_shader_binary binary = { 0 };
+	struct lima_shader_binary binary = { 0 };
 	char *filename, *source;
 	int type, fd, size, length, ret;
 
@@ -178,9 +178,9 @@ main(int argc, char *argv[])
 	}
 
 	if (argv[1][1] == 'f')
-		type = MALI_SHADER_FRAGMENT;
+		type = LIMA_SHADER_FRAGMENT;
 	else
-		type = MALI_SHADER_VERTEX;
+		type = LIMA_SHADER_VERTEX;
 
 	filename = argv[2];
 

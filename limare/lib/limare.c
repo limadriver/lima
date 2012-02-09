@@ -41,7 +41,7 @@
 #include "compiler.h"
 
 static int
-premali_fd_open(struct premali_state *state)
+limare_fd_open(struct limare_state *state)
 {
 	state->fd = open("/dev/mali", O_RDWR);
 	if (state->fd == -1) {
@@ -54,7 +54,7 @@ premali_fd_open(struct premali_state *state)
 }
 
 static int
-premali_gpu_detect(struct premali_state *state)
+limare_gpu_detect(struct limare_state *state)
 {
 	_mali_uk_get_system_info_size_s system_info_size;
 	_mali_uk_get_system_info_s system_info_ioctl;
@@ -110,7 +110,7 @@ premali_gpu_detect(struct premali_state *state)
  *
  */
 static int
-premali_mem_init(struct premali_state *state)
+limare_mem_init(struct limare_state *state)
 {
 	_mali_uk_init_mem_s mem_init = { 0 };
 	int ret;
@@ -138,28 +138,28 @@ premali_mem_init(struct premali_state *state)
 	return 0;
 }
 
-struct premali_state *
-premali_init(void)
+struct limare_state *
+limare_init(void)
 {
-	struct premali_state *state;
+	struct limare_state *state;
 	int ret;
 
-	state = calloc(1, sizeof(struct premali_state));
+	state = calloc(1, sizeof(struct limare_state));
 	if (!state) {
 		printf("%s: Error: failed to allocate state: %s\n",
 		       __func__, strerror(errno));
 		goto error;
 	}
 
-	ret = premali_fd_open(state);
+	ret = limare_fd_open(state);
 	if (ret)
 		goto error;
 
-	ret = premali_gpu_detect(state);
+	ret = limare_gpu_detect(state);
 	if (ret)
 		goto error;
 
-	ret = premali_mem_init(state);
+	ret = limare_mem_init(state);
 	if (ret)
 		goto error;
 
@@ -171,7 +171,7 @@ premali_init(void)
 
 /* here we still hardcode our memory addresses. */
 int
-premali_state_setup(struct premali_state *state, int width, int height,
+limare_state_setup(struct limare_state *state, int width, int height,
 		    unsigned int clear_color)
 {
 	if (!state)
@@ -207,7 +207,7 @@ premali_state_setup(struct premali_state *state, int width, int height,
 }
 
 int
-premali_uniform_attach(struct premali_state *state, char *name, int size,
+limare_uniform_attach(struct limare_state *state, char *name, int size,
 		       int count, void *data)
 {
 	int found = 0, i;
@@ -256,7 +256,7 @@ premali_uniform_attach(struct premali_state *state, char *name, int size,
 }
 
 int
-premali_attribute_pointer(struct premali_state *state, char *name, int size,
+limare_attribute_pointer(struct limare_state *state, char *name, int size,
 			  int count, void *data)
 {
 	int i;
@@ -283,7 +283,7 @@ premali_attribute_pointer(struct premali_state *state, char *name, int size,
 }
 
 int
-premali_gl_mali_ViewPortTransform(struct premali_state *state,
+limare_gl_mali_ViewPortTransform(struct limare_state *state,
 				  struct symbol *symbol)
 {
 	float x0 = 0, y0 = 0, x1 = state->width, y1 = state->height;
@@ -317,7 +317,7 @@ premali_gl_mali_ViewPortTransform(struct premali_state *state,
 }
 
 int
-premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
+limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 {
 	struct draw_info *draw;
 	int i;
@@ -337,7 +337,7 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 			continue;
 
 		if (!strcmp(symbol->name, "gl_mali_ViewportTransform")) {
-			if (premali_gl_mali_ViewPortTransform(state, symbol))
+			if (limare_gl_mali_ViewPortTransform(state, symbol))
 				return -1;
 		} else {
 			printf("%s: Error: vertex uniform %s is empty.\n",
@@ -408,21 +408,21 @@ premali_draw_arrays(struct premali_state *state, int mode, int start, int count)
 }
 
 int
-premali_flush(struct premali_state *state)
+limare_flush(struct limare_state *state)
 {
 	int ret;
 
 	plbu_commands_finish(state);
 
-	ret = premali_gp_job_start(state);
+	ret = limare_gp_job_start(state);
 	if (ret)
 		return ret;
 
-	ret = premali_pp_job_start(state, state->pp);
+	ret = limare_pp_job_start(state, state->pp);
 	if (ret)
 		return ret;
 
-	premali_jobs_wait();
+	limare_jobs_wait();
 
 	return 0;
 }
@@ -431,7 +431,7 @@ premali_flush(struct premali_state *state)
  * Just run fflush(stdout) to give the wrapper library a chance to finish.
  */
 void
-premali_finish(void)
+limare_finish(void)
 {
 	fflush(stdout);
 }

@@ -25,14 +25,14 @@
  * Simplistic job handling.
  */
 
-#ifndef PREMALI_JOBS_H
-#define PREMALI_JOBS_H 1
+#ifndef LIMARE_JOBS_H
+#define LIMARE_JOBS_H 1
 
-void premali_jobs_wait(void);
-void wait_for_notification_start(struct premali_state *state);
+void limare_jobs_wait(void);
+void wait_for_notification_start(struct limare_state *state);
 
-int premali_gp_job_start_direct(struct premali_state *state, struct mali_gp_job_start *job);
-int premali_m200_pp_job_start_direct(struct premali_state *state, struct mali200_pp_job_start *job);
-int premali_m400_pp_job_start_direct(struct premali_state *state, struct mali400_pp_job_start *job);
+int limare_gp_job_start_direct(struct limare_state *state, struct lima_gp_job_start *job);
+int limare_m200_pp_job_start_direct(struct limare_state *state, struct lima_m200_pp_job_start *job);
+int limare_m400_pp_job_start_direct(struct limare_state *state, struct lima_m400_pp_job_start *job);
 
-#endif /* PREMALI_JOBS_H */
+#endif /* LIMARE_JOBS_H */

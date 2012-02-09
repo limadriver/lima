@@ -1,4 +1,4 @@
-DIRS = info
+DIRS = info compile
 
 .PHONY: all clean install $(DIRS)
 

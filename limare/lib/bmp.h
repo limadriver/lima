@@ -24,6 +24,6 @@
 #ifndef BMP_DUMP_H
 #define BMP_DUMP_H 1
 
-void bmp_dump(char *buffer, struct premali_state *state, char *filename);
+void bmp_dump(char *buffer, struct limare_state *state, char *filename);
 
 #endif /* BMP_DUMP_H */

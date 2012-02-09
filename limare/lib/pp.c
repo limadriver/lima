@@ -42,7 +42,7 @@
 #include "jobs.h"
 
 struct pp_info *
-pp_info_create(struct premali_state *state,
+pp_info_create(struct limare_state *state,
 	       void *address, unsigned int physical, int size,
 	       unsigned int frame_physical)
 {
@@ -106,27 +106,27 @@ pp_info_create(struct premali_state *state,
 }
 
 int
-premali_m200_pp_job_start(struct premali_state *state, struct pp_info *info)
+limare_m200_pp_job_start(struct limare_state *state, struct pp_info *info)
 {
-	struct mali200_pp_job_start *job;
+	struct lima_m200_pp_job_start *job;
 	int supersampling = 1;
 
-	job = calloc(1, sizeof(struct mali200_pp_job_start));
+	job = calloc(1, sizeof(struct lima_m200_pp_job_start));
 	if (!job) {
 		printf("%s: Error: failed to allocate job: %s\n",
 		       __func__, strerror(errno));
 		return errno;
 	}
 
-	info->job.mali200 = job;
+	info->job.m200 = job;
 
 	/* frame registers */
 	job->frame.plbu_array_address = info->plb_physical;
         job->frame.render_address = info->render_physical;
 
-	job->frame.flags = MALI_PP_FRAME_FLAGS_ACTIVE;
+	job->frame.flags = LIMA_PP_FRAME_FLAGS_ACTIVE;
 	if (supersampling)
-		job->frame.flags |= MALI_PP_FRAME_FLAGS_ONSCREEN;
+		job->frame.flags |= LIMA_PP_FRAME_FLAGS_ONSCREEN;
 
 	job->frame.clear_value_depth = 0x00FFFFFF;
 	job->frame.clear_value_stencil = 0;
@@ -156,9 +156,9 @@ premali_m200_pp_job_start(struct premali_state *state, struct pp_info *info)
 	job->frame.onscreen = supersampling;
 
 	/* write back registers */
-	job->wb[0].type = MALI_PP_WB_TYPE_COLOR;
+	job->wb[0].type = LIMA_PP_WB_TYPE_COLOR;
 	job->wb[0].address = info->frame_physical;
-	job->wb[0].pixel_format = MALI_PIXEL_FORMAT_RGBA_8888;
+	job->wb[0].pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 	job->wb[0].downsample_factor = 0;
 	job->wb[0].pixel_layout = 0;
 	job->wb[0].pitch = info->pitch / 8;
@@ -166,33 +166,33 @@ premali_m200_pp_job_start(struct premali_state *state, struct pp_info *info)
 	job->wb[0].mrt_pitch = 0;
 	job->wb[0].zero = 0;
 
-	return premali_m200_pp_job_start_direct(state, job);
+	return limare_m200_pp_job_start_direct(state, job);
 }
 
 /* 3 registers were added, and "supersampling" is disabled */
 int
-premali_m400_pp_job_start(struct premali_state *state, struct pp_info *info)
+limare_m400_pp_job_start(struct limare_state *state, struct pp_info *info)
 {
-	struct mali400_pp_job_start *job;
+	struct lima_m400_pp_job_start *job;
 	int supersampling = 0;
 	int max_blocking = 0;
 
-	job = calloc(1, sizeof(struct mali400_pp_job_start));
+	job = calloc(1, sizeof(struct lima_m400_pp_job_start));
 	if (!job) {
 		printf("%s: Error: failed to allocate job: %s\n",
 		       __func__, strerror(errno));
 		return errno;
 	}
 
-	info->job.mali400 = job;
+	info->job.m400 = job;
 
 	/* frame registers */
 	job->frame.plbu_array_address = info->plb_physical;
         job->frame.render_address = info->render_physical;
 
-	job->frame.flags = MALI_PP_FRAME_FLAGS_ACTIVE;
+	job->frame.flags = LIMA_PP_FRAME_FLAGS_ACTIVE;
 	if (supersampling)
-		job->frame.flags |= MALI_PP_FRAME_FLAGS_ONSCREEN;
+		job->frame.flags |= LIMA_PP_FRAME_FLAGS_ONSCREEN;
 
 	job->frame.clear_value_depth = 0x00FFFFFF;
 	job->frame.clear_value_stencil = 0;
@@ -242,9 +242,9 @@ premali_m400_pp_job_start(struct premali_state *state, struct pp_info *info)
 	job->frame.foureight = 0x8888;
 
 	/* write back registers */
-	job->wb[0].type = MALI_PP_WB_TYPE_COLOR;
+	job->wb[0].type = LIMA_PP_WB_TYPE_COLOR;
 	job->wb[0].address = info->frame_physical;
-	job->wb[0].pixel_format = MALI_PIXEL_FORMAT_RGBA_8888;
+	job->wb[0].pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 	job->wb[0].downsample_factor = 0;
 	job->wb[0].pixel_layout = 0;
 	job->wb[0].pitch = info->pitch / 8;
@@ -253,14 +253,14 @@ premali_m400_pp_job_start(struct premali_state *state, struct pp_info *info)
 	job->wb[0].mrt_pitch = 0;
 	job->wb[0].zero = 0;
 
-	return premali_m400_pp_job_start_direct(state, job);
+	return limare_m400_pp_job_start_direct(state, job);
 }
 
 int
-premali_pp_job_start(struct premali_state *state, struct pp_info *info)
+limare_pp_job_start(struct limare_state *state, struct pp_info *info)
 {
 	if (state->type == 400)
-		return premali_m400_pp_job_start(state, info);
+		return limare_m400_pp_job_start(state, info);
 	else
-		return premali_m200_pp_job_start(state, info);
+		return limare_m200_pp_job_start(state, info);
 }

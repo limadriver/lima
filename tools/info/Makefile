@@ -10,7 +10,7 @@ clean:
 	rm -f *.o
 	rm -f mali_info
 
-mali_info: mali_info.c
+mali_info: info.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 install: $(ADB) mali_info
