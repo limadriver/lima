@@ -29,7 +29,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "premali.h"
+#include "limare.h"
 #include "plb.h"
 #include "linux/ioctl.h"
 #include "gp.h"

@@ -33,7 +33,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 
-#include "premali.h"
+#include "limare.h"
 #include "linux/ioctl.h"
 #include "plb.h"
 #include "symbols.h"

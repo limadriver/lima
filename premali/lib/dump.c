@@ -29,7 +29,7 @@
 #include <sys/mman.h>
 #include <errno.h>
 
-#include "premali.h"
+#include "limare.h"
 #include "dump.h"
 
 static void

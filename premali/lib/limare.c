@@ -32,7 +32,7 @@
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
 
-#include "premali.h"
+#include "limare.h"
 #include "plb.h"
 #include "gp.h"
 #include "pp.h"

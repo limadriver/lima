@@ -30,7 +30,7 @@
 
 #include <GLES2/gl2.h>
 
-#include "premali.h"
+#include "limare.h"
 #include "bmp.h"
 #include "fb.h"
 #include "symbols.h"

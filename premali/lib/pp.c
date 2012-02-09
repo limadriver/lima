@@ -36,7 +36,7 @@
 
 #include "linux/ioctl.h"
 
-#include "premali.h"
+#include "limare.h"
 #include "plb.h"
 #include "pp.h"
 #include "jobs.h"

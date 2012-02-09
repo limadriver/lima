@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "premali.h"
+#include "limare.h"
 #include "plb.h"
 
 /*

@@ -32,7 +32,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "premali.h"
+#include "limare.h"
 
 #define FILENAME_SIZE 1024
 

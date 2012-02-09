@@ -37,7 +37,7 @@
 #include "linux/mali_ioctl.h"
 
 #include "linux/ioctl.h"
-#include "premali.h"
+#include "limare.h"
 #include "jobs.h"
 
 static _mali_uk_wait_for_notification_s wait;
