@@ -1,4 +1,4 @@
-DIRS = premali tools wrap
+DIRS = limare tools wrap
 
 .PHONY: all clean install $(DIRS)
 
