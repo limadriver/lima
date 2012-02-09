@@ -24,9 +24,7 @@
 #include <errno.h>
 
 #define u32 uint32_t
-#define USING_MALI200
-#include "mali_200_regs.h"
-#include "mali_ioctl.h"
+#include "linux/mali_ioctl.h"
 
 static char *
 mali_core_type_to_name(_mali_core_type type)

@@ -29,7 +29,7 @@
 #include <sys/ioctl.h>
 
 #include "premali.h"
-#include "ioctl.h"
+#include "linux/ioctl.h"
 #include "plb.h"
 #include "symbols.h"
 #include "gp.h"

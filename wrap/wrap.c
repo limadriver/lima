@@ -35,11 +35,11 @@
 #include <errno.h>
 
 #define u32 uint32_t
-#include "mali_ioctl.h"
+#include "linux/mali_ioctl.h"
 
 #include "compiler.h"
 #include "formats.h"
-#include "ioctl.h"
+#include "linux/ioctl.h"
 #include "bmp.h"
 
 static int mali_ioctl(int request, void *data);

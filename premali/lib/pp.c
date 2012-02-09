@@ -28,7 +28,7 @@
 
 #include "formats.h"
 
-#include "ioctl.h"
+#include "linux/ioctl.h"
 
 #include "premali.h"
 #include "plb.h"

@@ -31,7 +31,7 @@
 
 #include "premali.h"
 #include "plb.h"
-#include "ioctl.h"
+#include "linux/ioctl.h"
 #include "gp.h"
 #include "program.h"
 #include "compiler.h"
