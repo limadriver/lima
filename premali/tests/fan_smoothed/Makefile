@@ -2,6 +2,6 @@ include ../Makefile.top
 
 NAME = fan_smoothed
 
-all: premali
+all: limare
 
 include ../Makefile.premali

@@ -66,7 +66,7 @@ public class LimareDemo extends Activity
 
     private void loadPrograms()
     {
-	File[] files = new File("/system/bin/premali/premali").listFiles();
+	File[] files = new File("/system/bin/limare/limare/").listFiles();
 	if (files != null)
 	{
 	    for (File file : files)

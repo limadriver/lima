@@ -1,22 +1,22 @@
-.PHONY : premali install run wrap
+.PHONY : limare install run wrap
 
-premali: premali_$(NAME)
+limare: limare_$(NAME)
 
-premali_$(NAME): premali.c
+limare_$(NAME): limare.c
 	$(CC) $(CFLAGS) -o $@ $^ -lpremali
 
-install: $(ADB) premali_$(NAME)
-	$(ADB) push premali_$(NAME) $(INSTALL_DIR)/premali/$(NAME)
+install: $(ADB) limare_$(NAME)
+	$(ADB) push limare_$(NAME) $(INSTALL_DIR)/limare/$(NAME)
 
 wrap: $(ADB)
 	$(ADB) shell "rm /sdcard/premali.bmp"
 	$(ADB) shell "rm $(WRAP_LOG)"
-	$(ADB) shell "LD_PRELOAD=libMali_wrap.so REMALI_WRAP_LOG=$(WRAP_LOG) $(INSTALL_DIR)/premali/$(NAME)"
+	$(ADB) shell "LD_PRELOAD=libMali_wrap.so REMALI_WRAP_LOG=$(WRAP_LOG) $(INSTALL_DIR)/limare/$(NAME)"
 	$(ADB) pull $(WRAP_LOG)
 	$(ADB) pull /sdcard/premali.bmp
 
 run: $(ADB)
-	$(ADB) shell $(INSTALL_DIR)premali/$(NAME)
+	$(ADB) shell $(INSTALL_DIR)limare/$(NAME)
 
 clean:
-	rm -f premali_$(NAME)
+	rm -f limare_$(NAME)

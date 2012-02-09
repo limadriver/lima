@@ -2,7 +2,7 @@ include ../Makefile.top
 
 NAME = strip_smoothed
 
-all: premali egl
+all: limare egl
 
 include ../Makefile.premali
 include ../Makefile.egl

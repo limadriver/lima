@@ -2,7 +2,7 @@ include ../Makefile.top
 
 NAME = quad_flat
 
-all: premali egl
+all: limare egl
 
 include ../Makefile.premali
 include ../Makefile.egl

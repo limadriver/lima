@@ -4,5 +4,5 @@ include $(TOP)Makefile.inc
 
 CFLAGS += -I$(TOP)include -I../../lib/
 
-INSTALL_DIR = /system/bin/premali/
+INSTALL_DIR = /system/bin/limare/
 WRAP_LOG = /sdcard/remali_test.wrap.log

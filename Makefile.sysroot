@@ -56,9 +56,3 @@ device:
 	# since otherwise direct linking will fail.
 	$(ADB) shell "ln -sf /system/lib/egl/libEGL_mali.so /system/lib"
 	$(ADB) shell "ln -sf /system/lib/egl/libGLESv2_mali.so /system/lib"
-	# this is where our premali tests go.
-	$(ADB) shell mkdir /system/bin/premali
-	# this is for our native tests
-	$(ADB) shell mkdir /system/bin/premali/premali
-	# and this is for the EGL/GLES based tests.
-	$(ADB) shell mkdir /system/bin/premali/egl

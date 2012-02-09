@@ -2,11 +2,11 @@ include ../Makefile.top
 
 NAME = cube
 
-all: premali egl
+all: limare egl
 
 egl_cube: egl.c esTransform.c
 
-premali_cube: premali.c esTransform.c
+limare_cube: limare.c esTransform.c
 
 include ../Makefile.premali
 include ../Makefile.dump
