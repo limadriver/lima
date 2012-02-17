@@ -39,22 +39,25 @@ fb_clear(void)
 	unsigned char *fb;
 
 	if (fd == -1) {
-		fprintf(stderr, "Error: failed to open %s: %s\n",
+		printf("Error: failed to open %s: %s\n",
 			"/dev/graphics/fb0", strerror(errno));
 		return;
 	}
 
 	if (ioctl(fd, FBIOGET_VSCREENINFO, &info)) {
-		fprintf(stderr, "Error: failed to run ioctl on %s: %s\n",
+		printf("Error: failed to run ioctl on %s: %s\n",
 			"/dev/graphics/fb0", strerror(errno));
 		close(fd);
 		return;
 	}
 
+	printf("FB has dimensions: %dx%d@%dbpp\n",
+	       info.width, info.height, info.bits_per_pixel);
+
 	fb = mmap(0, 2 * info.xres * info.yres * 4, PROT_READ | PROT_WRITE,
 		  MAP_SHARED, fd, 0);
 	if (!fb) {
-		fprintf(stderr, "Error: failed to run mmap on %s: %s\n",
+		printf("Error: failed to run mmap on %s: %s\n",
 			"/dev/graphics/fb0", strerror(errno));
 		close(fd);
 		return;
@@ -75,13 +78,13 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 	int i;
 
 	if (fd == -1) {
-		fprintf(stderr, "Error: failed to open %s: %s\n",
+		printf("Error: failed to open %s: %s\n",
 			"/dev/graphics/fb0", strerror(errno));
 		return;
 	}
 
 	if (ioctl(fd, FBIOGET_VSCREENINFO, &info)) {
-		fprintf(stderr, "Error: failed to run ioctl on %s: %s\n",
+		printf("Error: failed to run ioctl on %s: %s\n",
 			"/dev/graphics/fb0", strerror(errno));
 		close(fd);
 		return;
@@ -90,7 +93,7 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 	fb = mmap(0, 2 * info.xres * info.yres * 4, PROT_READ | PROT_WRITE,
 		  MAP_SHARED, fd, 0);
 	if (!fb) {
-		fprintf(stderr, "Error: failed to run mmap on %s: %s\n",
+		printf("Error: failed to run mmap on %s: %s\n",
 			"/dev/graphics/fb0", strerror(errno));
 		close(fd);
 		return;
