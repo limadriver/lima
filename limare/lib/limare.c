@@ -22,6 +22,7 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <asm/ioctl.h>
@@ -45,6 +46,9 @@
 static int
 limare_fd_open(struct limare_state *state)
 {
+	_mali_uk_get_api_version_s version = { 0 };
+	int ret;
+
 	state->fd = open("/dev/mali", O_RDWR);
 	if (state->fd == -1) {
 		printf("Error: Failed to open /dev/mali: %s\n",
@@ -52,57 +56,144 @@ limare_fd_open(struct limare_state *state)
 		return errno;
 	}
 
+	ret = ioctl(state->fd, MALI_IOC_GET_API_VERSION, &version);
+	if (ret) {
+		printf("Error: %s: ioctl(GET_API_VERSION) failed: %s\n",
+		       __func__, strerror(-ret));
+		close(state->fd);
+		state->fd = -1;
+		return ret;
+	}
+
+	state->kernel_version = _GET_VERSION(version.version);
+	printf("Kernel driver is version %d\n", state->kernel_version);
+
 	return 0;
 }
 
 static int
 limare_gpu_detect(struct limare_state *state)
 {
-	_mali_uk_get_system_info_size_s system_info_size;
-	_mali_uk_get_system_info_s system_info_ioctl;
-	struct _mali_system_info *system_info;
+	_mali_uk_get_pp_number_of_cores_s pp_number = { 0 };
+	_mali_uk_get_pp_core_version_s pp_version = { 0 };
+	_mali_uk_get_gp_number_of_cores_s gp_number = { 0 };
+	_mali_uk_get_gp_core_version_s gp_version = { 0 };
 	int ret;
 
-	ret = ioctl(state->fd, MALI_IOC_GET_SYSTEM_INFO_SIZE,
-		    &system_info_size);
-	if (ret) {
-		printf("Error: %s: ioctl(GET_SYSTEM_INFO_SIZE) failed: %s\n",
-		       __func__, strerror(ret));
-		return ret;
+	if (state->kernel_version < 14) {
+		ret = ioctl(state->fd, MALI_IOC_PP_NUMBER_OF_CORES_GET,
+			    &pp_number);
+		if (ret) {
+			printf("Error: %s: ioctl(PP_NUMBER_OF_CORES_GET) "
+			       "failed: %s\n", __func__, strerror(-ret));
+			return ret;
+		}
+
+		ret = ioctl(state->fd, MALI_IOC_PP_CORE_VERSION_GET,
+			    &pp_version);
+		if (ret) {
+			printf("Error: %s: ioctl(PP_CORE_VERSION_GET) "
+			       "failed: %s\n", __func__, strerror(-ret));
+			return ret;
+		}
+
+		ret = ioctl(state->fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET,
+			    &gp_number);
+		if (ret) {
+			printf("Error: %s: ioctl(GP2_NUMBER_OF_CORES_GET) "
+			       "failed: %s\n", __func__, strerror(-ret));
+			return ret;
+		}
+
+		ret = ioctl(state->fd, MALI_IOC_GP2_CORE_VERSION_GET,
+			    &gp_version);
+		if (ret) {
+			printf("Error: %s: ioctl(GP2_CORE_VERSION_GET) "
+			       "failed: %s\n", __func__, strerror(-ret));
+			return ret;
+		}
+	} else {
+		ret = ioctl(state->fd, MALI_IOC_PP_NUMBER_OF_CORES_GET_NEW,
+			    &pp_number);
+		if (ret) {
+			printf("Error: %s: ioctl(PP_NUMBER_OF_CORES_GET) "
+			       "failed: %s\n", __func__, strerror(-ret));
+			return ret;
+		}
+
+		ret = ioctl(state->fd, MALI_IOC_PP_CORE_VERSION_GET_NEW,
+			    &pp_version);
+		if (ret) {
+			printf("Error: %s: ioctl(PP_CORE_VERSION_GET) "
+			       "failed: %s\n", __func__, strerror(-ret));
+			return ret;
+		}
+
+		ret = ioctl(state->fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET_NEW,
+			    &gp_number);
+		if (ret) {
+			printf("Error: %s: ioctl(GP2_NUMBER_OF_CORES_GET) "
+			       "failed: %s\n", __func__, strerror(-ret));
+			return ret;
+		}
+
+		ret = ioctl(state->fd, MALI_IOC_GP2_CORE_VERSION_GET_NEW,
+			    &gp_version);
+		if (ret) {
+			printf("Error: %s: ioctl(GP2_CORE_VERSION_GET) "
+			       "failed: %s\n", __func__, strerror(-ret));
+			return ret;
+		}
 	}
 
-	system_info_ioctl.size = system_info_size.size;
-	system_info_ioctl.system_info = calloc(1, system_info_size.size);
-	if (!system_info_ioctl.system_info) {
-		printf("%s: Error: failed to allocate system info: %s\n",
-		       __func__, strerror(errno));
-		return errno;
-	}
-
-	ret = ioctl(state->fd, MALI_IOC_GET_SYSTEM_INFO, &system_info_ioctl);
-	if (ret) {
-		printf("%s: Error: ioctl(GET_SYSTEM_INFO) failed: %s\n",
-		       __func__, strerror(ret));
-		free(system_info_ioctl.system_info);
-		return ret;
-	}
-
-	system_info = system_info_ioctl.system_info;
-
-	switch (system_info->core_info->type) {
-	case _MALI_GP2:
-	case _MALI_200:
-		printf("Detected Mali-200.\n");
-		state->type = 200;
+	switch (pp_version.version >> 16) {
+	case 0xC807:
+		ret = 200;
 		break;
-	case _MALI_400_GP:
-	case _MALI_400_PP:
-		printf("Detected Mali-400.\n");
-		state->type = 400;
+	case 0xCE07:
+		ret = 300;
+		break;
+	case 0xCD07:
+		ret = 400;
+		break;
+	case 0xCF07:
+		ret = 450;
 		break;
 	default:
+		ret = 0;
 		break;
 	}
+
+	printf("Detected %d Mali-%03d PP Cores.\n",
+	       pp_number.number_of_cores, ret);
+
+	switch (gp_version.version >> 16) {
+	case 0xA07:
+		ret = 200;
+		break;
+	case 0xC07:
+		ret = 300;
+		break;
+	case 0xB07:
+		ret = 400;
+		break;
+	case 0xD07:
+		ret = 450;
+		break;
+	default:
+		ret = 0;
+		break;
+	}
+
+	printf("Detected %d Mali-%03d GP Cores.\n",
+	       gp_number.number_of_cores, ret);
+
+	if (ret == 200)
+		state->type = 200;
+	else if (ret == 400)
+		state->type = 400;
+	else
+		fprintf(stderr, "Unhandled Mali hw!\n");
 
 	return 0;
 }

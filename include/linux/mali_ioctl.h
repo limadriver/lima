@@ -62,6 +62,9 @@ typedef enum
     _MALI_UK_GET_NUMBER_OF_CORES,         /**< Get the number of Fragment/Vertex Processor cores */
     _MALI_UK_GET_CORE_VERSION,            /**< Get the Fragment/Vertex Processor version compatible with all cores */
 
+    _MALI_UK_GET_NUMBER_OF_CORES_NEW = 1,
+    _MALI_UK_GET_CORE_VERSION_NEW = 2,
+
     /** Fragment Processor Functions  */
 
     _MALI_UK_PP_START_JOB            = _MALI_UK_START_JOB,            /**< _mali_ukk_pp_start_job() */
@@ -69,13 +72,19 @@ typedef enum
     _MALI_UK_GET_PP_NUMBER_OF_CORES  = _MALI_UK_GET_NUMBER_OF_CORES,  /**< _mali_ukk_get_pp_number_of_cores() */
     _MALI_UK_GET_PP_CORE_VERSION     = _MALI_UK_GET_CORE_VERSION,     /**< _mali_ukk_get_pp_core_version() */
 
+    _MALI_UK_GET_PP_NUMBER_OF_CORES_NEW  = _MALI_UK_GET_NUMBER_OF_CORES_NEW,
+    _MALI_UK_GET_PP_CORE_VERSION_NEW     = _MALI_UK_GET_CORE_VERSION_NEW,
+
     /** Vertex Processor Functions  */
 
     _MALI_UK_GP_START_JOB            = _MALI_UK_START_JOB,            /**< _mali_ukk_gp_start_job() */
     _MALI_UK_GP_ABORT_JOB            = _MALI_UK_ABORT_JOB,            /**< _mali_ukk_gp_abort_job() */
     _MALI_UK_GET_GP_NUMBER_OF_CORES  = _MALI_UK_GET_NUMBER_OF_CORES,  /**< _mali_ukk_get_gp_number_of_cores() */
     _MALI_UK_GET_GP_CORE_VERSION     = _MALI_UK_GET_CORE_VERSION,     /**< _mali_ukk_get_gp_core_version() */
-    _MALI_UK_GP_SUSPEND_RESPONSE,                                     /**< _mali_ukk_gp_suspend_response() */
+
+    _MALI_UK_GET_GP_NUMBER_OF_CORES_NEW  = _MALI_UK_GET_NUMBER_OF_CORES_NEW,
+    _MALI_UK_GET_GP_CORE_VERSION_NEW     = _MALI_UK_GET_CORE_VERSION_NEW,
+
 
 	/** Profiling functions */
 
@@ -124,11 +133,15 @@ typedef enum
 #define MALI_IOC_PP_NUMBER_OF_CORES_GET	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES, _mali_uk_get_pp_number_of_cores_s *)
 #define MALI_IOC_PP_CORE_VERSION_GET	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION, _mali_uk_get_pp_core_version_s * )
 #define MALI_IOC_PP_ABORT_JOB	            _IOW (MALI_IOC_PP_BASE, _MALI_UK_PP_ABORT_JOB, _mali_uk_pp_abort_job_s * )
+#define MALI_IOC_PP_NUMBER_OF_CORES_GET_NEW _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES_NEW, _mali_uk_get_pp_number_of_cores_s *)
+#define MALI_IOC_PP_CORE_VERSION_GET_NEW    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_NEW, _mali_uk_get_pp_core_version_s * )
 #define MALI_IOC_GP2_START_JOB              _IOWR(MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, _mali_uk_gp_start_job_s *)
 #define MALI_IOC_GP2_ABORT_JOB              _IOWR(MALI_IOC_GP_BASE, _MALI_UK_GP_ABORT_JOB, _mali_uk_gp_abort_job_s *)
 #define MALI_IOC_GP2_NUMBER_OF_CORES_GET    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES, _mali_uk_get_gp_number_of_cores_s *)
 #define MALI_IOC_GP2_CORE_VERSION_GET	    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION, _mali_uk_get_gp_core_version_s *)
-#define MALI_IOC_GP2_SUSPEND_RESPONSE	    _IOW (MALI_IOC_GP_BASE, _MALI_UK_GP_SUSPEND_RESPONSE,_mali_uk_gp_suspend_response_s *)
+#define MALI_IOC_GP2_NUMBER_OF_CORES_GET_NEW _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES_NEW, _mali_uk_get_gp_number_of_cores_s *)
+#define MALI_IOC_GP2_CORE_VERSION_GET_NEW    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION_NEW, _mali_uk_get_gp_core_version_s *)
+
 #define MALI_IOC_PROFILING_START            _IOWR(MALI_IOC_PROFILING_BASE, _MALI_UK_PROFILING_START, _mali_uk_profiling_start_s *)
 #define MALI_IOC_PROFILING_ADD_EVENT        _IOWR(MALI_IOC_PROFILING_BASE, _MALI_UK_PROFILING_ADD_EVENT, _mali_uk_profiling_add_event_s*)
 #define MALI_IOC_PROFILING_STOP             _IOWR(MALI_IOC_PROFILING_BASE, _MALI_UK_PROFILING_STOP, _mali_uk_profiling_stop_s *)
@@ -401,19 +414,6 @@ typedef struct
 	u32 mali_address_base;          /**< [out] start of MALI address space */
 	u32 memory_size;                /**< [out] total MALI address space available */
 } _mali_uk_init_mem_s;
-
-
-/** @brief Arguments for _mali_ukk_get_pp_core_version()
- *
- * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
- * - Upon successful return from _mali_ukk_get_pp_core_version(), @c version contains
- * the version that all Fragment Processor cores are compatible with.
- */
-typedef struct
-{
-    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
-    _mali_core_version version;     /**< [out] version returned from core, see \ref _mali_core_version  */
-} _mali_uk_get_pp_core_version_s;
 
 /** @defgroup _mali_uk_gpstartjob_s Vertex Processor Start Job
  * @{ */
@@ -759,3 +759,52 @@ typedef struct
     } data;
 } _mali_uk_wait_for_notification_s;
 /** @} */ /* end group _mali_uk_waitfornotification_s */
+
+
+/** @brief Arguments for _mali_ukk_get_pp_number_of_cores()
+ *
+ * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
+ * - Upon successful return from _mali_ukk_get_pp_number_of_cores(), @c number_of_cores
+ * will contain the number of Fragment Processor cores in the system.
+ */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+    u32 number_of_cores;            /**< [out] number of Fragment Processor cores in the system */
+} _mali_uk_get_pp_number_of_cores_s;
+
+/** @brief Arguments for _mali_ukk_get_pp_core_version()
+ *
+ * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
+ * - Upon successful return from _mali_ukk_get_pp_core_version(), @c version contains
+ * the version that all Fragment Processor cores are compatible with.
+ */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+    _mali_core_version version;     /**< [out] version returned from core, see \ref _mali_core_version  */
+} _mali_uk_get_pp_core_version_s;
+
+/** @brief Arguments for _mali_ukk_get_gp_number_of_cores()
+ *
+ * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
+ * - Upon successful return from _mali_ukk_get_gp_number_of_cores(), @c number_of_cores
+ * will contain the number of Vertex Processor cores in the system.
+ */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+    u32 number_of_cores;            /**< [out] number of Vertex Processor cores in the system */
+} _mali_uk_get_gp_number_of_cores_s;
+
+/** @brief Arguments for _mali_ukk_get_gp_core_version()
+ *
+ * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
+ * - Upon successful return from _mali_ukk_get_gp_core_version(), @c version contains
+ * the version that all Vertex Processor cores are compatible with.
+ */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+    _mali_core_version version;     /**< [out] version returned from core, see \ref _mali_core_version */
+} _mali_uk_get_gp_core_version_s;

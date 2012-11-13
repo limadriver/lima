@@ -33,6 +33,7 @@ struct lima_cmd {
 
 struct limare_state {
 	int fd;
+	int kernel_version;
 
 #define LIMARE_TYPE_M200 200
 #define LIMARE_TYPE_M400 400
