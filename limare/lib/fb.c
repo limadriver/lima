@@ -34,22 +34,28 @@
 
 #include "fb.h"
 
+#ifdef ANDROID
+#define FBDEV_DEV "/dev/graphics/fb0"
+#else
+#define FBDEV_DEV "/dev/fb0"
+#endif
+
 void
 fb_clear(void)
 {
-	int fd = open("/dev/graphics/fb0", O_RDWR);
+	int fd = open(FBDEV_DEV, O_RDWR);
 	struct fb_var_screeninfo info;
 	unsigned char *fb;
 
 	if (fd == -1) {
 		printf("Error: failed to open %s: %s\n",
-			"/dev/graphics/fb0", strerror(errno));
+			FBDEV_DEV, strerror(errno));
 		return;
 	}
 
 	if (ioctl(fd, FBIOGET_VSCREENINFO, &info)) {
 		printf("Error: failed to run ioctl on %s: %s\n",
-			"/dev/graphics/fb0", strerror(errno));
+			FBDEV_DEV, strerror(errno));
 		close(fd);
 		return;
 	}
@@ -61,7 +67,7 @@ fb_clear(void)
 		  MAP_SHARED, fd, 0);
 	if (!fb) {
 		printf("Error: failed to run mmap on %s: %s\n",
-			"/dev/graphics/fb0", strerror(errno));
+			FBDEV_DEV, strerror(errno));
 		close(fd);
 		return;
 	}
@@ -75,20 +81,20 @@ fb_clear(void)
 void
 fb_dump(unsigned char *buffer, int size, int width, int height)
 {
-	int fd = open("/dev/graphics/fb0", O_RDWR);
+	int fd = open(FBDEV_DEV, O_RDWR);
 	struct fb_var_screeninfo info;
 	unsigned char *fb;
 	int i;
 
 	if (fd == -1) {
 		printf("Error: failed to open %s: %s\n",
-			"/dev/graphics/fb0", strerror(errno));
+			FBDEV_DEV, strerror(errno));
 		return;
 	}
 
 	if (ioctl(fd, FBIOGET_VSCREENINFO, &info)) {
 		printf("Error: failed to run ioctl on %s: %s\n",
-			"/dev/graphics/fb0", strerror(errno));
+			FBDEV_DEV, strerror(errno));
 		close(fd);
 		return;
 	}
@@ -97,7 +103,7 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 		  MAP_SHARED, fd, 0);
 	if (!fb) {
 		printf("Error: failed to run mmap on %s: %s\n",
-			"/dev/graphics/fb0", strerror(errno));
+			FBDEV_DEV, strerror(errno));
 		close(fd);
 		return;
 	}
