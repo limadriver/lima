@@ -85,6 +85,11 @@
 #define STREAM_TAG_SATT 0x54544153
 #define STREAM_TAG_VATT 0x54544156
 
+#define STREAM_TAG_VIDX 0x58444956
+#define STREAM_TAG_ITDR 0x52445449
+#define STREAM_TAG_IYUV 0x56555949
+#define STREAM_TAG_IGRD 0x44524749
+
 struct stream_string {
 	unsigned int tag; /* STRI */
 	int size;
@@ -197,6 +202,26 @@ stream_uniform_init_read(void *stream, struct stream_uniform *uniform)
 	return 8 + init->size;
 }
 
+/*
+ * Tags that are currently unused.
+ */
+static int
+stream_uniform_skip(void *stream)
+{
+	unsigned int *tag = stream;
+
+	switch (*tag) {
+	case STREAM_TAG_VIDX:
+		return 8;
+	case STREAM_TAG_ITDR:
+	case STREAM_TAG_IYUV:
+	case STREAM_TAG_IGRD:
+		return 12;
+	default:
+		return 0;
+	}
+}
+
 static void
 stream_uniform_table_destroy(struct stream_uniform_table *table)
 {
@@ -263,6 +288,12 @@ stream_uniform_table_create(void *stream, int size)
 			       __func__, offset);
 			goto corrupt;
 		}
+
+		/* skip some tags that might be there */
+		offset += stream_uniform_skip(stream + offset);
+		offset += stream_uniform_skip(stream + offset);
+		offset += stream_uniform_skip(stream + offset);
+		offset += stream_uniform_skip(stream + offset);
 
 		offset += stream_uniform_init_read(stream + offset, uniform);
 		/* it is legal to not have an init block */
