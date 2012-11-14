@@ -953,7 +953,7 @@ limare_shader_binary_free(struct lima_shader_binary *binary)
 }
 
 struct lima_shader_binary *
-limare_shader_compile(int type, const char *source)
+limare_shader_compile(struct limare_state *state, int type, const char *source)
 {
 	struct lima_shader_binary *binary;
 	int length = strlen(source);
@@ -966,19 +966,60 @@ limare_shader_compile(int type, const char *source)
 		return NULL;
 	}
 
-	ret = __mali_compile_essl_shader(binary, type,
-					 source, &length, 1);
-	if (ret) {
-		if (binary->error_log)
-			printf("%s: compilation failed: %s\n",
-			       __func__, binary->error_log);
-		else
-			printf("%s: compilation failed: %s\n",
-			       __func__, binary->oom_log);
+	if (state->kernel_version >= 14) {
+		struct lima_shader_binary_mbs mbs_binary[1] = {{ 0 }};
 
-		limare_shader_binary_free(binary);
-		return NULL;
+		ret = __mali_compile_essl_shader((struct lima_shader_binary *)
+						 mbs_binary, type, source,
+						 &length, 1);
+		if (ret) {
+			if (mbs_binary->error_log)
+				printf("%s: compilation failed: %s\n",
+				       __func__, mbs_binary->error_log);
+			else
+				printf("%s: compilation failed: %s\n",
+				       __func__, mbs_binary->oom_log);
+
+			free(mbs_binary->error_log);
+			free(mbs_binary->shader);
+			free(mbs_binary->mbs_stream);
+			free(mbs_binary->varying_stream);
+			free(mbs_binary->uniform_stream);
+			free(mbs_binary->attribute_stream);
+			return NULL;
+		}
+
+		/* we are not using the mbs */
+		free(mbs_binary->mbs_stream);
+
+		binary->compile_status = mbs_binary->compile_status;
+		binary->shader = mbs_binary->shader;
+		binary->shader_size = mbs_binary->shader_size;
+		binary->varying_stream = mbs_binary->varying_stream;
+		binary->varying_stream_size = mbs_binary->varying_stream_size;
+		binary->uniform_stream = mbs_binary->uniform_stream;
+		binary->uniform_stream_size = mbs_binary->uniform_stream_size;
+		binary->attribute_stream = mbs_binary->attribute_stream;
+		binary->attribute_stream_size = mbs_binary->attribute_stream_size;
+
+		binary->parameters.fragment = mbs_binary->parameters.fragment;
+	} else {
+		ret = __mali_compile_essl_shader(binary, type,
+						 source, &length, 1);
+		if (ret) {
+			if (binary->error_log)
+				printf("%s: compilation failed: %s\n",
+				       __func__, binary->error_log);
+			else
+				printf("%s: compilation failed: %s\n",
+				       __func__, binary->oom_log);
+
+			limare_shader_binary_free(binary);
+			return NULL;
+		}
 	}
+
+
 
 	return binary;
 }
@@ -991,7 +1032,7 @@ vertex_shader_attach(struct limare_state *state, const char *source)
 	struct stream_attribute_table *attribute_table;
 	struct stream_varying_table *varying_table;
 
-	binary = limare_shader_compile(LIMA_SHADER_VERTEX, source);
+	binary = limare_shader_compile(state, LIMA_SHADER_VERTEX, source);
 	if (!binary)
 		return -1;
 
@@ -1040,7 +1081,7 @@ fragment_shader_attach(struct limare_state *state, const char *source)
 	struct stream_uniform_table *uniform_table;
 	struct stream_varying_table *varying_table;
 
-	binary = limare_shader_compile(LIMA_SHADER_FRAGMENT, source);
+	binary = limare_shader_compile(state, LIMA_SHADER_FRAGMENT, source);
 	if (!binary)
 		return -1;
 

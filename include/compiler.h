@@ -27,6 +27,10 @@
 #ifndef LIMA_COMPILER_H
 #define LIMA_COMPILER_H 1
 
+/* values from GL */
+#define LIMA_SHADER_FRAGMENT 0x8B30
+#define LIMA_SHADER_VERTEX   0x8B31
+
 struct lima_shader_binary_vertex_parameters { /* 0x24 */
 	int unknown00; /* 0x00 */
 	int unknown04; /* 0x04 */
@@ -74,10 +78,33 @@ struct lima_shader_binary { /* 0x5C */
 	} parameters; /* 0x2C - 0x5C */
 };
 
-/* values from GL */
-#define LIMA_SHADER_FRAGMENT 0x8B30
-#define LIMA_SHADER_VERTEX   0x8B31
+/*
+ * Introduced in r3p0, adds a full mbs binary and some extra parameters.
+ */
+struct lima_shader_binary_mbs { /* 0x6C */
+	int compile_status; /* 0x00 */
+	char *error_log; /* 0x04 - can be freed */
+	char *oom_log; /* 0x08 - static */
+	void *shader; /* 0x0C */
+	int shader_size; /* 0x10 */
+	void *mbs_stream; /* 0x14 */
+	int mbs_stream_size; /* 0x18 */
+	void *varying_stream; /* 0x1C */
+	int varying_stream_size; /* 0x20 */
+	void *uniform_stream; /* 0x24 */
+	int uniform_stream_size; /* 0x28 */
+	void *attribute_stream; /* 0x2C */
+	int attribute_stream_size; /* 0x30 */
+	union {
+		struct lima_shader_binary_vertex_parameters vertex;
+		struct lima_shader_binary_fragment_parameters fragment;
+	} parameters; /* 0x34 - 0x64 */
+	int unknown64; /* 0x64 */
+	int unknown68; /* 0x68 */
+};
 
+/* from libMali.so */
 int __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 			       const char *source, int *length, int count);
+
 #endif /* LIMA_COMPILER_H */
