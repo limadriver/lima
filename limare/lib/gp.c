@@ -33,8 +33,8 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 
+#include "ioctl_registers.h"
 #include "limare.h"
-#include "linux/ioctl.h"
 #include "plb.h"
 #include "symbols.h"
 #include "gp.h"
@@ -653,22 +653,18 @@ plbu_info_render_state_create(struct draw_info *draw)
 int
 limare_gp_job_start(struct limare_state *state)
 {
-	struct lima_gp_job_start *job;
+	struct lima_gp_frame_registers frame = { 0 };
 
-	job = calloc(1, sizeof(struct lima_gp_job_start));
-
-	state->gp_job = job;
-
-	job->frame.vs_commands_start = state->vs_commands_physical;
-	job->frame.vs_commands_end =
+	frame.vs_commands_start = state->vs_commands_physical;
+	frame.vs_commands_end =
 		state->vs_commands_physical + 8 * state->vs_commands_count;
-	job->frame.plbu_commands_start = state->plbu_commands_physical;
-	job->frame.plbu_commands_end =
+	frame.plbu_commands_start = state->plbu_commands_physical;
+	frame.plbu_commands_end =
 		state->plbu_commands_physical + 8 * state->plbu_commands_count;
-	job->frame.tile_heap_start = 0;
-	job->frame.tile_heap_end = 0;
+	frame.tile_heap_start = 0;
+	frame.tile_heap_end = 0;
 
-	return limare_gp_job_start_direct(state, job);
+	return limare_gp_job_start_direct(state, &frame);
 }
 
 struct draw_info *

@@ -48,8 +48,6 @@ struct limare_state {
 
 	unsigned int clear_color;
 
-	struct lima_gp_job_start *gp_job;
-
 	struct draw_info *draws[32];
 	int draw_count;
 

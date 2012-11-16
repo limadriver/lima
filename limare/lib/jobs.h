@@ -28,8 +28,13 @@
 #ifndef LIMARE_JOBS_H
 #define LIMARE_JOBS_H 1
 
-int limare_gp_job_start_direct(struct limare_state *state, struct lima_gp_job_start *job);
-int limare_m200_pp_job_start_direct(struct limare_state *state, struct lima_m200_pp_job_start *job);
-int limare_m400_pp_job_start_direct(struct limare_state *state, struct lima_m400_pp_job_start *job);
+int limare_gp_job_start_direct(struct limare_state *state,
+			       struct lima_gp_frame_registers *frame);
+int limare_m200_pp_job_start_direct(struct limare_state *state,
+				    struct lima_m200_pp_frame_registers *frame,
+				    struct lima_pp_wb_registers *wb);
+int limare_m400_pp_job_start_direct(struct limare_state *state,
+				    struct lima_m400_pp_frame_registers *frame,
+				    struct lima_pp_wb_registers *wb);
 
 #endif /* LIMARE_JOBS_H */

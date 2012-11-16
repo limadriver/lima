@@ -31,7 +31,6 @@
 
 #include "limare.h"
 #include "plb.h"
-#include "linux/ioctl.h"
 #include "gp.h"
 #include "program.h"
 #include "compiler.h"

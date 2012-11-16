@@ -84,18 +84,20 @@ limare_jobs_wait(void)
 
 int
 limare_gp_job_start_direct(struct limare_state *state,
-			    struct lima_gp_job_start *job)
+			   struct lima_gp_frame_registers *frame)
 {
+	struct lima_gp_job_start job = { 0 };
 	int ret;
 
 	wait_for_notification_start(state);
 
-	job->fd = state->fd;
-	job->user_job_ptr = (unsigned int) job;
-	job->priority = 1;
-	job->watchdog_msecs = 0;
-	job->abort_id = 0;
-	ret = ioctl(state->fd, LIMA_GP_START_JOB, job);
+	job.fd = state->fd;
+	job.user_job_ptr = (unsigned int) &job;
+	job.priority = 1;
+	job.watchdog_msecs = 0;
+	job.frame = *frame;
+	job.abort_id = 0;
+	ret = ioctl(state->fd, LIMA_GP_START_JOB, &job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));
@@ -109,19 +111,23 @@ limare_gp_job_start_direct(struct limare_state *state,
 
 int
 limare_m200_pp_job_start_direct(struct limare_state *state,
-				struct lima_m200_pp_job_start *job)
+				struct lima_m200_pp_frame_registers *frame,
+				struct lima_pp_wb_registers *wb)
 {
+	struct lima_m200_pp_job_start job = { 0 };
 	int ret;
 
 	wait_for_notification_start(state);
 
-	job->fd = state->fd;
-	job->user_job_ptr = (unsigned int) job;
-	job->priority = 1;
-	job->watchdog_msecs = 0;
-	job->abort_id = 0;
+	job.fd = state->fd;
+	job.user_job_ptr = (unsigned int) &job;
+	job.priority = 1;
+	job.watchdog_msecs = 0;
+	job.frame = *frame;
+	job.wb[0] = *wb;
+	job.abort_id = 0;
 
-	ret = ioctl(state->fd, LIMA_M200_PP_START_JOB, job);
+	ret = ioctl(state->fd, LIMA_M200_PP_START_JOB, &job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));
@@ -135,19 +141,23 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 
 int
 limare_m400_pp_job_start_direct(struct limare_state *state,
-				struct lima_m400_pp_job_start *job)
+				struct lima_m400_pp_frame_registers *frame,
+				struct lima_pp_wb_registers *wb)
 {
+	struct lima_m400_pp_job_start job = { 0 };
 	int ret;
 
 	wait_for_notification_start(state);
 
-	job->fd = state->fd;
-	job->user_job_ptr = (unsigned int) job;
-	job->priority = 1;
-	job->watchdog_msecs = 0;
-	job->abort_id = 0;
+	job.fd = state->fd;
+	job.user_job_ptr = (unsigned int) &job;
+	job.priority = 1;
+	job.watchdog_msecs = 0;
+	job.frame = *frame;
+	job.wb[0] = *wb;
+	job.abort_id = 0;
 
-	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB, job);
+	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB, &job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));

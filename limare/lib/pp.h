@@ -30,11 +30,6 @@
 
 struct pp_info
 {
-	union {
-		struct lima_m200_pp_job_start *m200;
-		struct lima_m400_pp_job_start *m400;
-	} job;
-
 	int width;
 	int height;
 	int pitch;

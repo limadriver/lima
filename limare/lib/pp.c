@@ -34,9 +34,7 @@
 #include <string.h>
 
 #include "formats.h"
-
-#include "linux/ioctl.h"
-
+#include "ioctl_registers.h"
 #include "limare.h"
 #include "plb.h"
 #include "pp.h"
@@ -109,118 +107,102 @@ pp_info_create(struct limare_state *state,
 int
 limare_m200_pp_job_start(struct limare_state *state, struct pp_info *info)
 {
-	struct lima_m200_pp_job_start *job;
+	struct lima_m200_pp_frame_registers frame = { 0 };
+	struct lima_pp_wb_registers wb = { 0 };
 	int supersampling = 1;
 
-	job = calloc(1, sizeof(struct lima_m200_pp_job_start));
-	if (!job) {
-		printf("%s: Error: failed to allocate job: %s\n",
-		       __func__, strerror(errno));
-		return errno;
-	}
-
-	info->job.m200 = job;
-
 	/* frame registers */
-	job->frame.plbu_array_address = info->plb_physical;
-        job->frame.render_address = info->render_physical;
+	frame.plbu_array_address = info->plb_physical;
+	frame.render_address = info->render_physical;
 
-	job->frame.flags = LIMA_PP_FRAME_FLAGS_ACTIVE;
+	frame.flags = LIMA_PP_FRAME_FLAGS_ACTIVE;
 	if (supersampling)
-		job->frame.flags |= LIMA_PP_FRAME_FLAGS_ONSCREEN;
+		frame.flags |= LIMA_PP_FRAME_FLAGS_ONSCREEN;
 
-	job->frame.clear_value_depth = 0x00FFFFFF;
-	job->frame.clear_value_stencil = 0;
-	job->frame.clear_value_color = info->clear_color;
-	job->frame.clear_value_color_1 = info->clear_color;
-	job->frame.clear_value_color_2 = info->clear_color;
-	job->frame.clear_value_color_3 = info->clear_color;
+	frame.clear_value_depth = 0x00FFFFFF;
+	frame.clear_value_stencil = 0;
+	frame.clear_value_color = info->clear_color;
+	frame.clear_value_color_1 = info->clear_color;
+	frame.clear_value_color_2 = info->clear_color;
+	frame.clear_value_color_3 = info->clear_color;
 
 	if ((info->width & 0x0F) || (info->height & 0x0F)) {
-		job->frame.width = info->width;
-		job->frame.height = info->height;
+		frame.width = info->width;
+		frame.height = info->height;
 	} else {
-		job->frame.width = 0;
-		job->frame.height = 0;
+		frame.width = 0;
+		frame.height = 0;
 	}
 
 	/* not needed for drawing a simple triangle */
-	job->frame.fragment_stack_address = 0;
-	job->frame.fragment_stack_size = 0;
+	frame.fragment_stack_address = 0;
+	frame.fragment_stack_size = 0;
 
-	job->frame.one = 1;
+	frame.one = 1;
 	if (supersampling)
-		job->frame.supersampled_height = info->height - 1;
+		frame.supersampled_height = info->height - 1;
 	else
-		job->frame.supersampled_height = 1;
-	job->frame.dubya = 0x77;
-	job->frame.onscreen = supersampling;
+		frame.supersampled_height = 1;
+	frame.dubya = 0x77;
+	frame.onscreen = supersampling;
 
 	/* write back registers */
-	job->wb[0].type = LIMA_PP_WB_TYPE_COLOR;
-	job->wb[0].address = info->frame_physical;
-	job->wb[0].pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
-	job->wb[0].downsample_factor = 0;
-	job->wb[0].pixel_layout = 0;
-	job->wb[0].pitch = info->pitch / 8;
-	job->wb[0].mrt_bits = 0;
-	job->wb[0].mrt_pitch = 0;
-	job->wb[0].zero = 0;
+	wb.type = LIMA_PP_WB_TYPE_COLOR;
+	wb.address = info->frame_physical;
+	wb.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
+	wb.downsample_factor = 0;
+	wb.pixel_layout = 0;
+	wb.pitch = info->pitch / 8;
+	wb.mrt_bits = 0;
+	wb.mrt_pitch = 0;
+	wb.zero = 0;
 
-	return limare_m200_pp_job_start_direct(state, job);
+	return limare_m200_pp_job_start_direct(state, &frame, &wb);
 }
 
 /* 3 registers were added, and "supersampling" is disabled */
 int
 limare_m400_pp_job_start(struct limare_state *state, struct pp_info *info)
 {
-	struct lima_m400_pp_job_start *job;
+	struct lima_m400_pp_frame_registers frame = { 0 };
+	struct lima_pp_wb_registers wb = { 0 };
 	int supersampling = 0;
 	int max_blocking = 0;
 
-	job = calloc(1, sizeof(struct lima_m400_pp_job_start));
-	if (!job) {
-		printf("%s: Error: failed to allocate job: %s\n",
-		       __func__, strerror(errno));
-		return errno;
-	}
-
-	info->job.m400 = job;
-
 	/* frame registers */
-	job->frame.plbu_array_address = info->plb_physical;
-        job->frame.render_address = info->render_physical;
+	frame.plbu_array_address = info->plb_physical;
+	frame.render_address = info->render_physical;
 
-	job->frame.flags = LIMA_PP_FRAME_FLAGS_ACTIVE;
+	frame.flags = LIMA_PP_FRAME_FLAGS_ACTIVE;
 	if (supersampling)
-		job->frame.flags |= LIMA_PP_FRAME_FLAGS_ONSCREEN;
+		frame.flags |= LIMA_PP_FRAME_FLAGS_ONSCREEN;
 
-	job->frame.clear_value_depth = 0x00FFFFFF;
-	job->frame.clear_value_stencil = 0;
-	job->frame.clear_value_color = info->clear_color;
-	job->frame.clear_value_color_1 = info->clear_color;
-	job->frame.clear_value_color_2 = info->clear_color;
-	job->frame.clear_value_color_3 = info->clear_color;
+	frame.clear_value_depth = 0x00FFFFFF;
+	frame.clear_value_stencil = 0;
+	frame.clear_value_color = info->clear_color;
+	frame.clear_value_color_1 = info->clear_color;
+	frame.clear_value_color_2 = info->clear_color;
+	frame.clear_value_color_3 = info->clear_color;
 
 	if ((info->width & 0x0F) || (info->height & 0x0F)) {
-		job->frame.width = info->width;
-		job->frame.height = info->height;
+		frame.width = info->width;
+		frame.height = info->height;
 	} else {
-		job->frame.width = 0;
-		job->frame.height = 0;
+		frame.width = 0;
+		frame.height = 0;
 	}
 
 	/* not needed for drawing a simple triangle */
-	job->frame.fragment_stack_address = 0;
-	job->frame.fragment_stack_size = 0;
+	frame.fragment_stack_address = 0;
+	frame.fragment_stack_size = 0;
 
-	job->frame.one = 1;
+	frame.one = 1;
 	if (supersampling)
-		job->frame.supersampled_height = info->height - 1;
+		frame.supersampled_height = info->height - 1;
 	else
-		job->frame.supersampled_height = 1;
-	job->frame.dubya = 0x77;
-	job->frame.onscreen = supersampling;
+		frame.supersampled_height = 1;
+	frame.dubya = 0x77;
+	frame.onscreen = supersampling;
 
 	if (info->plb_shift_w > info->plb_shift_h)
 		max_blocking = info->plb_shift_w;
@@ -230,31 +212,31 @@ limare_m400_pp_job_start(struct limare_state *state, struct pp_info *info)
 	if (max_blocking > 2)
 		max_blocking = 2;
 
-	job->frame.blocking = (max_blocking << 28) |
+	frame.blocking = (max_blocking << 28) |
 		(info->plb_shift_h << 16) | (info->plb_shift_w);
 
-	job->frame.scale = 0x0C;
+	frame.scale = 0x0C;
 	if (supersampling)
-		job->frame.scale |= 0xC00;
+		frame.scale |= 0xC00;
 	else
-		job->frame.scale |= 0x100;
+		frame.scale |= 0x100;
 
 	/* always set to this on newer drivers */
-	job->frame.foureight = 0x8888;
+	frame.foureight = 0x8888;
 
 	/* write back registers */
-	job->wb[0].type = LIMA_PP_WB_TYPE_COLOR;
-	job->wb[0].address = info->frame_physical;
-	job->wb[0].pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
-	job->wb[0].downsample_factor = 0;
-	job->wb[0].pixel_layout = 0;
-	job->wb[0].pitch = info->pitch / 8;
+	wb.type = LIMA_PP_WB_TYPE_COLOR;
+	wb.address = info->frame_physical;
+	wb.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
+	wb.downsample_factor = 0;
+	wb.pixel_layout = 0;
+	wb.pitch = info->pitch / 8;
 	/* todo: infrastructure to read fbdev and see whether, we need to swap R/B */
-	job->wb[0].mrt_bits = 4; /* set to RGBA instead of BGRA */
-	job->wb[0].mrt_pitch = 0;
-	job->wb[0].zero = 0;
+	wb.mrt_bits = 4; /* set to RGBA instead of BGRA */
+	wb.mrt_pitch = 0;
+	wb.zero = 0;
 
-	return limare_m400_pp_job_start_direct(state, job);
+	return limare_m400_pp_job_start_direct(state, &frame, &wb);
 }
 
 int
