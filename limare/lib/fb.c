@@ -61,9 +61,9 @@ fb_clear(void)
 	}
 
 	printf("FB has dimensions: %dx%d@%dbpp\n",
-	       info.width, info.height, info.bits_per_pixel);
+	       info.xres, info.yres, info.bits_per_pixel);
 
-	fb = mmap(0, 2 * info.xres * info.yres * 4, PROT_READ | PROT_WRITE,
+	fb = mmap(0, info.xres * info.yres * 4, PROT_READ | PROT_WRITE,
 		  MAP_SHARED, fd, 0);
 	if (!fb) {
 		printf("Error: failed to run mmap on %s: %s\n",
@@ -72,7 +72,7 @@ fb_clear(void)
 		return;
 	}
 
-	memset(fb, 0xFF, 2 * info.xres * info.yres * 4);
+	memset(fb, 0xFF, info.xres * info.yres * 4);
 
 	close(fd);
 	return;
@@ -99,7 +99,7 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 		return;
 	}
 
-	fb = mmap(0, 2 * info.xres * info.yres * 4, PROT_READ | PROT_WRITE,
+	fb = mmap(0, info.xres * info.yres * 4, PROT_READ | PROT_WRITE,
 		  MAP_SHARED, fd, 0);
 	if (!fb) {
 		printf("Error: failed to run mmap on %s: %s\n",
@@ -110,35 +110,17 @@ fb_dump(unsigned char *buffer, int size, int width, int height)
 
 	if ((info.xres == width) && (info.yres == height)) {
 		memcpy(fb, buffer, width * height * 4);
-		memcpy(fb + 4 * info.xres * info.yres, buffer, width * height * 4);
 	} else if ((info.xres >= width) && (info.yres >= height)) {
 		int fb_offset, buf_offset;
 
-		/* landscape */
 		for (i = 0, fb_offset = 0, buf_offset = 0;
 		     i < height;
 		     i++, fb_offset += 4 * info.xres, buf_offset += 4 * width) {
 			memcpy(fb + fb_offset, buffer + buf_offset, 4 * width);
-			memset(fb + fb_offset + 4 * width, 0xFF, 4 * (info.xres - width));
 		}
-
-		memset(fb + fb_offset, 0xFF, 4 * (info.xres * (info.yres - height)));
-
-#if 1
-		/* portrait */
-		for (i = 0, fb_offset = 4 * info.xres * info.yres, buf_offset = 0;
-		     i < height;
-		     i++, fb_offset += 4 * info.xres, buf_offset += 4 * width) {
-			memcpy(fb + fb_offset, buffer + buf_offset, 4 * width);
-			memset(fb + fb_offset + 4 * width, 0xFF, 4 * (info.xres - width));
-		}
-
-		memset(fb + fb_offset, 0xFF, 4 * (info.xres * (info.yres - height)));
-#endif
 	} else
 		printf("%s: dimensions not implemented\n", __func__);
 
-
-	munmap(fb, 2 * info.xres * info.yres * 4);
+	munmap(fb, info.xres * info.yres * 4);
 	close(fd);
 }
