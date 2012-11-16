@@ -60,18 +60,14 @@ wait_for_notification(void *arg)
 			       __func__, strerror(errno));
 			exit(-1);
 		}
-
-		sched_yield();
 	} while (wait.code.type == _MALI_NOTIFICATION_CORE_TIMEOUT);
-
-	printf("%s: done!\n", __func__);
 
 	pthread_mutex_unlock(&wait_mutex);
 
 	return NULL;
 }
 
-void
+static void
 wait_for_notification_start(struct limare_state *state)
 {
 	pthread_t thread;
@@ -79,7 +75,7 @@ wait_for_notification_start(struct limare_state *state)
 	pthread_create(&thread, NULL, wait_for_notification, state);
 }
 
-void
+static void
 limare_jobs_wait(void)
 {
 	pthread_mutex_lock(&wait_mutex);
@@ -91,9 +87,6 @@ limare_gp_job_start_direct(struct limare_state *state,
 			    struct lima_gp_job_start *job)
 {
 	int ret;
-
-	/* now run the job */
-	limare_jobs_wait();
 
 	wait_for_notification_start(state);
 
@@ -109,6 +102,8 @@ limare_gp_job_start_direct(struct limare_state *state,
 		return errno;
 	}
 
+	limare_jobs_wait();
+
 	return 0;
 }
 
@@ -117,8 +112,6 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 				struct lima_m200_pp_job_start *job)
 {
 	int ret;
-
-	limare_jobs_wait();
 
 	wait_for_notification_start(state);
 
@@ -135,6 +128,8 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 		return errno;
 	}
 
+	limare_jobs_wait();
+
 	return 0;
 }
 
@@ -143,8 +138,6 @@ limare_m400_pp_job_start_direct(struct limare_state *state,
 				struct lima_m400_pp_job_start *job)
 {
 	int ret;
-
-	limare_jobs_wait();
 
 	wait_for_notification_start(state);
 
@@ -160,6 +153,8 @@ limare_m400_pp_job_start_direct(struct limare_state *state,
 		       __func__, strerror(errno));
 		return errno;
 	}
+
+	limare_jobs_wait();
 
 	return 0;
 }

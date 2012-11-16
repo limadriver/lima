@@ -515,8 +515,6 @@ limare_flush(struct limare_state *state)
 	if (ret)
 		return ret;
 
-	limare_jobs_wait();
-
 	return 0;
 }
 
