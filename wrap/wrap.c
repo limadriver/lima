@@ -610,7 +610,7 @@ dev_mali_wait_for_notification_post(void *data)
 static void
 dev_mali_gp_job_start_pre(void *data)
 {
-	struct lima_gp_job_start *job = data;
+	struct lima_gp_job_start_r2p1 *job = data;
 
 	wrap_log("IOCTL MALI_IOC_GP2_START_JOB IN;\n");
 
@@ -637,7 +637,7 @@ dev_mali_gp_job_start_pre(void *data)
 static void
 dev_mali_gp_job_start_post(void *data)
 {
-	struct lima_gp_job_start *job = data;
+	struct lima_gp_job_start_r2p1 *job = data;
 
 	wrap_log("IOCTL MALI_IOC_GP2_START_JOB OUT = {\n");
 
@@ -719,7 +719,7 @@ dev_mali200_pp_job_start_pre(void *data)
 static void
 dev_mali400_pp_job_start_pre(void *data)
 {
-	struct lima_m400_pp_job_start *job = data;
+	struct lima_m400_pp_job_start_r2p1 *job = data;
 	int i;
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
@@ -808,7 +808,7 @@ dev_mali200_pp_job_start_post(void *data)
 static void
 dev_mali400_pp_job_start_post(void *data)
 {
-	struct lima_m400_pp_job_start *job = data;
+	struct lima_m400_pp_job_start_r2p1 *job = data;
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB OUT = {\n");
 

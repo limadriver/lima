@@ -82,11 +82,11 @@ limare_jobs_wait(void)
 	pthread_mutex_unlock(&wait_mutex);
 }
 
-int
-limare_gp_job_start_direct(struct limare_state *state,
-			   struct lima_gp_frame_registers *frame)
+static int
+limare_gp_job_start_r2p1(struct limare_state *state,
+			 struct lima_gp_frame_registers *frame)
 {
-	struct lima_gp_job_start job = { 0 };
+	struct lima_gp_job_start_r2p1 job = { 0 };
 	int ret;
 
 	wait_for_notification_start(state);
@@ -97,7 +97,7 @@ limare_gp_job_start_direct(struct limare_state *state,
 	job.watchdog_msecs = 0;
 	job.frame = *frame;
 	job.abort_id = 0;
-	ret = ioctl(state->fd, LIMA_GP_START_JOB, &job);
+	ret = ioctl(state->fd, LIMA_GP_START_JOB_R2P1, &job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));
@@ -107,6 +107,41 @@ limare_gp_job_start_direct(struct limare_state *state,
 	limare_jobs_wait();
 
 	return 0;
+}
+
+static int
+limare_gp_job_start_r3p0(struct limare_state *state,
+			 struct lima_gp_frame_registers *frame)
+{
+	struct lima_gp_job_start_r3p0 job = { 0 };
+	int ret;
+
+	wait_for_notification_start(state);
+
+	job.fd = state->fd;
+	job.user_job_ptr = (unsigned int) &job;
+	job.priority = 1;
+	job.frame = *frame;
+	ret = ioctl(state->fd, LIMA_GP_START_JOB_R3P0, &job);
+	if (ret == -1) {
+		printf("%s: Error: failed to start job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	limare_jobs_wait();
+
+	return 0;
+}
+
+int
+limare_gp_job_start_direct(struct limare_state *state,
+			   struct lima_gp_frame_registers *frame)
+{
+	if (state->kernel_version < 14)
+		return limare_gp_job_start_r2p1(state, frame);
+	else
+		return limare_gp_job_start_r3p0(state, frame);
 }
 
 int
@@ -139,12 +174,12 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 	return 0;
 }
 
-int
-limare_m400_pp_job_start_direct(struct limare_state *state,
-				struct lima_m400_pp_frame_registers *frame,
-				struct lima_pp_wb_registers *wb)
+static int
+limare_m400_pp_job_start_r2p1(struct limare_state *state,
+			      struct lima_m400_pp_frame_registers *frame,
+			      struct lima_pp_wb_registers *wb)
 {
-	struct lima_m400_pp_job_start job = { 0 };
+	struct lima_m400_pp_job_start_r2p1 job = { 0 };
 	int ret;
 
 	wait_for_notification_start(state);
@@ -157,7 +192,7 @@ limare_m400_pp_job_start_direct(struct limare_state *state,
 	job.wb[0] = *wb;
 	job.abort_id = 0;
 
-	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB, &job);
+	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB_R2P1, &job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
 		       __func__, strerror(errno));
@@ -167,4 +202,44 @@ limare_m400_pp_job_start_direct(struct limare_state *state,
 	limare_jobs_wait();
 
 	return 0;
+}
+
+static int
+limare_m400_pp_job_start_r3p0(struct limare_state *state,
+			      struct lima_m400_pp_frame_registers *frame,
+			      struct lima_pp_wb_registers *wb)
+{
+	struct lima_m400_pp_job_start_r3p0 job = { 0 };
+	int ret;
+
+	wait_for_notification_start(state);
+
+	job.fd = state->fd;
+	job.user_job_ptr = (unsigned int) &job;
+	job.priority = 1;
+	job.frame = *frame;
+	job.wb0 = *wb;
+	job.num_cores = 1;
+
+	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB_R3P0, &job);
+	if (ret == -1) {
+		printf("%s: Error: failed to start job: %s\n",
+		       __func__, strerror(errno));
+		return errno;
+	}
+
+	limare_jobs_wait();
+
+	return 0;
+}
+
+int
+limare_m400_pp_job_start_direct(struct limare_state *state,
+				struct lima_m400_pp_frame_registers *frame,
+				struct lima_pp_wb_registers *wb)
+{
+	if (state->kernel_version < 14)
+		return limare_m400_pp_job_start_r2p1(state, frame, wb);
+	else
+		return limare_m400_pp_job_start_r3p0(state, frame, wb);
 }

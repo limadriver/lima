@@ -35,12 +35,14 @@
 #define LIMA_PP_IOC_START_JOB 0x00
 
 #define LIMA_M200_PP_START_JOB _IOWR(LIMA_PP_IOC_BASE, LIMA_PP_IOC_START_JOB, struct lima_m200_pp_job_start *)
-#define LIMA_M400_PP_START_JOB _IOWR(LIMA_PP_IOC_BASE, LIMA_PP_IOC_START_JOB, struct lima_m400_pp_job_start *)
+#define LIMA_M400_PP_START_JOB_R2P1 _IOWR(LIMA_PP_IOC_BASE, LIMA_PP_IOC_START_JOB, struct lima_m400_pp_job_start_r2p1 *)
+#define LIMA_M400_PP_START_JOB_R3P0 _IOWR(LIMA_PP_IOC_BASE, LIMA_PP_IOC_START_JOB, struct lima_m400_pp_job_start_r3p0 *)
 
 #define LIMA_GP_IOC_BASE 0x85
 #define LIMA_GP_IOC_START_JOB 0x00
 
-#define LIMA_GP_START_JOB _IOWR(LIMA_GP_IOC_BASE, LIMA_GP_IOC_START_JOB, struct lima_gp_job_start *)
+#define LIMA_GP_START_JOB_R2P1 _IOWR(LIMA_GP_IOC_BASE, LIMA_GP_IOC_START_JOB, struct lima_gp_job_start_r2p1 *)
+#define LIMA_GP_START_JOB_R3P0 _IOWR(LIMA_GP_IOC_BASE, LIMA_GP_IOC_START_JOB, struct lima_gp_job_start_r3p0 *)
 
 
 /*
@@ -60,7 +62,7 @@ enum lima_job_start_status {
  * GP Start ioctl.
  */
 
-struct lima_gp_job_start {
+struct lima_gp_job_start_r2p1 {
 	unsigned int fd;
 	unsigned int user_job_ptr;
 	unsigned int priority;
@@ -74,6 +76,22 @@ struct lima_gp_job_start {
 	unsigned int abort_id;
 	unsigned int perf_counter_l2_src0;
 	unsigned int perf_counter_l2_src1;
+
+	/* added in r2p3 */
+	unsigned int frame_builder_id;
+	unsigned int flush_id;
+};
+
+struct lima_gp_job_start_r3p0 {
+	unsigned int fd;
+	unsigned int user_job_ptr;
+	unsigned int priority;
+	struct lima_gp_frame_registers frame;
+	unsigned int perf_counter_flag;
+	unsigned int perf_counter_src0;
+	unsigned int perf_counter_src1;
+	unsigned int frame_builder_id;
+	unsigned int flush_id;
 };
 
 /*
@@ -96,9 +114,13 @@ struct lima_m200_pp_job_start {
 	unsigned int abort_id;
 	unsigned int perf_counter_l2_src0;
 	unsigned int perf_counter_l2_src1;
+
+	/* added in r2p3 */
+	unsigned int frame_builder_id;
+	unsigned int flush_id;
 };
 
-struct lima_m400_pp_job_start {
+struct lima_m400_pp_job_start_r2p1 {
 	unsigned int fd;
 	unsigned int user_job_ptr;
 	unsigned int priority;
@@ -113,6 +135,28 @@ struct lima_m400_pp_job_start {
 	unsigned int abort_id;
 	unsigned int perf_counter_l2_src0;
 	unsigned int perf_counter_l2_src1;
+
+	/* added in r2p3 */
+	unsigned int frame_builder_id;
+	unsigned int flush_id;
+};
+
+struct lima_m400_pp_job_start_r3p0 {
+	unsigned int fd;
+	unsigned int user_job_ptr;
+	unsigned int priority;
+	struct lima_m400_pp_frame_registers frame;
+	unsigned int addr_frame[7];
+	unsigned int addr_stack[7];
+	struct lima_pp_wb_registers wb0;
+	struct lima_pp_wb_registers wb1;
+	struct lima_pp_wb_registers wb2;
+	unsigned int num_cores;
+	unsigned int perf_counter_flag;
+	unsigned int perf_counter_src0;
+	unsigned int perf_counter_src1;
+	unsigned int frame_builder_id;
+	unsigned int flush_id;
 };
 
 #endif /* LIMA_IOCTL_H */
