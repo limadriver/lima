@@ -78,7 +78,22 @@ wait_for_notification_start(struct limare_state *state)
 static void
 limare_jobs_wait(void)
 {
+#if 0
 	pthread_mutex_lock(&wait_mutex);
+#else
+	/*
+	 * On linux-sunxi with linaro userspace, threading seems to have quite
+	 * some issues. Seems that our main thread does not get woken up with
+	 * pthread_mutex_lock. This workaround is a lot more expensive, but
+	 * at least works.
+	 */
+	while (1) {
+		if (pthread_mutex_trylock(&wait_mutex))
+			sched_yield();
+		else
+			break;
+	}
+#endif
 	pthread_mutex_unlock(&wait_mutex);
 }
 
