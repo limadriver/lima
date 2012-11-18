@@ -1,5 +1,5 @@
 /*
- * Copyright 2011      Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011      Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),

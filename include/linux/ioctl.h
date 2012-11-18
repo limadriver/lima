@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
  *
  * Copyright (C) 2010 ARM Limited. All rights reserved.
  *
