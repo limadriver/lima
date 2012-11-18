@@ -24,9 +24,12 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <linux/fb.h>
 #include <errno.h>
 #include <sys/mman.h>
+#include <linux/fb.h>
+#include <unistd.h>
+#include <string.h>
+
 #include <linux/fb.h>
 
 #include "fb.h"

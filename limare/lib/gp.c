@@ -43,6 +43,7 @@
 #include "plbu.h"
 #include "render_state.h"
 #include "hfloat.h"
+#include "from_float.h"
 
 int
 vs_command_queue_create(struct limare_state *state, int offset, int size)

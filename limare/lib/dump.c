@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <sys/mman.h>
 #include <errno.h>
+#include <string.h>
 
 #include "limare.h"
 #include "dump.h"

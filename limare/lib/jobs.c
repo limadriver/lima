@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <asm/ioctl.h>
 
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"

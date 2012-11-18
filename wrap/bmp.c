@@ -88,9 +88,21 @@ bmp_header_write(int fd, int width, int height)
 		.alpha_mask = 0xFF000000,
 		.colour_space = 0x57696E20,
 	};
+	int ret;
 
-	write(fd, &bmp_header, sizeof(struct bmp_header));
-	write(fd, &dib_header, sizeof(struct dib_header));
+	ret = write(fd, &bmp_header, sizeof(struct bmp_header));
+	if (ret != sizeof(struct bmp_header)) {
+		fprintf(stderr, "%s: failed to write bmp header: %s\n",
+			__func__, strerror(errno));
+		return errno;
+	}
+
+	ret = write(fd, &dib_header, sizeof(struct dib_header));
+	if (ret != sizeof(struct dib_header)) {
+		fprintf(stderr, "%s: failed to write bmp header: %s\n",
+			__func__, strerror(errno));
+		return errno;
+	}
 
 	return 0;
 }
@@ -98,9 +110,9 @@ bmp_header_write(int fd, int width, int height)
 void
 wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename)
 {
-	int fd;
+	int ret, fd;
 
-	fd = open(filename, O_WRONLY| O_TRUNC | O_CREAT);
+	fd = open(filename, O_WRONLY| O_TRUNC | O_CREAT, 0644);
 	if (fd == -1) {
 		printf("Failed to open %s: %s\n", filename, strerror(errno));
 		return;
@@ -108,7 +120,11 @@ wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename)
 
 	bmp_header_write(fd, width, height);
 
-	write(fd, buffer, width * height * 4);
-
+	ret = write(fd, buffer, width * height * 4);
+	if (ret != (width * height * 4)) {
+		fprintf(stderr, "%s: failed to write bmp data: %s\n",
+			__func__, strerror(errno));
+		return;
+	}
 }
 

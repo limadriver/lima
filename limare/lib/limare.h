@@ -26,12 +26,6 @@
 
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 
-static inline unsigned int
-from_float(float x)
-{
-	return *((unsigned int *) &x);
-}
-
 struct lima_cmd {
 	unsigned int val;
 	unsigned int cmd;

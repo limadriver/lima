@@ -2,7 +2,7 @@ TOP = ../../
 
 include $(TOP)Makefile.inc
 
-CFLAGS += -I$(TOP)include
+CFLAGS += -I$(TOP)include -fPIC
 
 all: liblimare.so
 

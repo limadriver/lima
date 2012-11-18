@@ -23,12 +23,16 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
+#ifdef ANDROID
 #include <android/native_window.h>
 
 ANativeWindow *android_createDisplaySurface(void);
+#endif
 
 static EGLint const config_attribute_list[] = {
 	EGL_RED_SIZE, 8,
@@ -83,7 +87,9 @@ main(int argc, char *argv[])
 	EGLConfig config;
 	EGLint num_config;
 	EGLContext context;
+#ifdef ANDROID
 	ANativeWindow *window;
+#endif
 	EGLSurface surface;
 	GLuint vertex_shader;
 	GLuint fragment_shader;

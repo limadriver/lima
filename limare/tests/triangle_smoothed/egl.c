@@ -23,6 +23,8 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 

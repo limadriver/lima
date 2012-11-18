@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
+#include <asm/ioctl.h>
 #include <sys/mman.h>
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -33,6 +34,7 @@
 #include <pthread.h>
 #include <ctype.h>
 #include <errno.h>
+#include <string.h>
 
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
@@ -251,12 +253,20 @@ close(int fd)
 }
 
 /*
- *
+ * Bionic, go figure...
  */
+#ifdef ANDROID
 static int (*orig_ioctl)(int fd, int request, ...);
+#else
+static int (*orig_ioctl)(int fd, unsigned long request, ...);
+#endif
 
 int
+#ifdef ANDROID
 ioctl(int fd, int request, ...)
+#else
+ioctl(int fd, unsigned long request, ...)
+#endif
 {
 	int ioc_size = _IOC_SIZE(request);
 	int ret;

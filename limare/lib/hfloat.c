@@ -1,5 +1,3 @@
-#include "hfloat.h"
-
 /*
  * Cleaned up copy of the routine from "OpenGL ES 2.0 Programming guide" by
  * Aaftab Munshi, Dan Ginsburg and Dave Shreiner. Code to be found in
@@ -38,14 +36,21 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+#include <string.h>
+
+#include "from_float.h"
+#include "hfloat.h"
+
 
 hfloat
 float_to_hfloat(float fp)
 {
-	unsigned int x = (*((unsigned int *) &fp));
+	unsigned int x = from_float(fp);
 	unsigned int sign = x >> 31;
 	unsigned int mantissa = x & 0x007FFFFF;
 	unsigned int exp = (x >> 23) & 0xFF;
+	unsigned short result;
+	hfloat ret;
 
 	if (exp > 0x8F) { /* max of float -> hfloat */
 		if (mantissa && (exp == 0xFF)) /* single max */
@@ -66,5 +71,8 @@ float_to_hfloat(float fp)
 		exp -= 0x70;
 	}
 
-	return (hfloat) ((sign << 15) | (exp << 10) | (mantissa));
+	result = (sign << 15) | (exp << 10) | (mantissa);
+	memcpy(&ret, &result, 2);
+
+	return ret;
 }

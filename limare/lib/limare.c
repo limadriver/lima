@@ -24,10 +24,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
+#include <asm/ioctl.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <string.h>
 
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"

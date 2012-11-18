@@ -2,7 +2,7 @@ include ../Makefile.inc
 
 TOP=..
 
-CFLAGS += -I$(TOP)/include
+CFLAGS += -I$(TOP)/include -fPIC
 
 OBJS = bmp.o wrap.o
 
