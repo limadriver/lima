@@ -1,2 +1,5 @@
-remount: $(SDK)/platform-tools/adb
-	 $(SDK)/platform-tools/adb remount
+
+remount:
+ifeq ($(OS),android)
+	adb remount
+endif

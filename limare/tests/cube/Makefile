@@ -1,13 +1,7 @@
-include ../Makefile.top
-
 NAME = cube
 
-all: limare egl
+objs = esTransform.c
 
-egl_cube: egl.c esTransform.c
+targets = limare egl
 
-limare_cube: limare.c esTransform.c
-
-include ../Makefile.limare
-include ../Makefile.dump
-include ../Makefile.egl
+include ../Makefile.test

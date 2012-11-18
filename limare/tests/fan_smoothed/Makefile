@@ -1,7 +1,5 @@
-include ../Makefile.top
-
 NAME = fan_smoothed
 
-all: limare
+targets = limare
 
-include ../Makefile.limare
+include ../Makefile.test

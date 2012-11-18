@@ -1,24 +1,33 @@
 .PHONY : egl egl_install egl_run egl_wrap
 
 EGL_LOG = /sdcard/egl.wrap.log
+EGL_BMP = /sdcard/egl.wrap.BMP
 
 egl: egl_$(NAME)
 
-egl_$(NAME): egl.c
+egl_$(NAME): egl.c $(objs)
 	$(CC) $(CFLAGS) -o $@ $^ -lEGL_mali -lGLESv2_mali
 
-egl_install: $(ADB) egl_$(NAME)
-	$(ADB) push egl_$(NAME) $(INSTALL_DIR)/egl/$(NAME)
+egl_install: egl_$(NAME)
+	$(INSTALL) egl_$(NAME) $(INSTALL_DIR)/egl/$(NAME)
 
-egl_wrap: $(ADB)
+egl_wrap:
+ifeq ($(OS),android)
+	$(ADB) shell "rm $(EGL_BMP)"
 	$(ADB) shell "rm $(EGL_LOG)"
-	$(ADB) shell "rm /sdcard/lima.wrap.bmp"
 	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(EGL_LOG) $(INSTALL_DIR)/egl/$(NAME)"
 	$(ADB) pull $(EGL_LOG)
-	$(ADB) pull /sdcard/lima.wrap.bmp
+	$(ADB) pull $(EGL_BMP)
+else
+	$(shell LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(EGL_LOG) $(INSTALL_DIR)/egl/$(NAME))
+endif
 
 egl_run: $(ADB)
+ifeq ($(OS),android)
 	$(ADB) shell $(INSTALL_DIR)egl/$(NAME)
+else
+	$(shell $(INSTALL_DIR)/egl/$(NAME)"
+endif
 
 egl_clean:
 	rm -f egl_$(NAME)

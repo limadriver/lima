@@ -17,7 +17,7 @@ clean:
 libMali_wrap.so: bmp.o wrap.o
 	$(CC) -shared -Wl -o $@ $^ -ldl
 
-install: $(ADB) libMali_wrap.so
-	$(ADB) push libMali_wrap.so /system/lib/
+install: libMali_wrap.so
+	$(INSTALL) libMali_wrap.so $(prefix)/lib/
 
 include ../Makefile.post

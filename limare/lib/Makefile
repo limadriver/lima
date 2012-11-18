@@ -35,8 +35,7 @@ limare.o: limare.c limare.h
 liblimare.so: bmp.o fb.o plb.o hfloat.o symbols.o jobs.o dump.o gp.o pp.o program.o limare.o
 	$(CC) -shared -Wall -o $@ $^ -lMali
 
-install: $(ADB) liblimare.so
-	cp liblimare.so $(SYSROOT)usr/lib/
-	$(ADB) push liblimare.so /system/lib/
+install: liblimare.so
+	$(INSTALL) liblimare.so $(prefix)/lib/
 
 include $(TOP)Makefile.post

@@ -13,10 +13,12 @@ clean:
 mali_info: info.c
 	$(CC) $(CFLAGS) -o $@ $^
 
-install: $(ADB) mali_info
-	$(ADB) push mali_info /system/bin
+install: mali_info
+	$(INSTALL) mali_info $(prefix)/bin
 
-run:	$(ADB)
+run:
+ifeq ($(OS),android)
 	$(ADB) shell mali_info
+endif
 
 include $(TOP)/Makefile.post

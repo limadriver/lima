@@ -1,7 +1,0 @@
-TOP = ../../../
-
-include $(TOP)Makefile.inc
-
-CFLAGS += -I$(TOP)include -I../../lib/
-
-INSTALL_DIR = /system/bin/limare/

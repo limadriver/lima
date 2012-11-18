@@ -13,10 +13,12 @@ clean:
 mali_compile: compile.c
 	$(CC) $(CFLAGS) -o $@ $^ -lMali
 
-install: $(ADB) mali_compile
-	$(ADB) push mali_compile /system/bin
+install: mali_compile
+	$(INSTALL) $^ $(prefix)/bin
 
-run:	$(ADB)
+run:
+ifeq ($(OS),android)
 	$(ADB) shell mali_compile -v /sdcard/shader.txt
+endif
 
 include $(TOP)/Makefile.post
