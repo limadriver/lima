@@ -35,6 +35,7 @@
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
 
+#include "version.h"
 #include "limare.h"
 #include "plb.h"
 #include "gp.h"
@@ -78,10 +79,10 @@ limare_gpu_detect(struct limare_state *state)
 	_mali_uk_get_pp_core_version_s pp_version = { 0 };
 	_mali_uk_get_gp_number_of_cores_s gp_number = { 0 };
 	_mali_uk_get_gp_core_version_s gp_version = { 0 };
-	int ret;
+	int ret, type;
 
-	if (state->kernel_version < 14) {
-		ret = ioctl(state->fd, MALI_IOC_PP_NUMBER_OF_CORES_GET,
+	if (state->kernel_version < MALI_DRIVER_VERSION_R3P0) {
+		ret = ioctl(state->fd, MALI_IOC_PP_NUMBER_OF_CORES_GET_R2P1,
 			    &pp_number);
 		if (ret) {
 			printf("Error: %s: ioctl(PP_NUMBER_OF_CORES_GET) "
@@ -89,7 +90,7 @@ limare_gpu_detect(struct limare_state *state)
 			return ret;
 		}
 
-		ret = ioctl(state->fd, MALI_IOC_PP_CORE_VERSION_GET,
+		ret = ioctl(state->fd, MALI_IOC_PP_CORE_VERSION_GET_R2P1,
 			    &pp_version);
 		if (ret) {
 			printf("Error: %s: ioctl(PP_CORE_VERSION_GET) "
@@ -97,7 +98,7 @@ limare_gpu_detect(struct limare_state *state)
 			return ret;
 		}
 
-		ret = ioctl(state->fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET,
+		ret = ioctl(state->fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET_R2P1,
 			    &gp_number);
 		if (ret) {
 			printf("Error: %s: ioctl(GP2_NUMBER_OF_CORES_GET) "
@@ -105,7 +106,7 @@ limare_gpu_detect(struct limare_state *state)
 			return ret;
 		}
 
-		ret = ioctl(state->fd, MALI_IOC_GP2_CORE_VERSION_GET,
+		ret = ioctl(state->fd, MALI_IOC_GP2_CORE_VERSION_GET_R2P1,
 			    &gp_version);
 		if (ret) {
 			printf("Error: %s: ioctl(GP2_CORE_VERSION_GET) "
@@ -113,7 +114,7 @@ limare_gpu_detect(struct limare_state *state)
 			return ret;
 		}
 	} else {
-		ret = ioctl(state->fd, MALI_IOC_PP_NUMBER_OF_CORES_GET_NEW,
+		ret = ioctl(state->fd, MALI_IOC_PP_NUMBER_OF_CORES_GET_R3P0,
 			    &pp_number);
 		if (ret) {
 			printf("Error: %s: ioctl(PP_NUMBER_OF_CORES_GET) "
@@ -121,7 +122,7 @@ limare_gpu_detect(struct limare_state *state)
 			return ret;
 		}
 
-		ret = ioctl(state->fd, MALI_IOC_PP_CORE_VERSION_GET_NEW,
+		ret = ioctl(state->fd, MALI_IOC_PP_CORE_VERSION_GET_R3P0,
 			    &pp_version);
 		if (ret) {
 			printf("Error: %s: ioctl(PP_CORE_VERSION_GET) "
@@ -129,7 +130,7 @@ limare_gpu_detect(struct limare_state *state)
 			return ret;
 		}
 
-		ret = ioctl(state->fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET_NEW,
+		ret = ioctl(state->fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET_R3P0,
 			    &gp_number);
 		if (ret) {
 			printf("Error: %s: ioctl(GP2_NUMBER_OF_CORES_GET) "
@@ -137,7 +138,7 @@ limare_gpu_detect(struct limare_state *state)
 			return ret;
 		}
 
-		ret = ioctl(state->fd, MALI_IOC_GP2_CORE_VERSION_GET_NEW,
+		ret = ioctl(state->fd, MALI_IOC_GP2_CORE_VERSION_GET_R3P0,
 			    &gp_version);
 		if (ret) {
 			printf("Error: %s: ioctl(GP2_CORE_VERSION_GET) "
@@ -146,51 +147,51 @@ limare_gpu_detect(struct limare_state *state)
 		}
 	}
 
-	switch (pp_version.version >> 16) {
-	case 0xC807:
-		ret = 200;
-		break;
-	case 0xCE07:
-		ret = 300;
-		break;
-	case 0xCD07:
-		ret = 400;
-		break;
-	case 0xCF07:
-		ret = 450;
-		break;
-	default:
-		ret = 0;
-		break;
-	}
-
-	printf("Detected %d Mali-%03d PP Cores.\n",
-	       pp_number.number_of_cores, ret);
-
 	switch (gp_version.version >> 16) {
-	case 0xA07:
-		ret = 200;
+	case MALI_CORE_GP_200:
+		type = 200;
 		break;
-	case 0xC07:
-		ret = 300;
+	case MALI_CORE_GP_300:
+		type = 300;
 		break;
-	case 0xB07:
-		ret = 400;
+	case MALI_CORE_GP_400:
+		type = 400;
 		break;
-	case 0xD07:
-		ret = 450;
+	case MALI_CORE_GP_450:
+		type = 450;
 		break;
 	default:
-		ret = 0;
+		type = 0;
 		break;
 	}
 
 	printf("Detected %d Mali-%03d GP Cores.\n",
-	       gp_number.number_of_cores, ret);
+	       gp_number.number_of_cores, type);
 
-	if (ret == 200)
+	switch (pp_version.version >> 16) {
+	case MALI_CORE_PP_200:
+		type = 200;
+		break;
+	case MALI_CORE_PP_300:
+		type = 300;
+		break;
+	case MALI_CORE_PP_400:
+		type = 400;
+		break;
+	case MALI_CORE_PP_450:
+		type = 450;
+		break;
+	default:
+		type = 0;
+		break;
+	}
+
+	printf("Detected %d Mali-%03d PP Cores.\n",
+	       pp_number.number_of_cores, type);
+
+	if (type == 200)
 		state->type = 200;
-	else if (ret == 400)
+	else if (type == 400)
 		state->type = 400;
 	else
 		fprintf(stderr, "Unhandled Mali hw!\n");

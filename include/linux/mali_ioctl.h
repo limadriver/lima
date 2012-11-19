@@ -59,31 +59,31 @@ typedef enum
 
     _MALI_UK_START_JOB           = 0,     /**< Start a Fragment/Vertex Processor Job on a core */
 	_MALI_UK_ABORT_JOB,                   /**< Abort a job */
-    _MALI_UK_GET_NUMBER_OF_CORES,         /**< Get the number of Fragment/Vertex Processor cores */
-    _MALI_UK_GET_CORE_VERSION,            /**< Get the Fragment/Vertex Processor version compatible with all cores */
+    _MALI_UK_GET_NUMBER_OF_CORES_R2P1,         /**< Get the number of Fragment/Vertex Processor cores */
+    _MALI_UK_GET_CORE_VERSION_R2P1,            /**< Get the Fragment/Vertex Processor version compatible with all cores */
 
-    _MALI_UK_GET_NUMBER_OF_CORES_NEW = 1,
-    _MALI_UK_GET_CORE_VERSION_NEW = 2,
+    _MALI_UK_GET_NUMBER_OF_CORES_R3P0 = 1,
+    _MALI_UK_GET_CORE_VERSION_R3P0 = 2,
 
     /** Fragment Processor Functions  */
 
     _MALI_UK_PP_START_JOB            = _MALI_UK_START_JOB,            /**< _mali_ukk_pp_start_job() */
     _MALI_UK_PP_ABORT_JOB            = _MALI_UK_ABORT_JOB,            /**< _mali_ukk_pp_abort_job() */
-    _MALI_UK_GET_PP_NUMBER_OF_CORES  = _MALI_UK_GET_NUMBER_OF_CORES,  /**< _mali_ukk_get_pp_number_of_cores() */
-    _MALI_UK_GET_PP_CORE_VERSION     = _MALI_UK_GET_CORE_VERSION,     /**< _mali_ukk_get_pp_core_version() */
+    _MALI_UK_GET_PP_NUMBER_OF_CORES_R2P1  = _MALI_UK_GET_NUMBER_OF_CORES_R2P1,  /**< _mali_ukk_get_pp_number_of_cores() */
+    _MALI_UK_GET_PP_CORE_VERSION_R2P1     = _MALI_UK_GET_CORE_VERSION_R2P1,     /**< _mali_ukk_get_pp_core_version() */
 
-    _MALI_UK_GET_PP_NUMBER_OF_CORES_NEW  = _MALI_UK_GET_NUMBER_OF_CORES_NEW,
-    _MALI_UK_GET_PP_CORE_VERSION_NEW     = _MALI_UK_GET_CORE_VERSION_NEW,
+    _MALI_UK_GET_PP_NUMBER_OF_CORES_R3P0  = _MALI_UK_GET_NUMBER_OF_CORES_R3P0,
+    _MALI_UK_GET_PP_CORE_VERSION_R3P0     = _MALI_UK_GET_CORE_VERSION_R3P0,
 
     /** Vertex Processor Functions  */
 
     _MALI_UK_GP_START_JOB            = _MALI_UK_START_JOB,            /**< _mali_ukk_gp_start_job() */
     _MALI_UK_GP_ABORT_JOB            = _MALI_UK_ABORT_JOB,            /**< _mali_ukk_gp_abort_job() */
-    _MALI_UK_GET_GP_NUMBER_OF_CORES  = _MALI_UK_GET_NUMBER_OF_CORES,  /**< _mali_ukk_get_gp_number_of_cores() */
-    _MALI_UK_GET_GP_CORE_VERSION     = _MALI_UK_GET_CORE_VERSION,     /**< _mali_ukk_get_gp_core_version() */
+    _MALI_UK_GET_GP_NUMBER_OF_CORES_R2P1  = _MALI_UK_GET_NUMBER_OF_CORES_R2P1,  /**< _mali_ukk_get_gp_number_of_cores() */
+    _MALI_UK_GET_GP_CORE_VERSION_R2P1     = _MALI_UK_GET_CORE_VERSION_R2P1,     /**< _mali_ukk_get_gp_core_version() */
 
-    _MALI_UK_GET_GP_NUMBER_OF_CORES_NEW  = _MALI_UK_GET_NUMBER_OF_CORES_NEW,
-    _MALI_UK_GET_GP_CORE_VERSION_NEW     = _MALI_UK_GET_CORE_VERSION_NEW,
+    _MALI_UK_GET_GP_NUMBER_OF_CORES_R3P0  = _MALI_UK_GET_NUMBER_OF_CORES_R3P0,
+    _MALI_UK_GET_GP_CORE_VERSION_R3P0     = _MALI_UK_GET_CORE_VERSION_R3P0,
 
 
 	/** Profiling functions */
@@ -130,17 +130,17 @@ typedef enum
 #define MALI_IOC_MEM_ATTACH_UMP             _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_ATTACH_UMP_MEM, _mali_uk_attach_ump_mem_s *)
 #define MALI_IOC_MEM_RELEASE_UMP            _IOW(MALI_IOC_MEMORY_BASE, _MALI_UK_RELEASE_UMP_MEM, _mali_uk_release_ump_mem_s *)
 #define MALI_IOC_PP_START_JOB               _IOWR(MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, _mali_uk_pp_start_job_s *)
-#define MALI_IOC_PP_NUMBER_OF_CORES_GET	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES, _mali_uk_get_pp_number_of_cores_s *)
-#define MALI_IOC_PP_CORE_VERSION_GET	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION, _mali_uk_get_pp_core_version_s * )
+#define MALI_IOC_PP_NUMBER_OF_CORES_GET_R2P1	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES_R2P1, _mali_uk_get_pp_number_of_cores_s *)
+#define MALI_IOC_PP_CORE_VERSION_GET_R2P1	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R2P1, _mali_uk_get_pp_core_version_s * )
 #define MALI_IOC_PP_ABORT_JOB	            _IOW (MALI_IOC_PP_BASE, _MALI_UK_PP_ABORT_JOB, _mali_uk_pp_abort_job_s * )
-#define MALI_IOC_PP_NUMBER_OF_CORES_GET_NEW _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES_NEW, _mali_uk_get_pp_number_of_cores_s *)
-#define MALI_IOC_PP_CORE_VERSION_GET_NEW    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_NEW, _mali_uk_get_pp_core_version_s * )
+#define MALI_IOC_PP_NUMBER_OF_CORES_GET_R3P0 _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES_R3P0, _mali_uk_get_pp_number_of_cores_s *)
+#define MALI_IOC_PP_CORE_VERSION_GET_R3P0    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R3P0, _mali_uk_get_pp_core_version_s * )
 #define MALI_IOC_GP2_START_JOB              _IOWR(MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, _mali_uk_gp_start_job_s *)
 #define MALI_IOC_GP2_ABORT_JOB              _IOWR(MALI_IOC_GP_BASE, _MALI_UK_GP_ABORT_JOB, _mali_uk_gp_abort_job_s *)
-#define MALI_IOC_GP2_NUMBER_OF_CORES_GET    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES, _mali_uk_get_gp_number_of_cores_s *)
-#define MALI_IOC_GP2_CORE_VERSION_GET	    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION, _mali_uk_get_gp_core_version_s *)
-#define MALI_IOC_GP2_NUMBER_OF_CORES_GET_NEW _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES_NEW, _mali_uk_get_gp_number_of_cores_s *)
-#define MALI_IOC_GP2_CORE_VERSION_GET_NEW    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION_NEW, _mali_uk_get_gp_core_version_s *)
+#define MALI_IOC_GP2_NUMBER_OF_CORES_GET_R2P1    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES_R2P1, _mali_uk_get_gp_number_of_cores_s *)
+#define MALI_IOC_GP2_CORE_VERSION_GET_R2P1	    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION_R2P1, _mali_uk_get_gp_core_version_s *)
+#define MALI_IOC_GP2_NUMBER_OF_CORES_GET_R3P0 _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES_R3P0, _mali_uk_get_gp_number_of_cores_s *)
+#define MALI_IOC_GP2_CORE_VERSION_GET_R3P0    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION_R3P0, _mali_uk_get_gp_core_version_s *)
 
 #define MALI_IOC_PROFILING_START            _IOWR(MALI_IOC_PROFILING_BASE, _MALI_UK_PROFILING_START, _mali_uk_profiling_start_s *)
 #define MALI_IOC_PROFILING_ADD_EVENT        _IOWR(MALI_IOC_PROFILING_BASE, _MALI_UK_PROFILING_ADD_EVENT, _mali_uk_profiling_add_event_s*)

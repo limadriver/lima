@@ -33,17 +33,19 @@
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
 
+#include "version.h"
+
 struct {
 	int version;
 	const char *compat;
 } version_compat[] = {
-	{6, "r2p0 and r2p1-rel0"},
-	{7, "r2p1-rel1"},
-	{8, "r2p2"},
-	{9, "r2p3"},
-	{10, "r2p4"},
-	{14, "r3p0"},
-	{17, "r3p1"},
+	{MALI_DRIVER_VERSION_R2P0, "r2p0 and r2p1-rel0"},
+	{MALI_DRIVER_VERSION_R2P1, "r2p1-rel1"},
+	{MALI_DRIVER_VERSION_R2P2, "r2p2"},
+	{MALI_DRIVER_VERSION_R2P3, "r2p3"},
+	{MALI_DRIVER_VERSION_R2P4, "r2p4"},
+	{MALI_DRIVER_VERSION_R3P0, "r3p0"},
+	{MALI_DRIVER_VERSION_R3P1, "r3p1"},
 	{0, NULL},
 };
 
@@ -68,8 +70,8 @@ cores_detect(int fd, int version)
 	_mali_uk_get_gp_core_version_s gp_version = { 0 };
 	int ret, type;
 
-	if (version < 14) {
-		ret = ioctl(fd, MALI_IOC_PP_NUMBER_OF_CORES_GET,
+	if (version < MALI_DRIVER_VERSION_R3P0) {
+		ret = ioctl(fd, MALI_IOC_PP_NUMBER_OF_CORES_GET_R2P1,
 			    &pp_number);
 		if (ret) {
 			printf("Error: %s: ioctl(PP_NUMBER_OF_CORES_GET) "
@@ -77,7 +79,7 @@ cores_detect(int fd, int version)
 			return ret;
 		}
 
-		ret = ioctl(fd, MALI_IOC_PP_CORE_VERSION_GET,
+		ret = ioctl(fd, MALI_IOC_PP_CORE_VERSION_GET_R2P1,
 			    &pp_version);
 		if (ret) {
 			printf("Error: %s: ioctl(PP_CORE_VERSION_GET) "
@@ -85,7 +87,7 @@ cores_detect(int fd, int version)
 			return ret;
 		}
 
-		ret = ioctl(fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET,
+		ret = ioctl(fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET_R2P1,
 			    &gp_number);
 		if (ret) {
 			printf("Error: %s: ioctl(GP2_NUMBER_OF_CORES_GET) "
@@ -93,7 +95,7 @@ cores_detect(int fd, int version)
 			return ret;
 		}
 
-		ret = ioctl(fd, MALI_IOC_GP2_CORE_VERSION_GET,
+		ret = ioctl(fd, MALI_IOC_GP2_CORE_VERSION_GET_R2P1,
 			    &gp_version);
 		if (ret) {
 			printf("Error: %s: ioctl(GP2_CORE_VERSION_GET) "
@@ -101,7 +103,7 @@ cores_detect(int fd, int version)
 			return ret;
 		}
 	} else {
-		ret = ioctl(fd, MALI_IOC_PP_NUMBER_OF_CORES_GET_NEW,
+		ret = ioctl(fd, MALI_IOC_PP_NUMBER_OF_CORES_GET_R3P0,
 			    &pp_number);
 		if (ret) {
 			printf("Error: %s: ioctl(PP_NUMBER_OF_CORES_GET) "
@@ -109,7 +111,7 @@ cores_detect(int fd, int version)
 			return ret;
 		}
 
-		ret = ioctl(fd, MALI_IOC_PP_CORE_VERSION_GET_NEW,
+		ret = ioctl(fd, MALI_IOC_PP_CORE_VERSION_GET_R3P0,
 			    &pp_version);
 		if (ret) {
 			printf("Error: %s: ioctl(PP_CORE_VERSION_GET) "
@@ -117,7 +119,7 @@ cores_detect(int fd, int version)
 			return ret;
 		}
 
-		ret = ioctl(fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET_NEW,
+		ret = ioctl(fd, MALI_IOC_GP2_NUMBER_OF_CORES_GET_R3P0,
 			    &gp_number);
 		if (ret) {
 			printf("Error: %s: ioctl(GP2_NUMBER_OF_CORES_GET) "
@@ -125,7 +127,7 @@ cores_detect(int fd, int version)
 			return ret;
 		}
 
-		ret = ioctl(fd, MALI_IOC_GP2_CORE_VERSION_GET_NEW,
+		ret = ioctl(fd, MALI_IOC_GP2_CORE_VERSION_GET_R3P0,
 			    &gp_version);
 		if (ret) {
 			printf("Error: %s: ioctl(GP2_CORE_VERSION_GET) "
@@ -135,16 +137,16 @@ cores_detect(int fd, int version)
 	}
 
 	switch (gp_version.version >> 16) {
-	case 0xA07:
+	case MALI_CORE_GP_200:
 		type = 200;
 		break;
-	case 0xC07:
+	case MALI_CORE_GP_300:
 		type = 300;
 		break;
-	case 0xB07:
+	case MALI_CORE_GP_400:
 		type = 400;
 		break;
-	case 0xD07:
+	case MALI_CORE_GP_450:
 		type = 450;
 		break;
 	default:
@@ -156,16 +158,16 @@ cores_detect(int fd, int version)
 	       gp_number.number_of_cores, type);
 
 	switch (pp_version.version >> 16) {
-	case 0xC807:
+	case MALI_CORE_PP_200:
 		type = 200;
 		break;
-	case 0xCE07:
+	case MALI_CORE_PP_300:
 		type = 300;
 		break;
-	case 0xCD07:
+	case MALI_CORE_PP_400:
 		type = 400;
 		break;
-	case 0xCF07:
+	case MALI_CORE_PP_450:
 		type = 450;
 		break;
 	default:

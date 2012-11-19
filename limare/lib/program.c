@@ -29,6 +29,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include "version.h"
 #include "limare.h"
 #include "plb.h"
 #include "gp.h"
@@ -996,7 +997,7 @@ limare_shader_compile(struct limare_state *state, int type, const char *source)
 		return NULL;
 	}
 
-	if (state->kernel_version >= 14) {
+	if (state->kernel_version >= MALI_DRIVER_VERSION_R3P0) {
 		struct lima_shader_binary_mbs mbs_binary[1] = {{ 0 }};
 
 		ret = __mali_compile_essl_shader((struct lima_shader_binary *)

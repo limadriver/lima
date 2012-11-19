@@ -39,6 +39,7 @@
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
 
+#include "version.h"
 #include "compiler.h"
 #include "formats.h"
 #include "linux/ioctl.h"
@@ -684,7 +685,7 @@ dev_mali_gp_job_start_r3p0_pre(void *data)
 static void
 dev_mali_gp_job_start_pre(void *data)
 {
-	if (mali_version < 14)
+	if (mali_version < MALI_DRIVER_VERSION_R3P0)
 		dev_mali_gp_job_start_r2p1_pre(data);
 	else
 		dev_mali_gp_job_start_r3p0_pre(data);
@@ -710,7 +711,7 @@ dev_mali_gp_job_start_r2p1_post(void *data)
 static void
 dev_mali_gp_job_start_post(void *data)
 {
-	if (mali_version < 14)
+	if (mali_version < MALI_DRIVER_VERSION_R3P0)
 		dev_mali_gp_job_start_r2p1_post(data);
 }
 
@@ -941,7 +942,7 @@ static void
 dev_mali_pp_job_start_pre(void *data)
 {
 	if (mali_type == 400) {
-		if (mali_version < 14)
+		if (mali_version < MALI_DRIVER_VERSION_R3P0)
 			dev_mali400_pp_job_start_r2p1_pre(data);
 		else
 			dev_mali400_pp_job_start_r3p0_pre(data);
@@ -981,7 +982,7 @@ static void
 dev_mali_pp_job_start_post(void *data)
 {
 	if (mali_type == 400) {
-		if (mali_version < 14)
+		if (mali_version < MALI_DRIVER_VERSION_R3P0)
 			dev_mali400_pp_job_start_r2p1_post(data);
 	} else
 		dev_mali200_pp_job_start_post(data);
@@ -1008,7 +1009,9 @@ static struct dev_mali_ioctl_table {
 	 NULL, dev_mali_memory_init_mem_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB",
 	 dev_mali_pp_job_start_pre, dev_mali_pp_job_start_post},
-	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION, "PP, GET_CORE_VERSION",
+	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R2P1, "PP, GET_CORE_VERSION_R2P1",
+	 NULL, dev_mali_pp_core_version_post},
+	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R3P0, "PP, GET_CORE_VERSION_R3P0",
 	 NULL, dev_mali_pp_core_version_post},
 	{MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, "GP, START_JOB",
 	 dev_mali_gp_job_start_pre, dev_mali_gp_job_start_post},
@@ -1364,7 +1367,7 @@ __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 	if (!orig__mali_compile_essl_shader)
 		orig__mali_compile_essl_shader = libmali_dlsym(__func__);
 
-	if (mali_version >= 14)
+	if (mali_version >= MALI_DRIVER_VERSION_R3P0)
 		wrap_log("WARNING: the binary structure of the shader compiler "
 			 "has changed and will not be valid as is!\n");
 

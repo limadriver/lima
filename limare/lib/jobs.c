@@ -37,6 +37,7 @@
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
 
+#include "version.h"
 #include "linux/ioctl.h"
 #include "limare.h"
 #include "jobs.h"
@@ -153,7 +154,7 @@ int
 limare_gp_job_start_direct(struct limare_state *state,
 			   struct lima_gp_frame_registers *frame)
 {
-	if (state->kernel_version < 14)
+	if (state->kernel_version < MALI_DRIVER_VERSION_R3P0)
 		return limare_gp_job_start_r2p1(state, frame);
 	else
 		return limare_gp_job_start_r3p0(state, frame);
@@ -253,7 +254,7 @@ limare_m400_pp_job_start_direct(struct limare_state *state,
 				struct lima_m400_pp_frame_registers *frame,
 				struct lima_pp_wb_registers *wb)
 {
-	if (state->kernel_version < 14)
+	if (state->kernel_version < MALI_DRIVER_VERSION_R3P0)
 		return limare_m400_pp_job_start_r2p1(state, frame, wb);
 	else
 		return limare_m400_pp_job_start_r3p0(state, frame, wb);
