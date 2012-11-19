@@ -53,6 +53,31 @@ static void mali_wrap_bmp_dump(void);
 
 static pthread_mutex_t serializer[1] = { PTHREAD_MUTEX_INITIALIZER };
 
+static int mali_type = 400;
+static int mali_version;
+
+int
+limare_mutex_lock(pthread_mutex_t *mutex)
+{
+#if 0
+	return pthread_mutex_lock(mutex);
+#else
+	/*
+	 * On linux-sunxi with linaro userspace, threading seems to have quite
+	 * some issues. Seems that our main thread does not get woken up with
+	 * pthread_mutex_lock. This workaround is a lot more expensive, but
+	 * at least works.
+	 */
+	while (1) {
+		if (pthread_mutex_trylock(mutex))
+			sched_yield();
+		else
+			break;
+	}
+#endif
+	return 0;
+}
+
 #if 0
 /*
  * Broken with the wait_for_notification workaround.
@@ -69,7 +94,7 @@ serialized_start(const char *func)
 		       func, first_func);
 	else {
 		first_func = func;
-		pthread_mutex_lock(serializer);
+		limare_mutex_lock(serializer);
 	}
 	recursive++;
 }
@@ -87,7 +112,7 @@ serialized_stop(void)
 static inline void
 serialized_start(const char *func)
 {
-	pthread_mutex_lock(serializer);
+	limare_mutex_lock(serializer);
 }
 
 static inline void
@@ -114,7 +139,7 @@ lima_wrap_log_open(void)
 
 	filename = getenv("LIMA_WRAP_LOG");
 	if (!filename)
-		filename = "/sdcard/lima.wrap.log";
+		filename = "/tmp/lima.wrap.log";
 
 	lima_wrap_log = fopen(filename, "w");
 	if (!lima_wrap_log) {
@@ -148,7 +173,7 @@ static void *libc_dl;
 static int
 libc_dlopen(void)
 {
-	libc_dl = dlopen("libc.so", RTLD_LAZY);
+	libc_dl = dlopen("libc.so.6", RTLD_LAZY);
 	if (!libc_dl) {
 		printf("Failed to dlopen %s: %s\n",
 		       "libc.so", dlerror());
@@ -324,7 +349,7 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 	if (!orig_mmap)
 		orig_mmap = libc_dlsym(__func__);
 
-        ret = orig_mmap(addr, length, prot, flags, fd, offset);
+	ret = orig_mmap(addr, length, prot, flags, fd, offset);
 
 	if (fd == dev_mali_fd) {
 		wrap_log("MMAP 0x%08lx (0x%08x) = %p;\n", offset, length, ret);
@@ -424,6 +449,10 @@ dev_mali_get_api_version_post(void *data)
 	wrap_log("\t.version = 0x%08x,\n", version->version);
 	wrap_log("\t.compatible = %d,\n", version->compatible);
 	wrap_log("};\n");
+
+	mali_version = version->version & 0xFFFF;
+
+	printf("Mali version: %d\n", mali_version);
 }
 
 static void
@@ -447,8 +476,6 @@ dev_mali_get_system_info_pre(void *data)
 	wrap_log("\t.ukk_private = 0x%x,\n", info->ukk_private);
 	wrap_log("};\n");
 }
-
-static int mali_type = 0;
 
 static void
 dev_mali_get_system_info_post(void *data)
@@ -608,13 +635,13 @@ dev_mali_wait_for_notification_post(void *data)
 }
 
 static void
-dev_mali_gp_job_start_pre(void *data)
+dev_mali_gp_job_start_r2p1_pre(void *data)
 {
 	struct lima_gp_job_start_r2p1 *job = data;
 
 	wrap_log("IOCTL MALI_IOC_GP2_START_JOB IN;\n");
 
-	wrap_log("struct lima_gp_job_start gp_job = {\n");
+	wrap_log("struct lima_gp_job_start_r2p1 gp_job = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
@@ -627,15 +654,47 @@ dev_mali_gp_job_start_pre(void *data)
 	wrap_log("\t.frame.tile_heap_start = 0x%x,\n", job->frame.tile_heap_start);
 	wrap_log("\t.frame.tile_heap_end = 0x%x,\n", job->frame.tile_heap_end);
 
-	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
+	wrap_log("\t.abort_id = 0x%x,\n", job->abort_id);
 
 	wrap_log("};\n");
+}
+
+static void
+dev_mali_gp_job_start_r3p0_pre(void *data)
+{
+	struct lima_gp_job_start_r3p0 *job = data;
+
+	wrap_log("IOCTL MALI_IOC_GP2_START_JOB IN;\n");
+
+	wrap_log("struct lima_gp_job_start_r3p0 gp_job = {\n");
+
+	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
+	wrap_log("\t.priority = 0x%x,\n", job->priority);
+
+	wrap_log("\t.frame.vs_commands_start = 0x%x,\n", job->frame.vs_commands_start);
+	wrap_log("\t.frame.vs_commands_end = 0x%x,\n", job->frame.vs_commands_end);
+	wrap_log("\t.frame.plbu_commands_start = 0x%x,\n", job->frame.plbu_commands_start);
+	wrap_log("\t.frame.plbu_commands_end = 0x%x,\n", job->frame.plbu_commands_end);
+	wrap_log("\t.frame.tile_heap_start = 0x%x,\n", job->frame.tile_heap_start);
+	wrap_log("\t.frame.tile_heap_end = 0x%x,\n", job->frame.tile_heap_end);
+
+	wrap_log("};\n");
+}
+
+static void
+dev_mali_gp_job_start_pre(void *data)
+{
+	if (mali_version < 14)
+		dev_mali_gp_job_start_r2p1_pre(data);
+	else
+		dev_mali_gp_job_start_r3p0_pre(data);
 
 	mali_memory_dump();
 }
 
+
 static void
-dev_mali_gp_job_start_post(void *data)
+dev_mali_gp_job_start_r2p1_post(void *data)
 {
 	struct lima_gp_job_start_r2p1 *job = data;
 
@@ -646,6 +705,13 @@ dev_mali_gp_job_start_post(void *data)
 	wrap_log("\t.status = 0x%x,\n", job->status);
 
 	wrap_log("};\n");
+}
+
+static void
+dev_mali_gp_job_start_post(void *data)
+{
+	if (mali_version < 14)
+		dev_mali_gp_job_start_r2p1_post(data);
 }
 
 unsigned int render_address;
@@ -697,7 +763,7 @@ dev_mali200_pp_job_start_pre(void *data)
 		wrap_log("\t.wb[%d].zero = 0x%x,\n", i, job->wb[i].zero);
 	}
 
-	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
+	wrap_log("\t.abort_id = 0x%x,\n", job->abort_id);
 
 	wrap_log("};\n");
 
@@ -717,14 +783,14 @@ dev_mali200_pp_job_start_pre(void *data)
 }
 
 static void
-dev_mali400_pp_job_start_pre(void *data)
+dev_mali400_pp_job_start_r2p1_pre(void *data)
 {
 	struct lima_m400_pp_job_start_r2p1 *job = data;
 	int i;
 
 	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
 
-	wrap_log("struct lima_m400_pp_job_start pp_job = {\n");
+	wrap_log("struct lima_m400_pp_job_start_r2p1 pp_job = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
@@ -763,7 +829,7 @@ dev_mali400_pp_job_start_pre(void *data)
 		wrap_log("\t.wb[%d].zero = 0x%x,\n", i, job->wb[i].zero);
 	}
 
-	wrap_log("\t.abort_id = 0x%x,\n", job->watchdog_msecs);
+	wrap_log("\t.abort_id = 0x%x,\n", job->abort_id);
 
 	wrap_log("};\n");
 
@@ -783,11 +849,103 @@ dev_mali400_pp_job_start_pre(void *data)
 }
 
 static void
+dev_mali400_pp_job_start_r3p0_pre(void *data)
+{
+	struct lima_m400_pp_job_start_r3p0 *job = data;
+	int i;
+
+	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
+
+	wrap_log("struct lima_m400_pp_job_start_r2p1 pp_job = {\n");
+
+	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
+	wrap_log("\t.priority = 0x%x,\n", job->priority);
+
+	wrap_log("\t.frame.plbu_array_address = 0x%x,\n", job->frame.plbu_array_address);
+	wrap_log("\t.frame.render_address = 0x%x,\n", job->frame.render_address);
+	wrap_log("\t.frame.flags = 0x%x,\n", job->frame.flags);
+	wrap_log("\t.frame.clear_value_depth = 0x%x,\n", job->frame.clear_value_depth);
+	wrap_log("\t.frame.clear_value_stencil = 0x%x,\n", job->frame.clear_value_stencil);
+	wrap_log("\t.frame.clear_value_color = 0x%x,\n", job->frame.clear_value_color);
+	wrap_log("\t.frame.clear_value_color_1 = 0x%x,\n", job->frame.clear_value_color_1);
+	wrap_log("\t.frame.clear_value_color_2 = 0x%x,\n", job->frame.clear_value_color_2);
+	wrap_log("\t.frame.clear_value_color_3 = 0x%x,\n", job->frame.clear_value_color_3);
+	wrap_log("\t.frame.width = 0x%x,\n", job->frame.width);
+	wrap_log("\t.frame.height = 0x%x,\n", job->frame.height);
+	wrap_log("\t.frame.fragment_stack_address = 0x%x,\n", job->frame.fragment_stack_address);
+	wrap_log("\t.frame.fragment_stack_size = 0x%x,\n", job->frame.fragment_stack_size);
+	wrap_log("\t.frame.one = 0x%x,\n", job->frame.one);
+	wrap_log("\t.frame.supersampled_height = 0x%x,\n", job->frame.supersampled_height);
+	wrap_log("\t.frame.dubya = 0x%x,\n", job->frame.dubya);
+	wrap_log("\t.frame.onscreen = 0x%x,\n", job->frame.onscreen);
+	wrap_log("\t.frame.blocking = 0x%x,\n", job->frame.blocking);
+	wrap_log("\t.frame.scale = 0x%x,\n", job->frame.scale);
+	wrap_log("\t.frame.foureight = 0x%x,\n", job->frame.foureight);
+
+	for (i = 0; i < 7; i++)
+		wrap_log("\t.addr_frame[%d] = 0x%x,\n", i, job->addr_frame[i]);
+	for (i = 0; i < 7; i++)
+		wrap_log("\t.addr_stack[%d] = 0x%x,\n", i, job->addr_stack[i]);
+
+	wrap_log("\t.wb0.type = 0x%x,\n", job->wb0.type);
+	wrap_log("\t.wb0.address = 0x%x,\n", job->wb0.address);
+	wrap_log("\t.wb0.pixel_format = 0x%x,\n", job->wb0.pixel_format);
+	wrap_log("\t.wb0.downsample_factor = 0x%x,\n", job->wb0.downsample_factor);
+	wrap_log("\t.wb0.pixel_layout = 0x%x,\n", job->wb0.pixel_layout);
+	wrap_log("\t.wb0.pitch = 0x%x,\n", job->wb0.pitch);
+	wrap_log("\t.wb0.mrt_bits = 0x%x,\n", job->wb0.mrt_bits);
+	wrap_log("\t.wb0.mrt_pitch = 0x%x,\n", job->wb0.mrt_pitch);
+	wrap_log("\t.wb0.zero = 0x%x,\n", job->wb0.zero);
+
+	wrap_log("\t.wb1.address = 0x%x,\n", job->wb1.address);
+	wrap_log("\t.wb1.pixel_format = 0x%x,\n", job->wb1.pixel_format);
+	wrap_log("\t.wb1.downsample_factor = 0x%x,\n", job->wb1.downsample_factor);
+	wrap_log("\t.wb1.pixel_layout = 0x%x,\n", job->wb1.pixel_layout);
+	wrap_log("\t.wb1.pitch = 0x%x,\n", job->wb1.pitch);
+	wrap_log("\t.wb1.mrt_bits = 0x%x,\n", job->wb1.mrt_bits);
+	wrap_log("\t.wb1.mrt_pitch = 0x%x,\n", job->wb1.mrt_pitch);
+	wrap_log("\t.wb1.zero = 0x%x,\n", job->wb1.zero);
+
+	wrap_log("\t.wb2.address = 0x%x,\n", job->wb2.address);
+	wrap_log("\t.wb2.pixel_format = 0x%x,\n", job->wb2.pixel_format);
+	wrap_log("\t.wb2.downsample_factor = 0x%x,\n", job->wb2.downsample_factor);
+	wrap_log("\t.wb2.pixel_layout = 0x%x,\n", job->wb2.pixel_layout);
+	wrap_log("\t.wb2.pitch = 0x%x,\n", job->wb2.pitch);
+	wrap_log("\t.wb2.mrt_bits = 0x%x,\n", job->wb2.mrt_bits);
+	wrap_log("\t.wb2.mrt_pitch = 0x%x,\n", job->wb2.mrt_pitch);
+	wrap_log("\t.wb2.zero = 0x%x,\n", job->wb2.zero);
+
+	wrap_log("\t.num_cores = 0x%x,\n", job->num_cores);
+
+	wrap_log("\t.frame_builder_id = 0x%x,\n", job->frame_builder_id);
+	wrap_log("\t.flush_id = 0x%x,\n", job->flush_id);
+
+	wrap_log("};\n");
+
+	/*
+	 * Now store where our final render is headed, and what it looks like.
+	 * We will dump it as a bmp once we're done.
+	 */
+	render_address = job->wb0.address;
+	render_pitch = job->wb0.pitch * 8;
+	if (job->frame.height)
+		render_height = job->frame.height;
+	else
+		render_height = job->frame.supersampled_height + 1;
+	render_format = LIMA_PIXEL_FORMAT_RGBA_8888;
+
+	//mali_memory_dump();
+}
+
+static void
 dev_mali_pp_job_start_pre(void *data)
 {
-	if (mali_type == 400)
-		dev_mali400_pp_job_start_pre(data);
-	else
+	if (mali_type == 400) {
+		if (mali_version < 14)
+			dev_mali400_pp_job_start_r2p1_pre(data);
+		else
+			dev_mali400_pp_job_start_r3p0_pre(data);
+	} else
 		dev_mali200_pp_job_start_pre(data);
 }
 
@@ -806,7 +964,7 @@ dev_mali200_pp_job_start_post(void *data)
 }
 
 static void
-dev_mali400_pp_job_start_post(void *data)
+dev_mali400_pp_job_start_r2p1_post(void *data)
 {
 	struct lima_m400_pp_job_start_r2p1 *job = data;
 
@@ -822,9 +980,10 @@ dev_mali400_pp_job_start_post(void *data)
 static void
 dev_mali_pp_job_start_post(void *data)
 {
-	if (mali_type == 400)
-		dev_mali400_pp_job_start_post(data);
-	else
+	if (mali_type == 400) {
+		if (mali_version < 14)
+			dev_mali400_pp_job_start_r2p1_post(data);
+	} else
 		dev_mali200_pp_job_start_post(data);
 }
 
@@ -1094,7 +1253,7 @@ mali_wrap_bmp_dump(void)
 		render_height = 240 * 2;
 	}
 
-	wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/sdcard/lima.wrap.bmp");
+	wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/tmp/lima.wrap.bmp");
 }
 
 /*
@@ -1204,6 +1363,10 @@ __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 
 	if (!orig__mali_compile_essl_shader)
 		orig__mali_compile_essl_shader = libmali_dlsym(__func__);
+
+	if (mali_version >= 14)
+		wrap_log("WARNING: the binary structure of the shader compiler "
+			 "has changed and will not be valid as is!\n");
 
 	for (i = 0, offset = 0; i < count; i++) {
 		wrap_log("%s shader source %d:\n",
