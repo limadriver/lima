@@ -47,16 +47,10 @@ struct pp_info
 	unsigned int *render_address;
 	unsigned int render_physical;
 	int render_size;
-
-	/* final render, separately mapped */
-	void *frame_address;
-	unsigned int frame_physical;
-	int frame_size;
 };
 
 struct pp_info *pp_info_create(struct limare_state *state, void *address,
-			       unsigned int physical, int offset, int size,
-			       unsigned int frame_physical);
+			       unsigned int physical, int offset, int size);
 int limare_pp_job_start(struct limare_state *state, struct pp_info *info);
 
 #endif /* LIMARE_PP_H */

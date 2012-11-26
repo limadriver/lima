@@ -75,6 +75,10 @@ struct limare_state {
 	int program_count;
 	struct limare_program **programs;
 	int program_current;
+
+	void *dest_mem_address;
+	unsigned int dest_mem_physical;
+	int dest_mem_size;
 };
 
 /* from limare.c */

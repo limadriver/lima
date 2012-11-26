@@ -41,9 +41,8 @@
 #include "jobs.h"
 
 struct pp_info *
-pp_info_create(struct limare_state *state,
-	       void *address, unsigned int physical, int offset, int size,
-	       unsigned int frame_physical)
+pp_info_create(struct limare_state *state, void *address,
+	       unsigned int physical, int offset, int size)
 {
 	struct plb *plb;
 	struct pp_info *info;
@@ -69,18 +68,6 @@ pp_info_create(struct limare_state *state,
 	info->plb_physical = plb->mem_physical + plb->pp_offset;
 	info->plb_shift_w = plb->shift_w;
 	info->plb_shift_h = plb->shift_h;
-
-	/* first, try to grab the necessary space for our image */
-	info->frame_size = info->pitch * info->height;
-	info->frame_physical = frame_physical;
-	info->frame_address = mmap(NULL, info->frame_size, PROT_READ | PROT_WRITE,
-				   MAP_SHARED, state->fd, info->frame_physical);
-	if (info->frame_address == MAP_FAILED) {
-		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
-		       info->frame_physical, info->frame_size, strerror(errno));
-		free(info);
-		return NULL;
-	}
 
 	/* now fill out our other requirements */
 	info->quad_address = address + offset;
@@ -147,7 +134,7 @@ limare_m200_pp_job_start(struct limare_state *state, struct pp_info *info)
 
 	/* write back registers */
 	wb.type = LIMA_PP_WB_TYPE_COLOR;
-	wb.address = info->frame_physical;
+	wb.address = state->dest_mem_physical;
 	wb.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 	wb.downsample_factor = 0;
 	wb.pixel_layout = 0;
@@ -225,7 +212,7 @@ limare_m400_pp_job_start(struct limare_state *state, struct pp_info *info)
 
 	/* write back registers */
 	wb.type = LIMA_PP_WB_TYPE_COLOR;
-	wb.address = info->frame_physical;
+	wb.address = state->dest_mem_physical;
 	wb.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 	wb.downsample_factor = 0;
 	wb.pixel_layout = 0;

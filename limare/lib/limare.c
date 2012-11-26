@@ -288,8 +288,7 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	/* now add the area for the pp, again, unchanged between draws. */
 	state->pp = pp_info_create(state,
 				   state->mem_address, state->mem_physical,
-				   0x30000, 0x1000,
-				   state->mem_physical + 0x200000);
+				   0x30000, 0x1000);
 	if (!state->pp)
 		return -1;
 
@@ -310,6 +309,20 @@ limare_state_setup(struct limare_state *state, int width, int height,
 
 	state->texture_mem_offset = 0x100000;
 	state->texture_mem_size = 0x100000;
+
+	/* try to grab the necessary space for our image */
+	state->dest_mem_size = state->width * state->height * 4;
+	state->dest_mem_physical = state->mem_physical + 0x0200000;
+	state->dest_mem_address = mmap(NULL, state->dest_mem_size,
+				       PROT_READ | PROT_WRITE,
+				       MAP_SHARED, state->fd,
+				       state->dest_mem_physical);
+	if (state->dest_mem_address == MAP_FAILED) {
+		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
+		       state->dest_mem_physical, state->dest_mem_size,
+		       strerror(errno));
+		return -1;
+	}
 
 	return 0;
 }

@@ -263,7 +263,7 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	fb_dump(state->pp->frame_address, 0, state->width, state->height);
+	fb_dump(state->dest_mem_address, 0, state->width, state->height);
 
 	limare_finish();
 
