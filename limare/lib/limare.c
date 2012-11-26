@@ -526,4 +526,5 @@ void
 limare_finish(void)
 {
 	fflush(stdout);
+	sleep(1);
 }
