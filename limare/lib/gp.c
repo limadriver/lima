@@ -108,15 +108,15 @@ plbu_command_queue_create(struct limare_state *state,
 	}
 	i++;
 
-#if 0
-	cmds[i].val = 0x40100000;
+	cmds[i].val = frame->mem_physical + frame->tile_heap_offset;
 	cmds[i].cmd = LIMA_PLBU_CMD_TILE_HEAP_START;
+
 	i++;
 
-	cmds[i].val = 0x40150000;
+	cmds[i].val = frame->mem_physical + frame->tile_heap_offset +
+		frame->tile_heap_size;
 	cmds[i].cmd = LIMA_PLBU_CMD_TILE_HEAP_END;
 	i++;
-#endif
 
 	cmds[i].val = from_float(0.0);
 	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_Y;
@@ -684,8 +684,10 @@ limare_gp_job_start(struct limare_state *state, struct limare_frame *frame)
 	frame_regs.plbu_commands_start = frame->plbu_commands_physical;
 	frame_regs.plbu_commands_end =
 		frame->plbu_commands_physical + 8 * frame->plbu_commands_count;
-	frame_regs.tile_heap_start = 0;
-	frame_regs.tile_heap_end = 0;
+	frame_regs.tile_heap_start =
+		frame->mem_physical + frame->tile_heap_offset;
+	frame_regs.tile_heap_end = frame->mem_physical +
+		frame->tile_heap_offset + frame->tile_heap_size;
 
 	return limare_gp_job_start_direct(state, &frame_regs);
 }

@@ -305,6 +305,9 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 		return NULL;
 	}
 
+	frame->tile_heap_offset = 0x100000;
+	frame->tile_heap_size = 0x80000;
+
 	/* first, set up the plb, this is unchanged between draws. */
 	frame->plb = plb_create(state, frame->mem_physical,
 				frame->mem_address, 0x00000, 0x30000);
@@ -772,7 +775,7 @@ limare_new(struct limare_state *state)
 		limare_frame_destroy(state->frames[state->frame_current]);
 
 	state->frames[state->frame_current] =
-		limare_frame_create(state, 0x100000 * state->frame_current,
+		limare_frame_create(state, 0x180000 * state->frame_current,
 				    0x100000);
 	if (!state->frames[state->frame_current])
 		return -1;

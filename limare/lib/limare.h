@@ -36,6 +36,9 @@ struct limare_frame {
 	unsigned int mem_size;
 	void *mem_address;
 
+	unsigned int tile_heap_offset;
+	int tile_heap_size;
+
 	struct draw_info *draws[32];
 	int draw_count;
 
