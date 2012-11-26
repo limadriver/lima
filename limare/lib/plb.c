@@ -85,7 +85,11 @@ plb_create(struct limare_state *state, unsigned int physical, void *address, int
 	plb->tiled_h = height;
 
 	/* limit the amount of plb's the pp has to chew through */
-	while ((width * height) > 300) { // was 320
+	/* For performance, 250 seems preferred on mali200.
+	 * 300 is the hard limit for mali200.
+	 * 512 is the hard limit for mali400.
+	 */
+	while ((width * height) > 300) {
 		if (width >= height) {
 			width = (width + 1) >> 1;
 			plb->shift_w++;
@@ -107,9 +111,12 @@ plb_create(struct limare_state *state, unsigned int physical, void *address, int
 	plb->plb_size = plb->block_size * plb->block_w * plb->block_h;
 	plb->plb_offset = 0;
 
-	/* 300 is the space needed to not run into issues with the next
-	 * block. Not all of them have to be filled in of course. */
-	plb->plbu_size = 4 * 300;
+	if (state->type == LIMARE_TYPE_M400)
+		plb->plbu_size = 4 * plb->block_w * plb->block_h;
+	else
+		/* fixed size on mali200 */
+		plb->plbu_size = 4 * 300;
+
 	plb->plbu_offset = ALIGN(plb->plb_size, 0x40);
 
 	plb->pp_size = 16 * (plb->tiled_w * plb->tiled_h + 1);
