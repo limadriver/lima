@@ -459,7 +459,7 @@ vs_info_finalize(struct limare_state *state, struct limare_frame *frame,
 void
 plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 {
-	struct plbu_info *info = draw->plbu;
+	struct plbu_info *plbu = draw->plbu;
 	struct vs_info *vs = draw->vs;
 	struct lima_cmd *cmds = frame->plbu_commands;
 	int i = frame->plbu_commands_count;
@@ -475,7 +475,7 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 	cmds[i].cmd = LIMA_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
-	cmds[i].val = frame->mem_physical + info->render_state_offset;
+	cmds[i].val = frame->mem_physical + plbu->render_state_offset;
 	cmds[i].cmd = LIMA_PLBU_CMD_RSW_VERTEX_ARRAY;
 	cmds[i].cmd |= (frame->mem_physical + vs->gl_Position_offset) >> 4;
 	i++;
