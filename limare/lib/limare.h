@@ -65,9 +65,7 @@ struct limare_state {
 #define LIMARE_TYPE_M400 400
 	int type;
 
-	unsigned int mem_physical;
-	unsigned int mem_size;
-	void *mem_address;
+	unsigned int mem_base;
 
 	int width;
 	int height;
@@ -75,6 +73,11 @@ struct limare_state {
 	unsigned int clear_color;
 
 	struct limare_frame *frame;
+
+	/* space used for programs and textures */
+	void *aux_mem_address;
+	unsigned int aux_mem_physical;
+	int aux_mem_size;
 
 	unsigned int texture_mem_offset;
 	int texture_mem_size;

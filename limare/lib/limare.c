@@ -222,15 +222,7 @@ limare_mem_init(struct limare_state *state)
 		return errno;
 	}
 
-	state->mem_physical = mem_init.mali_address_base;
-	state->mem_size = 0x200000;
-	state->mem_address = mmap(NULL, state->mem_size, PROT_READ | PROT_WRITE,
-				  MAP_SHARED, state->fd, state->mem_physical);
-	if (state->mem_address == MAP_FAILED) {
-		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
-		       state->mem_physical, state->mem_size, strerror(errno));
-		return errno;
-	}
+	state->mem_base = mem_init.mali_address_base;
 
 	return 0;
 }
@@ -267,8 +259,7 @@ limare_init(void)
 }
 
 struct limare_frame *
-limare_frame_create(struct limare_state *state, void *address,
-		    unsigned int physical, int offset, int size)
+limare_frame_create(struct limare_state *state, int offset, int size)
 {
 	struct limare_frame *frame;
 
@@ -276,9 +267,19 @@ limare_frame_create(struct limare_state *state, void *address,
 	if (!frame)
 		return NULL;
 
-	frame->mem_address = address + offset;
-	frame->mem_physical = physical + offset;
+	/* space for our programs and textures. */
 	frame->mem_size = size;
+	frame->mem_physical = state->mem_base + offset;
+	frame->mem_address = mmap(NULL, frame->mem_size,
+				  PROT_READ | PROT_WRITE,
+				  MAP_SHARED, state->fd,
+				  frame->mem_physical);
+	if (frame->mem_address == MAP_FAILED) {
+		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
+		       frame->mem_physical, frame->mem_size,
+		       strerror(errno));
+		return NULL;
+	}
 
 	/* first, set up the plb, this is unchanged between draws. */
 	frame->plb = plb_create(state, frame->mem_physical,
@@ -317,24 +318,38 @@ limare_state_setup(struct limare_state *state, int width, int height,
 
 	state->clear_color = clear_color;
 
-	state->frame = limare_frame_create(state, state->mem_address,
-					   state->mem_physical, 0, 0xF0000);
+	state->frame = limare_frame_create(state, 0, 0x100000);
 	if (!state->frame)
 		return -1;
 
+	/* space for our programs and textures. */
+	state->aux_mem_size = 0x200000;
+	state->aux_mem_physical = state->mem_base + 0x200000;
+	state->aux_mem_address = mmap(NULL, state->aux_mem_size,
+				       PROT_READ | PROT_WRITE,
+				       MAP_SHARED, state->fd,
+				       state->aux_mem_physical);
+	if (state->aux_mem_address == MAP_FAILED) {
+		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
+		       state->aux_mem_physical, state->aux_mem_size,
+		       strerror(errno));
+		return -1;
+	}
+
+
 	state->programs = calloc(1, sizeof(struct program *));
-	state->programs[0] = limare_program_create(state->mem_address,
-						   state->mem_physical,
-						   0xF0000, 0x10000);
+	state->programs[0] = limare_program_create(state->aux_mem_address,
+						   state->aux_mem_physical,
+						   0, 0x10000);
 	state->program_count = 1;
 	state->program_current = 0;
 
-	state->texture_mem_offset = 0x100000;
-	state->texture_mem_size = 0x100000;
+	state->texture_mem_offset = 0x10000;
+	state->texture_mem_size = state->aux_mem_size - state->texture_mem_offset;
 
 	/* try to grab the necessary space for our image */
 	state->dest_mem_size = state->width * state->height * 4;
-	state->dest_mem_physical = state->mem_physical + 0x0200000;
+	state->dest_mem_physical = state->mem_base + 0x0400000;
 	state->dest_mem_address = mmap(NULL, state->dest_mem_size,
 				       PROT_READ | PROT_WRITE,
 				       MAP_SHARED, state->fd,

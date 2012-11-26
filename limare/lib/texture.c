@@ -92,8 +92,8 @@ texture_create(struct limare_state *state, const void *src,
 	texture->height = height;
 	texture->format = format;
 
-	texture->pixels = state->mem_address + state->texture_mem_offset;
-	texture->mem_physical = state->mem_physical + state->texture_mem_offset;
+	texture->pixels = state->aux_mem_address + state->texture_mem_offset;
+	texture->mem_physical = state->aux_mem_physical + state->texture_mem_offset;
 
 	switch (texture->format) {
 	// case LIMA_TEXEL_FORMAT_RGB_555:
