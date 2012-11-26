@@ -348,10 +348,6 @@ limare_state_setup(struct limare_state *state, int width, int height,
 
 	state->clear_color = clear_color;
 
-	state->frame = limare_frame_create(state, 0x100000, 0x100000);
-	if (!state->frame)
-		return -1;
-
 	/* space for our programs and textures. */
 	state->aux_mem_size = 0x200000;
 	state->aux_mem_physical = state->mem_base + 0x200000;
@@ -594,9 +590,15 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 {
 	struct limare_program *program =
 		state->programs[state->program_current];
-	struct limare_frame *frame = state->frame;
+	struct limare_frame *frame =
+		state->frames[state->frame_current];
 	struct draw_info *draw;
 	int i;
+
+	if (!frame) {
+		printf("%s: Error: no frame was set up!\n", __func__);
+		return -1;
+	}
 
 	if (!frame->plb) {
 		printf("%s: Error: plb member is not set up yet.\n", __func__);
@@ -690,8 +692,13 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 int
 limare_flush(struct limare_state *state)
 {
-	struct limare_frame *frame = state->frame;
+	struct limare_frame *frame = state->frames[state->frame_current];
 	int ret;
+
+	if (!frame) {
+		printf("%s: Error: no frame was set up!\n", __func__);
+		return -1;
+	}
 
 	plbu_commands_finish(frame);
 
@@ -712,8 +719,6 @@ limare_flush(struct limare_state *state)
 void
 limare_finish(struct limare_state *state)
 {
-	limare_frame_destroy(state->frame);
-
 	fflush(stdout);
 	sleep(1);
 }
@@ -743,4 +748,23 @@ limare_link(struct limare_state *state)
 		state->programs[state->program_current];
 
 	return limare_program_link(program);
+}
+
+int
+limare_new(struct limare_state *state)
+{
+	state->frame_current = state->frame_count & 0x01;
+
+	if (state->frames[state->frame_current])
+		limare_frame_destroy(state->frames[state->frame_current]);
+
+	state->frames[state->frame_current] =
+		limare_frame_create(state, 0x100000 * state->frame_current,
+				    0x100000);
+	if (!state->frames[state->frame_current])
+		return -1;
+
+	state->frame_count++;
+
+	return 0;
 }

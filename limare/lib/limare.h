@@ -72,7 +72,9 @@ struct limare_state {
 
 	unsigned int clear_color;
 
-	struct limare_frame *frame;
+	int frame_count;
+	int frame_current;
+	struct limare_frame *frames[2];
 
 	/* space used for programs and textures */
 	void *aux_mem_address;
@@ -113,5 +115,7 @@ int limare_draw_arrays(struct limare_state *state, int mode,
 int limare_flush(struct limare_state *state);
 
 void limare_finish(struct limare_state *state);
+
+int limare_new(struct limare_state *state);
 
 #endif /* LIMARE_LIMARE_H */

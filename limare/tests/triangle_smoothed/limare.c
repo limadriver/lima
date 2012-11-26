@@ -92,6 +92,8 @@ main(int argc, char *argv[])
 	limare_attribute_pointer(state, "aPosition", 4, 3, vertices);
 	limare_attribute_pointer(state, "aColor", 4, 4, colors);
 
+	limare_new(state);
+
 	ret = limare_draw_arrays(state, GL_TRIANGLES, 0, 3);
 	if (ret)
 		return ret;

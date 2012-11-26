@@ -100,6 +100,8 @@ main(int argc, char *argv[])
 			      COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
 			      COMPANION_TEXTURE_FORMAT);
 
+	limare_new(state);
+
 	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 0, 4);
 	if (ret)
 		return ret;

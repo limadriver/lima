@@ -228,6 +228,8 @@ main(int argc, char *argv[])
 	limare_uniform_attach(state, "modelviewprojectionMatrix", 16, &modelviewprojection.m[0][0]);
 	limare_uniform_attach(state, "normalMatrix", 9, normal);
 
+	limare_new(state);
+
 	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP,  0, 4);
 	if (ret)
 		return ret;

@@ -90,6 +90,8 @@ main(int argc, char *argv[])
 
 	limare_uniform_attach(state, "uColor", 4, color);
 
+	limare_new(state);
+
 	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 0, 4);
 	if (ret)
 		return ret;
