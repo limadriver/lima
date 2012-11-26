@@ -27,9 +27,10 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 
-#include "ioctl.h"
+#include "linux/ioctl.h"
 #include "dump.h"
 #include "limare.h"
 #include "jobs.h"
@@ -68,8 +69,9 @@ main(int argc, char *argv[])
 
 	limare_jobs_wait();
 
-	bmp_dump(mem_0x40080000.address, 0,
-		 dump_render_width, dump_render_height, "/sdcard/limare.bmp");
+	usleep(100000);
+
+	bmp_dump(mem_0x40080000.address, state, "/sdcard/limare.bmp");
 
 	fb_dump(mem_0x40080000.address, 0,
 		dump_render_width, dump_render_height);
