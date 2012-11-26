@@ -1,7 +1,7 @@
 NAME = cube_smoothed
 
-objs = esTransform.o
+objs = ../common/esTransform.o
 
-targets = limare egl
+targets = egl limare
 
 include ../Makefile.test

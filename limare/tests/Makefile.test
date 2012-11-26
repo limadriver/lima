@@ -2,7 +2,7 @@ TOP = ../../../
 
 include $(TOP)Makefile.inc
 
-CFLAGS += -I$(TOP)include -I../../lib/
+CFLAGS += -I$(TOP)include -I../../lib/ -I../common
 
 INSTALL_DIR = $(prefix)/bin/limare/
 

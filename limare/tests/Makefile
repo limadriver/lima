@@ -1,4 +1,5 @@
-DIRS = triangle_smoothed \
+DIRS =	common \
+	triangle_smoothed \
 	strip_smoothed \
 	fan_smoothed \
 	quad_flat \
