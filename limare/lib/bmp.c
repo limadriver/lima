@@ -116,7 +116,8 @@ bmp_header_write(int fd, int width, int height, int bgra)
 }
 
 void
-bmp_dump(char *buffer, struct limare_state *state, char *filename)
+bmp_dump(unsigned char *buffer, struct limare_state *state,
+	 int width, int height, int cpp, char *filename)
 {
 	int ret, fd;
 
@@ -127,13 +128,13 @@ bmp_dump(char *buffer, struct limare_state *state, char *filename)
 	}
 
 	/* HORRIBLE HACK */
-	if (state->type == 400)
-		bmp_header_write(fd, state->width, state->height, 0);
+	if (state && state->type == 400)
+		bmp_header_write(fd, width, height, 0);
 	else
-		bmp_header_write(fd, state->width, state->height, 1);
+		bmp_header_write(fd, width, height, 1);
 
-	ret = write(fd, buffer, state->width * state->height * 4);
-	if (ret != (state->width * state->height * 4)) {
+	ret = write(fd, buffer, width * height * cpp);
+	if (ret != (width * height * cpp)) {
 		fprintf(stderr, "%s: failed to write bmp data: %s\n",
 			__func__, strerror(errno));
 		return;

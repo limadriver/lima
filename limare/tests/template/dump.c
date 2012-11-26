@@ -71,7 +71,8 @@ main(int argc, char *argv[])
 
 	usleep(100000);
 
-	bmp_dump(mem_0x40080000.address, state, "/sdcard/limare.bmp");
+	bmp_dump(mem_0x40080000.address, state, dump_render_width,
+		 dump_render_height, 4, "/sdcard/limare.bmp");
 
 	fb_dump(mem_0x40080000.address, 0,
 		dump_render_width, dump_render_height);
