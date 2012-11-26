@@ -1278,9 +1278,14 @@ mali_memory_dump_address(unsigned int *address, unsigned int size,
 			stop = -1;
 	}
 
-	if ((start != -1) && (stop == -1)) {
-		mali_memory_dump_block(address, start, size, physical, count);
-		count++;
+	if (start != -1) {
+		if (stop == -1) {
+			mali_memory_dump_block(address, start, size, physical, count);
+			count++;
+		} else {
+			mali_memory_dump_block(address, start, stop, physical, count);
+			count++;
+		}
 	}
 
 	wrap_log("static struct lima_dumped_mem_block mem_0x%08x = {\n", physical);
