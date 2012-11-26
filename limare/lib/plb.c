@@ -76,7 +76,7 @@ struct plb *
 plb_create(struct limare_state *state, unsigned int physical, void *address, int offset, int size)
 {
 	struct plb *plb = calloc(1, sizeof(struct plb));
-	int width, height;
+	int width, height, limit;
 
 	width = ALIGN(state->width, 16) >> 4;
 	height = ALIGN(state->height, 16) >> 4;
@@ -89,7 +89,12 @@ plb_create(struct limare_state *state, unsigned int physical, void *address, int
 	 * 300 is the hard limit for mali200.
 	 * 512 is the hard limit for mali400.
 	 */
-	while ((width * height) > 300) {
+	if (state->type == LIMARE_TYPE_M400)
+		limit = 400;
+	else
+		limit = 250;
+
+	while ((width * height) > limit) {
 		if (width >= height) {
 			width = (width + 1) >> 1;
 			plb->shift_w++;
