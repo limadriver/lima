@@ -83,9 +83,8 @@ struct limare_state {
 	void *aux_mem_address;
 	unsigned int aux_mem_physical;
 	int aux_mem_size;
+	int aux_mem_used;
 
-	unsigned int texture_mem_offset;
-	int texture_mem_size;
 	struct texture *texture;
 
 	int program_count;

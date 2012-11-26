@@ -92,8 +92,8 @@ texture_create(struct limare_state *state, const void *src,
 	texture->height = height;
 	texture->format = format;
 
-	texture->pixels = state->aux_mem_address + state->texture_mem_offset;
-	texture->mem_physical = state->aux_mem_physical + state->texture_mem_offset;
+	texture->pixels = state->aux_mem_address + state->aux_mem_used;
+	texture->mem_physical = state->aux_mem_physical + state->aux_mem_used;
 
 	switch (texture->format) {
 	// case LIMA_TEXEL_FORMAT_RGB_555:
@@ -104,16 +104,19 @@ texture_create(struct limare_state *state, const void *src,
 		texture->pitch = 3 * width;
 		texture->size = texture->pitch * height;
 
-		flag0 = 1;
-		flag1 = 0;
-		layout = 3;
-
-		if (texture->size > state->texture_mem_size) {
+		if ((state->aux_mem_size - state->aux_mem_used) < texture->size) {
 			printf("%s: size (0x%X) exceeds available size (0x%X)\n",
-			       __func__, texture->size, state->texture_mem_size);
+			       __func__, texture->size,
+			       state->aux_mem_size - state->aux_mem_used);
 			free(texture);
 			return NULL;
 		}
+
+		state->aux_mem_used += ALIGN(texture->size, 0x40);
+
+		flag0 = 1;
+		flag1 = 0;
+		layout = 3;
 
 		texture_swizzle_rgb(texture->pixels, src, texture->width,
 				    texture->height, texture->pitch);

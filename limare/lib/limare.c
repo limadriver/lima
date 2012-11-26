@@ -373,8 +373,7 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	state->program_count = 1;
 	state->program_current = 0;
 
-	state->texture_mem_offset = 0x10000;
-	state->texture_mem_size = state->aux_mem_size - state->texture_mem_offset;
+	state->aux_mem_used += 0x1000;
 
 	/* try to grab the necessary space for our image */
 	state->dest_mem_size = state->width * state->height * 4;
