@@ -1,4 +1,4 @@
-NAME = cube
+NAME = cube_smoothed
 
 objs = esTransform.o
 

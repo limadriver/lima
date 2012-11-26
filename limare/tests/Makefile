@@ -3,7 +3,7 @@ DIRS = triangle_smoothed \
 	fan_smoothed \
 	quad_flat \
 	triangle_quad \
-	cube
+	cube_smoothed
 
 .PHONY: all clean install $(DIRS)
 
