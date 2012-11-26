@@ -54,14 +54,23 @@ wait_for_notification(void *arg)
 	pthread_mutex_lock(&wait_mutex);
 
 	do {
-		wait.code.timeout = 25;
-		ret = ioctl(state->fd, MALI_IOC_WAIT_FOR_NOTIFICATION, &wait);
-		if (ret == -1) {
-			printf("%s: Error: wait failed: %s\n",
-			       __func__, strerror(errno));
-			exit(-1);
-		}
-	} while (wait.code.type == _MALI_NOTIFICATION_CORE_TIMEOUT);
+		do {
+			wait.code.timeout = 25;
+			ret = ioctl(state->fd, MALI_IOC_WAIT_FOR_NOTIFICATION,
+				    &wait);
+			if (ret == -1) {
+				printf("%s: Error: wait failed: %s\n",
+				       __func__, strerror(errno));
+				exit(-1);
+			}
+		} while (wait.code.type == _MALI_NOTIFICATION_CORE_TIMEOUT);
+
+		if ((wait.code.type & 0xFF) == 0x10)
+			break;
+
+		printf("%s: %x: %x\n", __func__, wait.code.type,
+		       wait.data.gp_job_suspended.reason);
+	} while (1);
 
 	pthread_mutex_unlock(&wait_mutex);
 
