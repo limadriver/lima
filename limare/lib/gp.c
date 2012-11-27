@@ -255,7 +255,7 @@ vs_info_attach_varyings(struct limare_program *program, struct draw_info *draw)
 {
 	struct vs_info *info = draw->vs;
 
-	info->varying_size = ALIGN(program->varying_map_size, 0x40);
+	info->varying_size = ALIGN(program->varying_map_size * draw->vertex_count, 0x40);
 	if (info->varying_size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
@@ -264,7 +264,7 @@ vs_info_attach_varyings(struct limare_program *program, struct draw_info *draw)
 	info->varying_offset = draw->mem_used;
 	draw->mem_used += info->varying_size;
 
-	info->gl_Position_size = ALIGN(16, 0x40);
+	info->gl_Position_size = ALIGN(16 * draw->vertex_count, 0x40);
 	if (info->gl_Position_size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
