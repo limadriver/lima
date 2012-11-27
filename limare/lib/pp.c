@@ -42,14 +42,13 @@
 
 struct pp_info *
 pp_info_create(struct limare_state *state,
-	       void *address, unsigned int physical, int size,
+	       void *address, unsigned int physical, int offset, int size,
 	       unsigned int frame_physical)
 {
 	struct plb *plb;
 	struct pp_info *info;
 	unsigned int quad[5] =
 		{0x00020425, 0x0000000c, 0x01e007cf, 0xb0000000, 0x000005f5};
-	int offset;
 
 	if (!state->plb) {
 		printf("%s: Error: member plb not assigned yet!\n", __func__);
@@ -84,8 +83,8 @@ pp_info_create(struct limare_state *state,
 	}
 
 	/* now fill out our other requirements */
-	info->quad_address = address;
-	info->quad_physical = physical;
+	info->quad_address = address + offset;
+	info->quad_physical = physical + offset;
 	info->quad_size = 5;
 
 	memcpy(info->quad_address, quad, 4 * info->quad_size);

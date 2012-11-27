@@ -285,9 +285,10 @@ limare_state_setup(struct limare_state *state, int width, int height,
 		return -1;
 
 	/* now add the area for the pp, again, unchanged between draws. */
-	state->pp = pp_info_create(state, state->mem_address + 0x80000,
-				   state->mem_physical + 0x80000,
-				   0x1000, state->mem_physical + 0x200000);
+	state->pp = pp_info_create(state,
+				   state->mem_address, state->mem_physical,
+				   0x80000, 0x1000,
+				   state->mem_physical + 0x200000);
 	if (!state->pp)
 		return -1;
 
