@@ -318,7 +318,7 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 
 	cmds[i].val = (state->vertex_varying_something - 1) << 20;
 	cmds[i].val |= (vs->shader_size - 1) << 10;
-	cmds[i].cmd = 0x10000040;
+	cmds[i].cmd = LIMA_VS_CMD_SHADER_INFO;
 	i++;
 
 	cmds[i].val = ((vs->varying_count - 1) << 8) | ((vs->attribute_count - 1) << 24);
@@ -352,7 +352,7 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 	i++;
 
 	cmds[i].val = draw->vertex_count << 24;
-	cmds[i].cmd = draw->vertex_count >> 8;
+	cmds[i].cmd = LIMA_VS_CMD_VERTEX_COUNT | draw->vertex_count >> 8;
 	i++;
 
 	cmds[i].val = 0x00000000;
@@ -439,7 +439,8 @@ plbu_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 	i++;
 
 	cmds[i].val = (draw->vertex_count << 24); /* | draw->vertex_start; */
-	cmds[i].cmd = ((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
+	cmds[i].cmd = LIMA_PLBU_CMD_VERTEX_COUNT |
+		((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
 	i++;
 
 	cmds[i].val = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE_END;
