@@ -558,7 +558,8 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 			      state->vertex_binary->shader_size / 16);
 
 	plbu_info_attach_shader(draw, state->fragment_binary->shader,
-				state->fragment_binary->shader_size / 4);
+				state->fragment_binary->shader_size,
+				state->fragment_binary->parameters.fragment.unknown04);
 
 	for (i = 0; i < state->vertex_attribute_count; i++) {
 		struct symbol *symbol;

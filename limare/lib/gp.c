@@ -521,7 +521,8 @@ plbu_commands_finish(struct limare_state *state)
 }
 
 int
-plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size)
+plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader,
+			int size, int something)
 {
 	struct plbu_info *info = draw->plbu;
 	int mem_size;
@@ -531,7 +532,7 @@ plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size)
 		return -1;
 	}
 
-	mem_size = ALIGN(size * 4, 0x40);
+	mem_size = ALIGN(size, 0x40);
 	if (mem_size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: no more space\n", __func__);
 		return -2;
@@ -540,6 +541,7 @@ plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size)
 	info->shader = draw->mem_address + draw->mem_used;
 	info->shader_offset = draw->mem_used;
 	info->shader_size = size;
+	info->shader_something = something;
 	draw->mem_used += mem_size;
 
 	memcpy(info->shader, shader, 4 * size);
@@ -663,8 +665,8 @@ plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw
 	render->unknown20 = 0xF807;
 	/* enable 4x MSAA */
 	render->unknown20 |= 0x68;
-	render->shader_address =
-		(draw->mem_physical + info->shader_offset) | info->shader_size;
+	render->shader_address = (draw->mem_physical + info->shader_offset) |
+		info->shader_something;
 
 	render->uniforms_address = 0;
 
