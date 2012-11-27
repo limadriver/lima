@@ -25,22 +25,22 @@
 #define LIMARE_RENDER_STATE 1
 
 struct render_state { /* 0x40 */
-	int unknown00; /* 0x00 */
-	int unknown04; /* 0x04 */
-	int unknown08; /* 0x08 */
-	int unknown0C; /* 0x0C */
-	int depth_range; /* 0x10 */
-	int unknown14; /* 0x14 */
-	int unknown18; /* 0x18 */
-	int unknown1C; /* 0x1C */
-	int unknown20; /* 0x20 */
-	int shader_address; /* 0x24 */
-	int varying_types; /* 0x28 */
-	int uniforms_address; /* 0x2C */
-	int textures_address; /* 0x30 */
-	int unknown34; /* 0x34 */
-	int unknown38; /* 0x38 */
-	int varyings_address; /* 0x3C */
+	unsigned int unknown00; /* 0x00 */
+	unsigned int unknown04; /* 0x04 */
+	unsigned int unknown08; /* 0x08 */
+	unsigned int unknown0C; /* 0x0C */
+	unsigned int depth_range; /* 0x10 */
+	unsigned int unknown14; /* 0x14 */
+	unsigned int unknown18; /* 0x18 */
+	unsigned int unknown1C; /* 0x1C */
+	unsigned int unknown20; /* 0x20 */
+	unsigned int shader_address; /* 0x24 */
+	unsigned int varying_types; /* 0x28 */
+	unsigned int uniforms_address; /* 0x2C */
+	unsigned int textures_address; /* 0x30 */
+	unsigned int unknown34; /* 0x34 */
+	unsigned int unknown38; /* 0x38 */
+	unsigned int varyings_address; /* 0x3C */
 };
 
 #endif /* LIMARE_RENDER_STATE */

@@ -572,7 +572,7 @@ plbu_info_render_state_create(struct draw_info *draw)
 {
 	struct plbu_info *info = draw->plbu;
 	struct vs_info *vs = draw->vs;
-	struct render_state *state;
+	struct render_state *render;
 	int size, i;
 
 	if (info->render_state) {
@@ -597,54 +597,54 @@ plbu_info_render_state_create(struct draw_info *draw)
 	draw->mem_used += size;
 
 	/* this bit still needs some figuring out :) */
-	state = info->render_state;
+	render = info->render_state;
 
-	state->unknown00 = 0;
-	state->unknown04 = 0;
-	state->unknown08 = 0xfc3b1ad2;
-	state->unknown0C = 0x3E;
-	state->depth_range = 0xFFFF0000;
-	state->unknown14 = 7;
-	state->unknown18 = 7;
-	state->unknown1C = 0;
-	state->unknown20 = 0xF807;
+	render->unknown00 = 0;
+	render->unknown04 = 0;
+	render->unknown08 = 0xfc3b1ad2;
+	render->unknown0C = 0x3E;
+	render->depth_range = 0xFFFF0000;
+	render->unknown14 = 7;
+	render->unknown18 = 7;
+	render->unknown1C = 0;
+	render->unknown20 = 0xF807;
 	/* enable 4x MSAA */
-	state->unknown20 |= 0x68;
-	state->shader_address =
+	render->unknown20 |= 0x68;
+	render->shader_address =
 		(draw->mem_physical + info->shader_offset) | info->shader_size;
 
-	state->uniforms_address = 0;
+	render->uniforms_address = 0;
 
-	state->textures_address = 0;
-	state->unknown34 = 0x300;
-	state->unknown38 = 0x2000;
+	render->textures_address = 0;
+	render->unknown34 = 0x300;
+	render->unknown38 = 0x2000;
 
 	if (vs->varying_count > 1) {
-		state->varyings_address = vs->varyings[0]->physical;
-		state->unknown34 |= 0x01;
-		state->varying_types = 0;
+		render->varyings_address = vs->varyings[0]->physical;
+		render->unknown34 |= 0x01;
+		render->varying_types = 0;
 
 		for (i = 0; i < (vs->varying_count - 1); i++) {
 			if (i < 10)
-				state->varying_types |= 2 << (3 * i);
+				render->varying_types |= 2 << (3 * i);
 			else if (i == 10) {
-				state->varying_types |= 2 << 30;
-				state->varyings_address |= 2 >> 2;
+				render->varying_types |= 2 << 30;
+				render->varyings_address |= 2 >> 2;
 			} else if (i == 11)
-				state->varyings_address |= 2 << 1;
+				render->varyings_address |= 2 << 1;
 
 		}
 	}
 
 	if (info->uniform_size) {
-		state->uniforms_address =
+		render->uniforms_address =
 			(int) draw->mem_physical + info->uniform_array_offset;
 
-		state->uniforms_address |=
+		render->uniforms_address |=
 			(ALIGN(info->uniform_size, 4) / 4) - 1;
 
-		state->unknown34 |= 0x80;
-		state->unknown38 |= 0x10000;
+		render->unknown34 |= 0x80;
+		render->unknown38 |= 0x10000;
 	}
 
 	return 0;
