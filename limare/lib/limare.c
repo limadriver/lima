@@ -441,6 +441,17 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 		}
 	}
 
+	for (i = 0; i < state->fragment_uniform_count; i++) {
+		struct symbol *symbol = state->fragment_uniforms[i];
+
+		if (!symbol->data) {
+			printf("%s: Error: vertex uniform %s is empty.\n",
+			       __func__, symbol->name);
+
+			return -1;
+		}
+	}
+
 	if (state->draw_count >= 32) {
 		printf("%s: Error: too many draws already!\n", __func__);
 		return -1;

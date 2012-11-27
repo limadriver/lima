@@ -109,8 +109,8 @@ struct stream_uniform_start {
 };
 
 struct stream_uniform_data { /* 0x14 */
-	unsigned char type; /* 0x00 */
-	unsigned char unknown01; /* 0x01 */
+	unsigned char blank; /* 0x00 */
+	unsigned char type; /* 0x01 */
 	unsigned short component_count; /* 0x02 */
 	unsigned short component_size; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
@@ -327,9 +327,8 @@ stream_uniform_table_print(struct stream_uniform_table *table)
 	uniform = table->uniforms;
 	while (uniform) {
 		printf("uniform \"%s\" = {\n", uniform->string->string);
-		printf("\t type 0x%02x, unknown01 0x%02x, component_count 0x%04x\n",
-		       uniform->data->type, uniform->data->unknown01,
-		       uniform->data->component_count);
+		printf("\t type 0x%04x, component_count 0x%04x\n",
+		       uniform->data->type, uniform->data->component_count);
 		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
 		       uniform->data->component_size, uniform->data->entry_count);
 		printf("\t src_stride 0x%04x, dst_stride 0x%02x, precision 0x%02x\n",
@@ -371,30 +370,29 @@ stream_uniform_table_to_symbols(struct stream_uniform_table *table,
 	for (i = 0, uniform = table->uniforms;
 	     (i < table->start->count) && uniform;
 	     i++, uniform = uniform->next) {
-		int component_count = uniform->data->component_count;
-		int matrix = 0;
-
-		if (uniform->data->unknown01 == 4)
-			matrix = 1;
-
 		if (uniform->init)
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
+					      uniform->data->type,
 					      uniform->data->component_size,
-					      component_count,
+					      uniform->data->precision,
+					      uniform->data->component_count,
 					      uniform->data->entry_count,
 					      uniform->data->src_stride,
 					      uniform->data->dst_stride,
-					      uniform->init->data, 1, matrix);
+					      uniform->init->data, 1, 0);
 		else
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
+					      uniform->data->type,
 					      uniform->data->component_size,
-					      component_count,
+					      uniform->data->precision,
+					      uniform->data->component_count,
 					      uniform->data->entry_count,
 					      uniform->data->src_stride,
 					      uniform->data->dst_stride,
-					      NULL, 0, matrix);
+					      NULL, 0, 0);
+
 		if (!symbols[i]) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, uniform->string->string, strerror(errno));
@@ -434,8 +432,8 @@ struct stream_attribute_start {
 };
 
 struct stream_attribute_data { /* 0x14 */
-	unsigned char type; /* 0x00 */
-	unsigned char unknown01; /* 0x01 */
+	unsigned char blank; /*0x00 */
+	unsigned char type; /* 0x01 */
 	unsigned short component_count; /* 0x02 */
 	unsigned short component_size; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
@@ -626,7 +624,9 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 		struct symbol *symbol;
 		symbol =
 			symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
+				      attribute->data->type,
 				      attribute->data->component_size,
+				      attribute->data->precision,
 				      attribute->data->component_count,
 				      attribute->data->entry_count,
 				      0, 0, NULL, 0, 0);
@@ -673,15 +673,15 @@ struct stream_varying_start {
 };
 
 struct stream_varying_data { /* 0x14 */
-	unsigned char type; /* 0x00 */
-	unsigned char unknown01; /* 0x01 */
+	unsigned char blank; /* 0x00 */
+	unsigned char type; /* 0x01 */
 	unsigned short component_count; /* 0x02 */
-	unsigned short component_size; /* 0x04 */
+	unsigned short stride0; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
-	unsigned short stride; /* 0x08 */
-	unsigned char unknown0A; /* 0x0A */
+	unsigned short stride1; /* 0x08 */
+	unsigned char ranking; /* 0x0A */
 	unsigned char precision; /* 0x0B */
-	unsigned short unknown0C; /* 0x0C */
+	unsigned short flag; /* 0x0C */
 	unsigned short unknown0E; /* 0x0E */
 	unsigned short offset; /* 0x10 */
 	unsigned short index; /* 0x12 */
@@ -822,16 +822,15 @@ stream_varying_table_print(struct stream_varying_table *table)
 	varying = table->varyings;
 	while (varying) {
 		printf("varying \"%s\" = {\n", varying->string->string);
-		printf("\t type 0x%02x, unknown01 0x%02x, component_count 0x%04x\n",
-		       varying->data->type, varying->data->unknown01,
-		       varying->data->component_count);
+		printf("\t type 0x%02x, component_count 0x%04x\n",
+		       varying->data->type, varying->data->component_count);
 		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
-		       varying->data->component_size, varying->data->entry_count);
-		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
-		       varying->data->stride, varying->data->unknown0A,
+		       varying->data->stride0, varying->data->entry_count);
+		printf("\t stride 0x%04x, ranking 0x%02x, precision 0x%02x\n",
+		       varying->data->stride1, varying->data->ranking,
 		       varying->data->precision);
-		printf("\t unknown0C 0x%04x, offset 0x%04x\n",
-		       varying->data->unknown0C, varying->data->offset);
+		printf("\t flag 0x%04x, offset 0x%04x\n",
+		       varying->data->flag, varying->data->offset);
 		printf("}\n");
 		varying = varying->next;
 	}
@@ -865,6 +864,12 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 	     (i < table->start->count) && varying;
 	     i++, varying = varying->next) {
 		struct symbol *symbol;
+		int flag;
+
+		if (varying->data->ranking == 0x18)
+			flag = SYMBOL_SIZE_PRECISION_ADJUSTED;
+		else
+			flag = 0;
 
 		if (varying->data->offset == 0xFFFF) {
 			(*count)--;
@@ -872,10 +877,12 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 		}
 
 		symbol = symbol_create(varying->string->string, SYMBOL_VARYING,
-				       varying->data->component_size,
+				       varying->data->type,
+				       varying->data->stride0,
+				       varying->data->precision,
 				       varying->data->component_count,
 				       varying->data->entry_count,
-				       0, 0, NULL, 0, 0);
+				       0, 0, NULL, 0, flag);
 		if (!symbol) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, varying->string->string, strerror(errno));

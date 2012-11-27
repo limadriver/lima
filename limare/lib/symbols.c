@@ -33,9 +33,10 @@
 
 struct symbol *
 symbol_create(const char *name, enum symbol_type type,
-	      int component_size, int component_count,
+	      enum symbol_value_type value_type,
+	      int component_size, int precision, int component_count,
 	      int entry_count, int src_stride, int dst_stride,
-	      void *data, int copy, int matrix)
+	      void *data, int copy, int flag)
 {
 	struct symbol *symbol;
 	int size;
@@ -43,7 +44,7 @@ symbol_create(const char *name, enum symbol_type type,
 	if (!entry_count)
 		entry_count = 1;
 
-	if (matrix)
+	if (value_type == SYMBOL_MATRIX)
 		component_count *= component_count;
 
 	size = component_size * component_count * entry_count;
@@ -67,12 +68,15 @@ symbol_create(const char *name, enum symbol_type type,
 
 	strncpy(symbol->name, name, SYMBOL_STRING_SIZE);
 	symbol->type = type;
+	symbol->flag = flag;
+	symbol->value_type = value_type;
 
 	symbol->component_size = component_size;
+	symbol->precision = precision;
 	symbol->component_count = component_count;
 	symbol->entry_count = entry_count;
 
-	if (matrix) {
+	if (value_type == SYMBOL_MATRIX) {
 		symbol->src_stride = src_stride;
 		symbol->dst_stride = dst_stride;
 	}
@@ -138,10 +142,15 @@ symbol_print(struct symbol *symbol)
 	case SYMBOL_VARYING:
 		type = "varying";
 		break;
+	case SYMBOL_SAMPLER:
+		type = "sampler";
+		break;
 	}
 
 	printf("Symbol %s (%s) = {\n", symbol->name, type);
+	printf("\t.value_type = %d,\n", symbol->value_type);
 	printf("\t.component_size = %d,\n", symbol->component_size);
+	printf("\t.precision = %d,\n", symbol->precision);
 	printf("\t.component_count = %d,\n", symbol->component_count);
 	printf("\t.entry_count = %d,\n", symbol->entry_count);
 	printf("\t.src_stride = %d,\n", symbol->src_stride);
@@ -150,6 +159,9 @@ symbol_print(struct symbol *symbol)
 	printf("\t.offset = %d,\n", symbol->offset);
 	printf("\t.address = %p,\n", symbol->address);
 	printf("\t.physical = 0x%x,\n", symbol->physical);
+	printf("\t.flag = 0x%x,\n", symbol->flag);
+	printf("\t.data = %p,\n", symbol->data);
+	printf("\t.data_allocated = %d,\n", symbol->data_allocated);
 
 	if (symbol->data) {
 		float *data = symbol->data;

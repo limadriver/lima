@@ -32,6 +32,14 @@ enum symbol_type {
 	SYMBOL_UNIFORM,
 	SYMBOL_ATTRIBUTE,
 	SYMBOL_VARYING,
+	SYMBOL_SAMPLER,
+};
+
+enum symbol_value_type {
+	SYMBOL_FLOAT = 1,
+	SYMBOL_MATRIX = 4,
+	SYMBOL_TEXTURE = 5,
+	SYMBOL_CUBEMAP = 6,
 };
 
 struct symbol {
@@ -40,8 +48,10 @@ struct symbol {
 	char name[SYMBOL_STRING_SIZE + 1];
 
 	enum symbol_type type;
+	enum symbol_value_type value_type;
 
 	int component_size;
+	int precision;
 	int component_count;
 	int entry_count;
 
@@ -51,6 +61,9 @@ struct symbol {
 	int size; /* size it takes in memory. */
 	short offset; /* offset from start of memory block */
 
+#define SYMBOL_SIZE_PRECISION_ADJUSTED 0x01
+	int flag;
+
 	void *address;
 	int physical; /* empty for uniforms */
 
@@ -59,7 +72,8 @@ struct symbol {
 };
 
 struct symbol *symbol_create(const char *name, enum symbol_type type,
-			     int component_size, int component_count,
+			     enum symbol_value_type value_type,
+			     int component_size, int precision, int component_count,
 			     int entry_count, int src_stride, int dst_stride,
 			     void *data, int copy, int matrix);
 
