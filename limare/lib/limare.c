@@ -318,7 +318,7 @@ limare_state_setup(struct limare_state *state, int width, int height,
 
 	state->clear_color = clear_color;
 
-	state->frame = limare_frame_create(state, 0, 0x100000);
+	state->frame = limare_frame_create(state, 0x100000, 0x100000);
 	if (!state->frame)
 		return -1;
 
