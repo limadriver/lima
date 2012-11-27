@@ -31,6 +31,12 @@ struct lima_cmd {
 	unsigned int cmd;
 };
 
+struct varying_map {
+	int offset;
+	int entries;
+	int entry_size;
+};
+
 struct limare_state {
 	int fd;
 	int kernel_version;
@@ -89,6 +95,16 @@ struct limare_state {
 
 	struct symbol **fragment_varyings;
 	int fragment_varying_count;
+
+	struct symbol *gl_Position;
+	struct symbol *gl_PointSize;
+
+	struct sampler **fragment_samplers;
+	int fragment_sampler_count;
+
+	struct varying_map varying_map[12];
+	int varying_map_count;
+	int varying_map_size;
 };
 
 /* from limare.c */

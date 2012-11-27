@@ -57,9 +57,11 @@ struct vs_info {
 	int attribute_count;
 
 	/* fragment shader can only take up to 13 varyings. */
-	struct symbol *varyings[13];
-	int varying_count;
-	int varying_element_size;
+	int varying_offset;
+	int varying_size;
+
+	int gl_Position_offset;
+	int gl_Position_size;
 
 	unsigned int *shader;
 	int shader_offset;
@@ -70,11 +72,11 @@ int vs_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			    int count, int size);
 
 int vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute);
-int vs_info_attach_varying(struct draw_info *draw, struct symbol *varying);
+int vs_info_attach_varyings(struct limare_state *state, struct draw_info *draw);
 int vs_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size);
 
 void vs_commands_draw_add(struct limare_state *state, struct draw_info *draw);
-void vs_info_finalize(struct limare_state *state, struct vs_info *info);
+void vs_info_finalize(struct limare_state *state, struct draw_info *draw, struct vs_info *info);
 
 struct plbu_info {
 	struct render_state *render_state;
@@ -102,7 +104,7 @@ int plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader, int si
 int plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			    int count, int size);
 
-int plbu_info_render_state_create(struct draw_info *draw);
+int plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw);
 
 struct draw_info {
 	unsigned int mem_physical;

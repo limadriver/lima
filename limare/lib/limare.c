@@ -485,13 +485,8 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 
 	}
 
-	for (i = 0; i < state->vertex_varying_count; i++) {
-		struct symbol *symbol =
-			symbol_copy(state->vertex_varyings[i], 0, count);
-
-		if (symbol)
-			vs_info_attach_varying(draw, symbol);
-	}
+	if (vs_info_attach_varyings(state, draw))
+		return -1;
 
 	if (vs_info_attach_uniforms(draw, state->vertex_uniforms,
 				    state->vertex_uniform_count,
@@ -504,9 +499,9 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 		return -1;
 
 	vs_commands_draw_add(state, draw);
-	vs_info_finalize(state, draw->vs);
+	vs_info_finalize(state, draw, draw->vs);
 
-	plbu_info_render_state_create(draw);
+	plbu_info_render_state_create(state, draw);
 	plbu_commands_draw_add(state, draw);
 
 	return 0;

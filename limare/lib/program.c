@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #include "version.h"
 #include "limare.h"
@@ -1159,20 +1160,29 @@ state_symbols_print(struct limare_state *state)
 	int i;
 
 	printf("Vertex symbols:\n");
+
 	printf("\tAttributes: %d\n", state->vertex_attribute_count);
 	for (i = 0; i < state->vertex_attribute_count; i++)
 		symbol_print(state->vertex_attributes[i]);
+
 	printf("\tVaryings: %d\n", state->vertex_varying_count);
 	for (i = 0; i < state->vertex_varying_count; i++)
 		symbol_print(state->vertex_varyings[i]);
+	if (state->gl_Position)
+		symbol_print(state->gl_Position);
+	if (state->gl_PointSize)
+		symbol_print(state->gl_PointSize);
+
 	printf("\tUniforms: %d\n", state->vertex_uniform_count);
 	for (i = 0; i < state->vertex_uniform_count; i++)
 		symbol_print(state->vertex_uniforms[i]);
 
 	printf("Fragment symbols:\n");
+
 	printf("\tVaryings: %d\n", state->fragment_varying_count);
 	for (i = 0; i < state->fragment_varying_count; i++)
 		symbol_print(state->fragment_varyings[i]);
+
 	printf("\tUniforms: %d\n", state->fragment_uniform_count);
 	for (i = 0; i < state->fragment_uniform_count; i++)
 		symbol_print(state->fragment_uniforms[i]);
@@ -1184,68 +1194,56 @@ state_symbols_print(struct limare_state *state)
 static int
 limare_link_varyings_match(struct limare_state *state)
 {
-	int i, j;
+	int i;
 
-	/* now make sure that our varyings are present in both */
+	/* make sure that our varyings are present in both */
 	for (i = 0; i < state->fragment_varying_count; i++) {
 		struct symbol *fragment = state->fragment_varyings[i];
+		struct symbol *vertex = state->vertex_varyings[i];
 
-		for (j = 0; j < state->vertex_varying_count; j++) {
-			struct symbol *vertex = state->vertex_varyings[j];
-
-			if (!strcmp(fragment->name, vertex->name)) {
-				if (fragment->component_size != vertex->component_size) {
-					printf("%s: Error: component_size mismatch for varying \"%s\".\n",
-					       __func__, fragment->name);
-					return -1;
-				}
-
-				if (fragment->component_count != vertex->component_count) {
-					printf("%s: Error: component_count mismatch for varying \"%s\".\n",
-					       __func__, fragment->name);
-					return -1;
-				}
-
-				if (fragment->entry_count != vertex->entry_count) {
-					printf("%s: Error: entry_count mismatch for varying \"%s\".\n",
-					       __func__, fragment->name);
-					return -1;
-				}
-
-				if (fragment->size != vertex->size) {
-					printf("%s: Error: size mismatch for varying \"%s\".\n",
-					       __func__, fragment->name);
-					return -1;
-				}
-
-				break;
+		if (fragment->flag & SYMBOL_SIZE_PRECISION_ADJUSTED) {
+			if ((fragment->component_size << vertex->precision) !=
+			    (vertex->component_size << fragment->precision)) {
+				printf("%s: Error: component_size mismatch for varying \"%s\".\n",
+				       __func__, fragment->name);
+				return -1;
+			}
+		} else {
+			if (fragment->component_size != vertex->component_size) {
+				printf("%s: Error: component_size mismatch for varying \"%s\".\n",
+				       __func__, fragment->name);
+				return -1;
 			}
 		}
 
-		if (j == state->vertex_varying_count) {
-			printf("%s: Error: vertex shader does not provide "
-			       "varying \"%s\".\n", __func__, fragment->name);
+		if (fragment->component_count != vertex->component_count) {
+			printf("%s: Error: component_count mismatch for varying \"%s\".\n",
+			       __func__, fragment->name);
 			return -1;
 		}
-	}
 
-	/* now check for standard varyings, which might not be defined in
-	 * the fragment symbol list */
-	if (state->fragment_varying_count != state->vertex_varying_count) {
-		for (i = 0, j = 0; i < state->vertex_varying_count; i++) {
-			struct symbol *vertex = state->vertex_varyings[i];
-
-			if (!strncmp(vertex->name, "gl_", 3))
-				j++;
+		if (fragment->entry_count != vertex->entry_count) {
+			printf("%s: Error: entry_count mismatch for varying \"%s\".\n",
+			       __func__, fragment->name);
+			return -1;
 		}
 
-		if (state->fragment_varying_count >
-		    (state->vertex_varying_count + j)) {
-			printf("%s: superfluous vertex shader varyings detected.\n",
-			       __func__);
-			/* no error... yet... */
+		if (fragment->flag & SYMBOL_SIZE_PRECISION_ADJUSTED) {
+			if ((fragment->size << vertex->precision) !=
+			    (vertex->size << fragment->precision)) {
+				printf("%s: Error: size mismatch for varying \"%s\".\n",
+				       __func__, fragment->name);
+				return -1;
+			}
+		} else {
+			if (fragment->size != vertex->size) {
+				printf("%s: Error: size mismatch for varying \"%s\".\n",
+				       __func__, fragment->name);
+				return -1;
+			}
 		}
 
+		break;
 	}
 
 	return 0;
@@ -1258,68 +1256,211 @@ limare_link_varyings_match(struct limare_state *state)
 static void
 limare_link_varyings_indices_get(struct limare_state *state, int *varyings)
 {
-	int i, j;
+	int i;
 
 	for (i = 0; i < state->fragment_varying_count; i++) {
 		struct symbol *fragment = state->fragment_varyings[i];
+		struct symbol *vertex = state->vertex_varyings[i];
 
-		for (j = 0; j < state->vertex_varying_count; j++) {
-			struct symbol *vertex = state->vertex_varyings[j];
-
-			if (!strcmp(fragment->name, vertex->name))
-				varyings[vertex->offset / 4] = i;
-		}
+		varyings[vertex->offset / 4] = fragment->offset / 4;
 	}
 
-	for (j = 0; j < state->vertex_varying_count; j++) {
-		if (varyings[j] == -1) {
-			struct symbol *vertex = state->vertex_varyings[j];
-
-			if (!strcmp(vertex->name, "gl_Position")) {
-				varyings[vertex->offset / 4] = state->fragment_varying_count;
-				break;
-			}
-		}
-	}
-
-#if 0
-	for (i = 0; i < 16; i++)
-		printf("varyings[%d] = %d\n", i, varyings[i]);
-#endif
+	if (state->gl_Position)
+		varyings[state->gl_Position->offset / 4] =
+			state->varying_map_count;
 }
 
-void
-vertex_shader_varyings_reorder(struct limare_state *state, int *varyings)
-{
-	struct symbol *symbol;
-	struct symbol *symbols[16] = { 0 };
-	int i;
-
-	for (i = 0; i < state->vertex_varying_count; i++) {
-		symbol = state->vertex_varyings[i];
-
-		symbol->offset = varyings[i] * 4;
-		symbols[varyings[i]] = symbol;
-	}
-
-	memcpy(state->vertex_varyings, symbols,
-	       state->vertex_varying_count * sizeof(struct symbol *));
-}
-
-int
-limare_link(struct limare_state *state)
+static void
+vertex_shader_varyings_rewrite(struct limare_state *state)
 {
 	int varyings[16] = { -1, -1, -1, -1, -1, -1, -1, -1,
 			     -1, -1, -1, -1, -1, -1, -1, -1 };
 
+#if 0
 	if (limare_link_varyings_match(state))
 		return -1;
+#endif
 
 	limare_link_varyings_indices_get(state, varyings);
 	vertex_shader_varyings_patch(state->vertex_binary->shader,
 				     state->vertex_binary->shader_size / 16,
 				     varyings);
-	vertex_shader_varyings_reorder(state, varyings);
+}
+
+static int
+vertex_varyings_reorder(struct limare_state *state)
+{
+	struct symbol *new[16] = {0};
+	int i, j;
+
+	for (i = 0; i < state->vertex_varying_count; i++) {
+		if (!state->vertex_varyings[i]) {
+			printf("%s: empty vertex varying slot %d\n",
+			       __func__, i);
+			continue;
+		}
+
+		if (!strcmp(state->vertex_varyings[i]->name, "gl_Position")) {
+			state->gl_Position = state->vertex_varyings[i];
+			continue;
+		} else if (!strcmp(state->vertex_varyings[i]->name,
+				 "gl_PointSize")) {
+			state->gl_PointSize = state->vertex_varyings[i];
+			continue;
+		}
+
+		for (j = 0; j < state->fragment_varying_count; j++)
+			if (!strcmp(state->vertex_varyings[i]->name,
+				    state->fragment_varyings[j]->name))
+				break;
+
+		if (j < state->fragment_varying_count) {
+			new[j] = state->vertex_varyings[i];
+			continue;
+		}
+
+		printf("%s: unmatched vertex varying %s.\n",
+		       __func__, state->vertex_varyings[i]->name);
+		return -1;
+	}
+
+	/* now the table should be dense, and the size should match the
+	   fragment varying count */
+	for (i = 0; i < 16; i++)
+		if (!new[i])
+			break;
+
+	if (i != state->fragment_varying_count) {
+		printf("%s: unmatched fragment varying %s.\n",
+		       __func__, state->fragment_varyings[i]->name);
+		return -1;
+	}
+
+	memcpy(state->vertex_varyings, new,
+	       state->vertex_varying_count * sizeof(struct symbol *));
+	state->vertex_varying_count = state->fragment_varying_count;
 
 	return 0;
+}
+
+void
+state_varying_map_print(struct limare_state *state)
+{
+	int i;
+
+	printf("Varying map (0x%03X):\n", state->varying_map_size);
+	for (i = 0; i < 12; i++)
+		printf("\t%2d: offset 0x%02X, entries %d, entry_size %d\n",
+		       i, state->varying_map[i].offset,
+		       state->varying_map[i].entries,
+		       state->varying_map[i].entry_size);
+}
+
+int
+limare_varying_map_create(struct limare_state *state)
+{
+	int table[12 * 4] = {0};
+	int i, j, offset = 0;
+
+	for (i = 0; i < state->fragment_varying_count; i++) {
+		struct symbol *symbol = state->fragment_varyings[i];
+		int size;
+
+		if ((state->fragment_varyings[i]->flag &
+		     SYMBOL_SIZE_PRECISION_ADJUSTED) &&
+		    (state->vertex_varyings[i]->precision == 3))
+			size = state->vertex_varyings[i]->component_size;
+		else if (state->fragment_varyings[i]->precision == 2)
+			size = state->fragment_varyings[i]->component_size / 2;
+		else
+			size = state->fragment_varyings[i]->component_size;
+
+		for (j = 0; j < symbol->component_count; j++)
+			table[symbol->offset + j] = size;
+	}
+
+	for (i = 0; i < 12; i++) {
+		if (table[4 * i + 2] || table[4 * i + 3])
+			state->varying_map[i].entries = 4;
+		else if (table[4 * i + 0] || table[4 * i + 1])
+			state->varying_map[i].entries = 2;
+
+		if (state->varying_map[i].entries) {
+			if ((table[4 * i + 0] == 4) ||
+			    (table[4 * i + 1] == 4) ||
+			    (table[4 * i + 2] == 4) ||
+			    (table[4 * i + 3] == 4))
+				state->varying_map[i].entry_size = 4;
+			else
+				state->varying_map[i].entry_size = 2;
+		}
+	}
+
+	for (i = 0; i < 12; i++) {
+		if (!state->varying_map[i].entries)
+			break;
+
+		state->varying_map[i].offset = offset;
+
+		offset += state->varying_map[i].entries *
+			state->varying_map[i].entry_size;
+	}
+
+	state->varying_map_count = i;
+	state->varying_map_size = ALIGN(offset, 8);
+
+	return 0;
+}
+
+int
+limare_link(struct limare_state *state)
+{
+	int ret;
+	int i;
+
+	ret = vertex_varyings_reorder(state);
+	if (ret)
+		return ret;
+
+	ret = limare_link_varyings_match(state);
+	if (ret)
+		return ret;
+
+	/* temporary safeguard */
+	for (i = 0; i < state->vertex_varying_count; i++) {
+		if (state->fragment_varyings[i]->value_type != 1) {
+			printf("%s: Vertex Varying %s has unhandled type %d\n",
+			       __func__, state->fragment_varyings[i]->name,
+			       state->fragment_varyings[i]->value_type);
+			return -1;
+		} else if (state->fragment_varyings[i]->entry_count != 1) {
+			printf("%s: Vertex Varying %s has unhandled count %d\n",
+			       __func__, state->fragment_varyings[i]->name,
+			       state->fragment_varyings[i]->entry_count);
+			return -1;
+		}
+	}
+
+	/* temporary safeguard */
+	for (i = 0; i < state->fragment_varying_count; i++) {
+		if (state->fragment_varyings[i]->value_type != 1) {
+			printf("%s: Fragment Varying %s has unhandled type %d\n",
+			       __func__, state->fragment_varyings[i]->name,
+			       state->fragment_varyings[i]->value_type);
+			return -1;
+		} else if (state->fragment_varyings[i]->entry_count != 1) {
+			printf("%s: Fragment Varying %s has unhandled count %d\n",
+			       __func__, state->fragment_varyings[i]->name,
+			       state->fragment_varyings[i]->entry_count);
+			return -1;
+		}
+	}
+
+	ret = limare_varying_map_create(state);
+	if (ret)
+		return ret;
+
+	vertex_shader_varyings_rewrite(state);
+
+	return ret;
 }

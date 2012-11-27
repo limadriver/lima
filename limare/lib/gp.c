@@ -247,26 +247,28 @@ vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute)
 	return 0;
 }
 
-/* varyings are still a bit of black magic at this point */
 int
-vs_info_attach_varying(struct draw_info *draw, struct symbol *varying)
+vs_info_attach_varyings(struct limare_state *state, struct draw_info *draw)
 {
 	struct vs_info *info = draw->vs;
-	int size;
 
-	size = ALIGN(varying->size, 0x40);
-	if (size > (draw->mem_size - draw->mem_used)) {
+	info->varying_size = ALIGN(state->varying_map_size, 0x40);
+	if (info->varying_size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
 	}
 
-	varying->physical = draw->mem_physical + draw->mem_used;
-	draw->mem_used += size;
+	info->varying_offset = draw->mem_used;
+	draw->mem_used += info->varying_size;
 
-	info->varyings[info->varying_count] = varying;
-	info->varying_count++;
+	info->gl_Position_size = ALIGN(16, 0x40);
+	if (info->gl_Position_size > (draw->mem_size - draw->mem_used)) {
+		printf("%s: No more space\n", __func__);
+		return -2;
+	}
 
-	/* the vertex shader fills in the varyings */
+	info->gl_Position_offset = draw->mem_used;
+	draw->mem_used += info->gl_Position_size;
 
 	return 0;
 }
@@ -324,7 +326,7 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 	cmds[i].cmd = LIMA_VS_CMD_SHADER_INFO;
 	i++;
 
-	cmds[i].val = ((vs->varying_count - 1) << 8) | ((vs->attribute_count - 1) << 24);
+	cmds[i].val = (state->varying_map_count << 8) | ((vs->attribute_count - 1) << 24);
 	cmds[i].cmd = LIMA_VS_CMD_VARYING_ATTRIBUTE_COUNT;
 	i++;
 
@@ -346,7 +348,7 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 
 		cmds[i].val = draw->mem_physical + vs->varying_area_offset;
 		cmds[i].cmd = LIMA_VS_CMD_VARYINGS_ADDRESS |
-			(vs->varying_count << 17);
+			((state->varying_map_count + 1) << 17);
 		i++;
 	}
 
@@ -371,7 +373,7 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 }
 
 void
-vs_info_finalize(struct limare_state *state, struct vs_info *info)
+vs_info_finalize(struct limare_state *state, struct draw_info *draw, struct vs_info *info)
 {
 	int i;
 
@@ -384,16 +386,22 @@ vs_info_finalize(struct limare_state *state, struct vs_info *info)
 				(info->attributes[i]->component_count - 1);
 		}
 
-		for (i = 0; i < info->varying_count; i++) {
-			info->common->varyings[i].physical = info->varyings[i]->physical;
-			info->common->varyings[i].size = (8 << 11) |
-				(info->varyings[i]->component_count *
-				 info->varyings[i]->component_size - 1);
+		for (i = 0; i < state->varying_map_count; i++) {
+			info->common->varyings[i].physical = draw->mem_physical +
+				info->varying_offset + state->varying_map[i].offset;
+			info->common->varyings[i].size =
+				(state->varying_map_size << 11) |
+				(state->varying_map[i].entries - 1);
+
+			if (state->varying_map[i].entry_size == 2)
+				info->common->varyings[i].size |= 0x0C;
 		}
 
-		/* fix up gl_Position */
-		i--;
-		info->common->varyings[i].size = (16 << 11) | (1 - 1) | 0x20;
+		if (state->gl_Position) {
+			info->common->varyings[i].physical =
+				draw->mem_physical + info->gl_Position_offset;
+			info->common->varyings[i].size = 0x8020;
+		}
 
 	} else if (state->type == LIMARE_TYPE_M400) {
 		for (i = 0; i < info->attribute_count; i++) {
@@ -404,16 +412,22 @@ vs_info_finalize(struct limare_state *state, struct vs_info *info)
 				(info->attributes[i]->component_count - 1);
 		}
 
-		for (i = 0; i < info->varying_count; i++) {
-			info->varying_area[i].physical = info->varyings[i]->physical;
-			info->varying_area[i].size = (8 << 11) |
-				(info->varyings[i]->component_count *
-				 info->varyings[i]->component_size - 1);
+		for (i = 0; i < state->varying_map_count; i++) {
+			info->varying_area[i].physical = draw->mem_physical +
+				info->varying_offset + state->varying_map[i].offset;
+			info->varying_area[i].size =
+				(state->varying_map_size << 11) |
+				(state->varying_map[i].entries - 1);
+
+			if (state->varying_map[i].entry_size == 2)
+				info->varying_area[i].size |= 0x0C;
 		}
 
-		/* fix up gl_Position */
-		i--;
-		info->varying_area[i].size = (16 << 11) | (1 - 1) | 0x20;
+		if (state->gl_Position) {
+			info->varying_area[i].physical =
+				draw->mem_physical + info->gl_Position_offset;
+			info->varying_area[i].size = 0x8020;
+		}
 	}
 }
 
@@ -438,7 +452,7 @@ plbu_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 
 	cmds[i].val = draw->mem_physical + info->render_state_offset;
 	cmds[i].cmd = LIMA_PLBU_CMD_RSW_VERTEX_ARRAY;
-	cmds[i].cmd |= vs->varyings[vs->varying_count - 1]->physical >> 4;
+	cmds[i].cmd |= (draw->mem_physical + vs->gl_Position_offset) >> 4;
 	i++;
 
 	cmds[i].val = (draw->vertex_count << 24); /* | draw->vertex_start; */
@@ -571,7 +585,7 @@ plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 }
 
 int
-plbu_info_render_state_create(struct draw_info *draw)
+plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw)
 {
 	struct plbu_info *info = draw->plbu;
 	struct vs_info *vs = draw->vs;
@@ -622,26 +636,40 @@ plbu_info_render_state_create(struct draw_info *draw)
 	render->unknown34 = 0x300;
 	render->unknown38 = 0x2000;
 
-	if (vs->varying_count > 1) {
-		render->varyings_address = vs->varyings[0]->physical;
-		render->unknown34 |= 0x01;
+	if (vs->varying_size) {
+		render->varyings_address = draw->mem_physical + vs->varying_offset;
+		render->unknown34 |= state->varying_map_size >> 3;
 		render->varying_types = 0;
 
-		for (i = 0; i < (vs->varying_count - 1); i++) {
+		for (i = 0; i < state->varying_map_count; i++) {
+			int val;
+
+			if (state->varying_map[i].entry_size == 4) {
+				if (state->varying_map[i].entries == 4)
+					val = 0;
+				else
+					val = 1;
+			} else {
+				if (state->varying_map[i].entries == 4)
+					val = 2;
+				else
+					val = 3;
+			}
+
 			if (i < 10)
-				render->varying_types |= 2 << (3 * i);
+				render->varying_types |= val << (3 * i);
 			else if (i == 10) {
-				render->varying_types |= 2 << 30;
-				render->varyings_address |= 2 >> 2;
+				render->varying_types |= val << 30;
+				render->varyings_address |= val >> 2;
 			} else if (i == 11)
-				render->varyings_address |= 2 << 1;
+				render->varyings_address |= val << 1;
 
 		}
 	}
 
 	if (info->uniform_size) {
 		render->uniforms_address =
-			(int) draw->mem_physical + info->uniform_array_offset;
+			draw->mem_physical + info->uniform_array_offset;
 
 		render->uniforms_address |=
 			(ALIGN(info->uniform_size, 4) / 4) - 1;
