@@ -1104,8 +1104,6 @@ vertex_shader_attach(struct limare_state *state, const char *source)
 		stream_varying_table_destroy(varying_table);
 	}
 
-	state->vertex_varying_something = binary->parameters.vertex.varying_something;
-
 	state->vertex_binary = binary;
 
 	return 0;

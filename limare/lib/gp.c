@@ -35,6 +35,7 @@
 
 #include "ioctl_registers.h"
 #include "limare.h"
+#include "compiler.h"
 #include "plb.h"
 #include "symbols.h"
 #include "gp.h"
@@ -316,7 +317,9 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 	cmds[i].cmd = LIMA_VS_CMD_SHADER_ADDRESS | (vs->shader_size << 16);
 	i++;
 
-	cmds[i].val = (state->vertex_varying_something - 1) << 20;
+	cmds[i].val =
+		(state->vertex_binary->parameters.vertex.varying_something - 1)
+		<< 20;
 	cmds[i].val |= (vs->shader_size - 1) << 10;
 	cmds[i].cmd = LIMA_VS_CMD_SHADER_INFO;
 	i++;

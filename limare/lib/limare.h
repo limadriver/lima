@@ -80,7 +80,6 @@ struct limare_state {
 
 	struct symbol **vertex_varyings;
 	int vertex_varying_count;
-	int vertex_varying_something;
 
 	struct lima_shader_binary *fragment_binary;
 
