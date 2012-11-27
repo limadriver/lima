@@ -145,3 +145,9 @@ plb_create(struct limare_state *state, unsigned int physical, void *address, int
 
 	return plb;
 }
+
+void
+plb_destroy(struct plb *plb)
+{
+	free(plb);
+}

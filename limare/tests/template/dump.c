@@ -77,7 +77,7 @@ main(int argc, char *argv[])
 	fb_dump(mem_0x40080000.address, 0,
 		dump_render_width, dump_render_height);
 
-	limare_finish();
+	limare_finish(state);
 
 	return 0;
 }

@@ -713,3 +713,14 @@ draw_create_new(struct limare_state *state, struct limare_frame *frame,
 
 	return draw;
 }
+
+void
+draw_info_destroy(struct draw_info *draw)
+{
+	int i;
+
+	for (i = 0; i < draw->vs->attribute_count; i++)
+		symbol_destroy(draw->vs->attributes[i]);
+
+	free(draw);
+}

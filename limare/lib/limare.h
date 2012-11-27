@@ -112,6 +112,6 @@ int limare_draw_arrays(struct limare_state *state, int mode,
 			int vertex_start, int vertex_count);
 int limare_flush(struct limare_state *state);
 
-void limare_finish(void);
+void limare_finish(struct limare_state *state);
 
 #endif /* LIMARE_LIMARE_H */

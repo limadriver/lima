@@ -102,7 +102,7 @@ main(int argc, char *argv[])
 
 	fb_dump(state->dest_mem_address, 0, state->width, state->height);
 
-	limare_finish();
+	limare_finish(state);
 
 	return 0;
 }

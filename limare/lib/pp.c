@@ -90,6 +90,12 @@ pp_info_create(struct limare_state *state, struct limare_frame *frame,
 	return info;
 }
 
+void
+pp_info_destroy(struct pp_info *pp)
+{
+	free(pp);
+}
+
 int
 limare_m200_pp_job_start(struct limare_state *state, struct pp_info *info)
 {

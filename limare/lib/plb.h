@@ -59,5 +59,6 @@ struct plb {
 
 struct plb *plb_create(struct limare_state *state, unsigned int physical,
 		       void *address, int offset, int size);
+void plb_destroy(struct plb *plb);
 
 #endif /* LIMARE_PLB_H */

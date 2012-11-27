@@ -127,6 +127,8 @@ struct draw_info *draw_create_new(struct limare_state *state,
 				  int offset, int size, int draw_mode,
 				  int vertex_start, int vertex_count);
 
+void draw_info_destroy(struct draw_info *draw);
+
 int limare_gp_job_start(struct limare_state *state,
 			struct limare_frame *frame);
 

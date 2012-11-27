@@ -258,6 +258,29 @@ limare_init(void)
 	return NULL;
 }
 
+void
+limare_frame_destroy(struct limare_frame *frame)
+{
+	int i;
+
+	if (!frame)
+		return;
+
+	if (frame->mem_address)
+		munmap(frame->mem_address, frame->mem_size);
+
+	for (i = 0; i < frame->draw_count; i++)
+		draw_info_destroy(frame->draws[i]);
+
+	if (frame->plb)
+		plb_destroy(frame->plb);
+
+	if (frame->pp)
+		pp_info_destroy(frame->pp);
+
+	free(frame);
+}
+
 struct limare_frame *
 limare_frame_create(struct limare_state *state, int offset, int size)
 {
@@ -278,26 +301,33 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
 		       frame->mem_physical, frame->mem_size,
 		       strerror(errno));
+		limare_frame_destroy(frame);
 		return NULL;
 	}
 
 	/* first, set up the plb, this is unchanged between draws. */
 	frame->plb = plb_create(state, frame->mem_physical,
 				frame->mem_address, 0x00000, 0x30000);
-	if (!frame->plb)
+	if (!frame->plb) {
+		limare_frame_destroy(frame);
 		return NULL;
+	}
 
 	/* now add the area for the pp, again, unchanged between draws. */
 	frame->pp = pp_info_create(state, frame,
 				   frame->mem_address, frame->mem_physical,
 				   0x30000, 0x1000);
-	if (!frame->pp)
+	if (!frame->pp) {
+		limare_frame_destroy(frame);
 		return NULL;
+	}
 
 	/* now the two command queues */
 	if (vs_command_queue_create(frame, 0x31000, 0x4000) ||
-	    plbu_command_queue_create(state, frame, 0x35000, 0x4000))
+	    plbu_command_queue_create(state, frame, 0x35000, 0x4000)) {
+		limare_frame_destroy(frame);
 		return NULL;
+	}
 
 	frame->draw_mem_offset = 0x40000;
 	frame->draw_mem_size = 0x70000;
@@ -680,8 +710,10 @@ limare_flush(struct limare_state *state)
  * Just run fflush(stdout) to give the wrapper library a chance to finish.
  */
 void
-limare_finish(void)
+limare_finish(struct limare_state *state)
 {
+	limare_frame_destroy(state->frame);
+
 	fflush(stdout);
 	sleep(1);
 }
