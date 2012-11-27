@@ -352,8 +352,8 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 	cmds[i].cmd = 0x10000041;
 	i++;
 
-	cmds[i].val = (draw->vertex_count << 24);
-	cmds[i].cmd = 0x00000000;
+	cmds[i].val = draw->vertex_count << 24;
+	cmds[i].cmd = draw->vertex_count >> 8;
 	i++;
 
 	cmds[i].val = 0x00000000;
