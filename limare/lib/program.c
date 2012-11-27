@@ -290,12 +290,18 @@ stream_uniform_table_create(void *stream, int size)
 		}
 
 		/* skip some tags that might be there */
-		offset += stream_uniform_skip(stream + offset);
-		offset += stream_uniform_skip(stream + offset);
-		offset += stream_uniform_skip(stream + offset);
-		offset += stream_uniform_skip(stream + offset);
+		if (offset < size)
+			offset += stream_uniform_skip(stream + offset);
+		if (offset < size)
+			offset += stream_uniform_skip(stream + offset);
+		if (offset < size)
+			offset += stream_uniform_skip(stream + offset);
+		if (offset < size)
+			offset += stream_uniform_skip(stream + offset);
 
-		offset += stream_uniform_init_read(stream + offset, uniform);
+		if (offset < size)
+			offset += stream_uniform_init_read(stream + offset,
+							   uniform);
 		/* it is legal to not have an init block */
 
 		uniform->next = table->uniforms;
