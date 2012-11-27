@@ -74,6 +74,8 @@ fb_clear(void)
 
 	memset(fb, 0xFF, info.xres * info.yres * 4);
 
+	munmap(fb, info.xres * info.yres * 4);
+
 	close(fd);
 	return;
 }
