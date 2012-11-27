@@ -477,33 +477,43 @@ limare_attribute_pointer(struct limare_state *state, char *name, int size,
 {
 	struct limare_program *program =
 		state->programs[state->program_current];
+	struct symbol *symbol;
 	int i;
 
 	for (i = 0; i < program->vertex_attribute_count; i++) {
-		struct symbol *symbol = program->vertex_attributes[i];
+		symbol = program->vertex_attributes[i];
 
-		if (!strcmp(symbol->name, name)) {
-			if (symbol->precision != 3) {
-				printf("%s: Attribute %s has unsupported precision\n",
-				       __func__, name);
-				return -1;
-			}
-
-			if (symbol->component_size == size) {
-				symbol->component_count = count;
-				symbol->data = data;
-				return 0;
-			}
-
-			printf("%s: Error: Attribute %s has different dimensions\n",
-			       __func__, name);
-			return -1;
-		}
+		if (!strcmp(symbol->name, name))
+			break;
 	}
 
-	printf("%s: Error: Unable to find attribute %s\n",
-	       __func__, name);
-	return -1;
+	if (i == program->vertex_attribute_count) {
+		printf("%s: Error: Unable to find attribute %s\n",
+		       __func__, name);
+		return -1;
+	}
+
+	if (symbol->precision != 3) {
+		printf("%s: Attribute %s has unsupported precision\n",
+		       __func__, name);
+		return -1;
+	}
+
+	if (symbol->component_size != size) {
+		printf("%s: Error: Attribute %s has different dimensions\n",
+		       __func__, name);
+		return -1;
+	}
+
+	if (symbol->data && symbol->data_allocated) {
+		free(symbol->data);
+		symbol->data = NULL;
+		symbol->data_allocated = 0;
+	}
+
+	symbol->component_count = count;
+	symbol->data = data;
+	return 0;
 }
 
 int
@@ -514,9 +524,10 @@ limare_gl_mali_ViewPortTransform(struct limare_state *state,
 	float depth_near = 0, depth_far = 1.0;
 	float *viewport;
 
-	if (symbol->data) {
-		if (symbol->data_allocated)
-			free(symbol->data);
+	if (symbol->data && symbol->data_allocated) {
+		free(symbol->data);
+		symbol->data = NULL;
+		symbol->data_allocated = 0;
 	}
 
 	symbol->data = calloc(8, sizeof(float));
@@ -525,6 +536,8 @@ limare_gl_mali_ViewPortTransform(struct limare_state *state,
 		       __func__, strerror(errno));
 		return -1;
 	}
+
+	symbol->data_allocated = 1;
 
 	viewport = symbol->data;
 
