@@ -45,6 +45,7 @@
 #include "render_state.h"
 #include "hfloat.h"
 #include "from_float.h"
+#include "texture.h"
 
 int
 vs_command_queue_create(struct limare_state *state, int offset, int size)
@@ -585,6 +586,44 @@ plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 }
 
 int
+plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
+			  int count)
+{
+	unsigned int *list;
+	int i;
+
+	if (!count || !textures[0])
+		return 0;
+
+	if (count > 8) {
+		printf("%s: Cannot attach more than 8 texture to a draw\n",
+		       __func__);
+		return -1;
+	}
+
+	draw->texture_descriptor_count = count;
+	draw->texture_descriptor_list_offset = draw->mem_used;
+
+	draw->mem_used += ALIGN(4 * count, 0x40);
+
+	list = draw->mem_address + draw->texture_descriptor_list_offset;
+
+	for (i = 0; i < count; i++) {
+		struct texture *texture = textures[i];
+
+		texture->descriptor_offset = draw->mem_used;
+		draw->mem_used += ALIGN(4 * count, 0x40);
+
+		memcpy(draw->mem_address + texture->descriptor_offset,
+		       texture->descriptor, 0x40);
+
+		list[i] = draw->mem_physical + textures[i]->descriptor_offset;
+	}
+
+	return 0;
+}
+
+int
 plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw)
 {
 	struct plbu_info *info = draw->plbu;
@@ -676,6 +715,15 @@ plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw
 
 		render->unknown34 |= 0x80;
 		render->unknown38 |= 0x10000;
+	}
+
+	if (draw->texture_descriptor_count) {
+
+		render->textures_address =
+			draw->mem_physical + draw->texture_descriptor_list_offset;
+		render->unknown34 |= draw->texture_descriptor_count << 14;
+
+		render->unknown34 |= 0x20;
 	}
 
 	return 0;

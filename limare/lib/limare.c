@@ -43,6 +43,7 @@
 #include "jobs.h"
 #include "symbols.h"
 #include "compiler.h"
+#include "texture.h"
 
 static int
 limare_fd_open(struct limare_state *state)
@@ -297,6 +298,9 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	state->draw_mem_offset = 0x90000;
 	state->draw_mem_size = 0x70000;
 
+	state->texture_mem_offset = 0x100000;
+	state->texture_mem_size = 0x100000;
+
 	return 0;
 }
 
@@ -411,6 +415,49 @@ limare_gl_mali_ViewPortTransform(struct limare_state *state,
 }
 
 int
+limare_texture_attach(struct limare_state *state, char *uniform_name,
+		      void *pixels, int width, int height, int format)
+{
+	struct symbol *symbol;
+	int unit = 0, i;
+
+	if (state->texture) {
+		printf("%s: already have a texture assigned\n", __func__);
+		return -1;
+	}
+
+	for (i = 0; i < state->fragment_uniform_count; i++) {
+		symbol = state->fragment_uniforms[i];
+
+		if (!strcmp(symbol->name, uniform_name))
+			break;
+	}
+
+	if (symbol->data) {
+		printf("%s: Error: vertex uniform %s is empty.\n",
+		       __func__, symbol->name);
+		return -1;
+	}
+
+	state->texture = texture_create(state, pixels, width, height, format);
+	if (!state->texture)
+		return -1;
+
+	symbol->data_allocated = 1;
+	symbol->data = calloc(1, symbol->size);
+
+	if (symbol->size == 4)
+		*((unsigned int *) symbol->data) = unit;
+	else if (symbol->size == 2)
+		*((unsigned short *) symbol->data) = unit;
+	else
+		printf("%s: Error: unhandled size for %s is.\n",
+		       __func__, symbol->name);
+
+	return 0;
+}
+
+int
 limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 {
 	struct draw_info *draw;
@@ -496,6 +543,9 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 	if (plbu_info_attach_uniforms(draw, state->fragment_uniforms,
 				      state->fragment_uniform_count,
 				      state->fragment_uniform_size))
+		return -1;
+
+	if (plbu_info_attach_textures(draw, &state->texture, 1))
 		return -1;
 
 	vs_commands_draw_add(state, draw);

@@ -74,6 +74,10 @@ struct limare_state {
 	int plbu_commands_count;
 	int plbu_commands_size;
 
+	unsigned int texture_mem_offset;
+	int texture_mem_size;
+	struct texture *texture;
+
 	/* program */
 	struct lima_shader_binary *vertex_binary;
 
@@ -115,6 +119,9 @@ int limare_uniform_attach(struct limare_state *state, char *name, int size,
 			   int count, void *data);
 int limare_attribute_pointer(struct limare_state *state, char *name, int size,
 			      int count, void *data);
+int limare_texture_attach(struct limare_state *state, char *uniform_name,
+			  const void *pixels, int width, int height,
+			  int format);
 int limare_draw_arrays(struct limare_state *state, int mode,
 			int vertex_start, int vertex_count);
 int limare_flush(struct limare_state *state);

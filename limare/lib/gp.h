@@ -103,6 +103,8 @@ void plbu_commands_finish(struct limare_state *state);
 int plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size);
 int plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			    int count, int size);
+int plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
+			      int count);
 
 int plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw);
 
@@ -119,6 +121,9 @@ struct draw_info {
 	struct vs_info vs[1];
 
 	struct plbu_info plbu[1];
+
+	int texture_descriptor_count;
+	unsigned int texture_descriptor_list_offset;
 };
 
 struct draw_info *draw_create_new(struct limare_state *state, int offset,
