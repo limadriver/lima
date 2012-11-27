@@ -33,6 +33,8 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 
+#include <GLES2/gl2.h>
+
 #include "ioctl_registers.h"
 #include "limare.h"
 #include "compiler.h"
@@ -314,16 +316,19 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 		     struct limare_program *program, struct draw_info *draw)
 {
 	struct vs_info *vs = draw->vs;
+	struct plbu_info *plbu = draw->plbu;
 	struct lima_cmd *cmds = frame->vs_commands;
 	int i = frame->vs_commands_count;
 
-	cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
-	cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
-	i++;
+	if (!plbu->indices_offset) {
+		cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
+		cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
+		i++;
 
-	cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_2;
-	cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
-	i++;
+		cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_2;
+		cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
+		i++;
+	}
 
 	cmds[i].val = program->mem_physical + program->vertex_offset;
 	cmds[i].cmd = LIMA_VS_CMD_SHADER_ADDRESS |
@@ -368,14 +373,19 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 	i++;
 
 	cmds[i].val = draw->vertex_count << 24;
-	cmds[i].cmd = LIMA_VS_CMD_VERTEX_COUNT | draw->vertex_count >> 8;
+	if (plbu->indices_offset)
+		cmds[i].val |= 0x01;
+	cmds[i].cmd = LIMA_VS_CMD_DRAW | draw->vertex_count >> 8;
 	i++;
 
 	cmds[i].val = 0x00000000;
 	cmds[i].cmd = 0x60000000;
 	i++;
 
-	cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_END;
+	if (plbu->indices_offset)
+		cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_NEXT;
+	else
+		cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_END;
 	cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
@@ -467,11 +477,19 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 	/*
 	 *
 	 */
-	cmds[i].val = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN;
-	cmds[i].cmd = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE;
-	i++;
+	if (!plbu->indices_offset) {
+		cmds[i].val = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN;
+		cmds[i].cmd = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE;
+		i++;
+	}
 
 	cmds[i].val = 0x00002200 | LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW;
+	if (plbu->indices_offset) {
+		if (plbu->indices_type == GL_UNSIGNED_SHORT)
+			cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_SHORT;
+		else
+			cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_BYTE;
+	}
 	cmds[i].cmd = LIMA_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
@@ -480,14 +498,32 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 	cmds[i].cmd |= (frame->mem_physical + vs->gl_Position_offset) >> 4;
 	i++;
 
-	cmds[i].val = (draw->vertex_count << 24) | draw->vertex_start;
-	cmds[i].cmd = LIMA_PLBU_CMD_VERTEX_COUNT |
-		((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
-	i++;
+	if (plbu->indices_offset) {
+		cmds[i].val = frame->mem_physical + vs->gl_Position_offset;
+		cmds[i].cmd = LIMA_PLBU_CMD_INDEXED_DEST;
+		i++;
+
+		cmds[i].val = frame->mem_physical + plbu->indices_offset;
+		cmds[i].cmd = LIMA_PLBU_CMD_INDICES;
+		i++;
+	} else {
+		cmds[i].val = (draw->vertex_count << 24) | draw->vertex_start;
+		cmds[i].cmd = LIMA_PLBU_CMD_DRAW | LIMA_PLBU_CMD_DRAW_ARRAYS |
+			((draw->draw_mode & 0x1F) << 16) |
+			(draw->vertex_count >> 8);
+		i++;
+	}
 
 	cmds[i].val = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE_END;
 	cmds[i].cmd = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE;
 	i++;
+
+	if (plbu->indices_offset) {
+		cmds[i].val = (draw->vertex_count << 24) | draw->vertex_start;
+		cmds[i].cmd = LIMA_PLBU_CMD_DRAW | LIMA_PLBU_CMD_DRAW_ELEMENTS |
+			((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
+		i++;
+	}
 
 	/* update our size so we can set the gp job properly */
 	frame->plbu_commands_count = i;
@@ -580,6 +616,43 @@ plbu_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
 		memcpy(address + symbol->component_size * symbol->offset,
 		       symbol->data, symbol->size);
 	}
+
+	return 0;
+}
+
+int
+plbu_info_attach_indices(struct limare_frame *frame, struct draw_info *draw,
+			 void *indices, int indices_type, int count)
+{
+	struct plbu_info *plbu = draw->plbu;
+	int size;
+	void *address;
+
+	if (!indices)
+		return 0;
+
+	if (indices_type == GL_UNSIGNED_BYTE)
+		size = count;
+	else if (indices_type == GL_UNSIGNED_SHORT)
+		size = count * 2;
+	else {
+		printf("%s: only bytes and shorts supported.\n", __func__);
+		return -1;
+	}
+
+	if ((frame->mem_size - frame->mem_used) < (0x40 + ALIGN(size, 0x40))) {
+		printf("%s: no space for indices\n", __func__);
+		return -1;
+	}
+
+	plbu->indices_type = indices_type;
+
+	plbu->indices_offset = frame->mem_used;
+	frame->mem_used += ALIGN(size, 0x40);
+
+	address = frame->mem_address + plbu->indices_offset;
+
+	memcpy(address, indices, size);
 
 	return 0;
 }

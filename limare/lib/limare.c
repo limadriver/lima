@@ -621,8 +621,9 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 	return 0;
 }
 
-int
-limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
+static int
+limare_draw(struct limare_state *state, int mode, int start, int count,
+	    void *indices, int indices_type)
 {
 	struct limare_program *program =
 		state->programs[state->program_current];
@@ -641,6 +642,11 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 		return -1;
 	}
 
+	if (start && indices) {
+		printf("%s: Error: start provided when drawing elements.\n",
+		       __func__);
+		return -1;
+	}
 
 	/* Todo, check whether attributes all have data attached! */
 
@@ -701,6 +707,10 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 				      program->fragment_uniform_size))
 		return -1;
 
+	if (indices && plbu_info_attach_indices(frame, draw,
+						indices, indices_type, count))
+		return -1;
+
 	if (plbu_info_attach_textures(frame, draw, &state->texture, 1))
 		return -1;
 
@@ -711,6 +721,19 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 	plbu_commands_draw_add(frame, draw);
 
 	return 0;
+}
+
+int
+limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
+{
+	return limare_draw(state, mode, start, count, NULL, 0);
+}
+
+int
+limare_draw_elements(struct limare_state *state, int mode, int count,
+		     void *indices, int indices_type)
+{
+	return limare_draw(state, mode, 0, count, indices, indices_type);
 }
 
 int

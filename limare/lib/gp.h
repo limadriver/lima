@@ -90,6 +90,9 @@ struct plbu_info {
 
 	int uniform_offset;
 	int uniform_size;
+
+	int indices_offset;
+	int indices_type;
 };
 
 int vs_command_queue_create(struct limare_frame *frame, int size);
@@ -103,6 +106,8 @@ void plbu_commands_finish(struct limare_frame *frame);
 int plbu_info_attach_uniforms(struct limare_frame *frame,
 			      struct draw_info *draw, struct symbol **uniforms,
 			      int count, int size);
+int plbu_info_attach_indices(struct limare_frame *frame, struct draw_info *draw,
+			     void *indices, int indices_type, int count);
 int plbu_info_attach_textures(struct limare_frame *frame,
 			      struct draw_info *draw, struct texture **textures,
 			      int count);

@@ -29,7 +29,10 @@
 #ifndef LIMA_PLBU_H
 #define LIMA_PLBU_H 1
 
-#define LIMA_PLBU_CMD_VERTEX_COUNT       0x00000000
+#define LIMA_PLBU_CMD_DRAW               0x00000000
+
+#define LIMA_PLBU_CMD_DRAW_ARRAYS        0x00000000
+#define LIMA_PLBU_CMD_DRAW_ELEMENTS      0x00200000
 
 #define LIMA_PLBU_CMD_INDEXED_DEST       0x10000100
 #define LIMA_PLBU_CMD_INDICES            0x10000101
@@ -55,6 +58,8 @@
  */
 #define LIMA_PLBU_CMD_PRIMITIVE_SETUP    0x1000010B
 #define LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW         0x00040000
+#define LIMA_PLBU_CMD_PRIMITIVE_INDEX_BYTE       0x00000000
+#define LIMA_PLBU_CMD_PRIMITIVE_INDEX_SHORT      0x00000400
 
 /* Determines how to map tiles to blocks, in shifted values.
  *
