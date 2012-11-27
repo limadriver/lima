@@ -1,6 +1,6 @@
 NAME = quad_textured
 
-targets = egl
+targets = egl limare
 
 objs = ../common/companion_texture_flat.o
 
