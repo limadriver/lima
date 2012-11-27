@@ -341,7 +341,7 @@ limare_uniform_attach(struct limare_state *state, char *name, int size,
 	}
 
 	if (!found) {
-		printf("%s: Error: Unable to find attribute %s\n",
+		printf("%s: Error: Unable to find uniform %s\n",
 		       __func__, name);
 		return -1;
 	}
