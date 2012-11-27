@@ -292,6 +292,7 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 
 	/* space for our programs and textures. */
 	frame->mem_size = size;
+	frame->mem_used = 0;
 	frame->mem_physical = state->mem_base + offset;
 	frame->mem_address = mmap(NULL, frame->mem_size,
 				  PROT_READ | PROT_WRITE,
@@ -305,35 +306,26 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 		return NULL;
 	}
 
-	frame->tile_heap_offset = 0x100000;
-	frame->tile_heap_size = 0x80000;
-
 	/* first, set up the plb, this is unchanged between draws. */
-	frame->plb = plb_create(state, frame->mem_physical,
-				frame->mem_address, 0x00000, 0x30000);
+	frame->plb = plb_create(state, frame);
 	if (!frame->plb) {
 		limare_frame_destroy(frame);
 		return NULL;
 	}
 
 	/* now add the area for the pp, again, unchanged between draws. */
-	frame->pp = pp_info_create(state, frame,
-				   frame->mem_address, frame->mem_physical,
-				   0x30000, 0x1000);
+	frame->pp = pp_info_create(state, frame);
 	if (!frame->pp) {
 		limare_frame_destroy(frame);
 		return NULL;
 	}
 
 	/* now the two command queues */
-	if (vs_command_queue_create(frame, 0x31000, 0x4000) ||
-	    plbu_command_queue_create(state, frame, 0x35000, 0x4000)) {
+	if (vs_command_queue_create(frame, 0x4000) ||
+	    plbu_command_queue_create(state, frame, 0x4000, 0x50000)) {
 		limare_frame_destroy(frame);
 		return NULL;
 	}
-
-	frame->draw_mem_offset = 0x40000;
-	frame->draw_mem_size =   0xC0000;
 
 	return frame;
 }
@@ -655,20 +647,9 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 		printf("%s: Error: too many draws already!\n", __func__);
 		return -1;
 	}
-#define DRAW_SIZE 0xC0000
 
-	if (frame->draw_mem_size < DRAW_SIZE) {
-		printf("%s: Error: no more space available!\n", __func__);
-		return -1;
-	}
-
-	draw = draw_create_new(state, frame, frame->draw_mem_offset,
-			       DRAW_SIZE, mode, start, count);
+	draw = draw_create_new(state, frame, mode, start, count);
 	frame->draws[frame->draw_count] = draw;
-	frame->draw_count++;
-
-	frame->draw_mem_offset += DRAW_SIZE;
-	frame->draw_mem_size -= DRAW_SIZE;
 	frame->draw_count++;
 
 	for (i = 0; i < program->vertex_attribute_count; i++) {
@@ -676,30 +657,32 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 
 		symbol = symbol_copy(program->vertex_attributes[i], start, count);
 		if (symbol)
-			vs_info_attach_attribute(draw, symbol);
+			vs_info_attach_attribute(frame, draw, symbol);
 
 	}
 
-	if (vs_info_attach_varyings(program, draw))
+	if (vs_info_attach_varyings(program, frame, draw))
 		return -1;
 
-	if (vs_info_attach_uniforms(draw, program->vertex_uniforms,
+	if (vs_info_attach_uniforms(frame, draw,
+				    program->vertex_uniforms,
 				    program->vertex_uniform_count,
 				    program->vertex_uniform_size))
 		return -1;
 
-	if (plbu_info_attach_uniforms(draw, program->fragment_uniforms,
+	if (plbu_info_attach_uniforms(frame, draw,
+				      program->fragment_uniforms,
 				      program->fragment_uniform_count,
 				      program->fragment_uniform_size))
 		return -1;
 
-	if (plbu_info_attach_textures(draw, &state->texture, 1))
+	if (plbu_info_attach_textures(frame, draw, &state->texture, 1))
 		return -1;
 
 	vs_commands_draw_add(state, frame, program, draw);
-	vs_info_finalize(state, program, draw, draw->vs);
+	vs_info_finalize(state, frame, program, draw, draw->vs);
 
-	plbu_info_render_state_create(program, draw);
+	plbu_info_render_state_create(program, frame, draw);
 	plbu_commands_draw_add(frame, draw);
 
 	return 0;

@@ -50,9 +50,7 @@ struct pp_info
 };
 
 struct pp_info *pp_info_create(struct limare_state *state,
-			       struct limare_frame *frame,
-			       void *address, unsigned int physical,
-			       int offset, int size);
+			       struct limare_frame *frame);
 void pp_info_destroy(struct pp_info *pp);
 
 int limare_pp_job_start(struct limare_state *state, struct pp_info *info);

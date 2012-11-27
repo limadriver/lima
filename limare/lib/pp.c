@@ -41,8 +41,7 @@
 #include "jobs.h"
 
 struct pp_info *
-pp_info_create(struct limare_state *state, struct limare_frame *frame,
-	       void *address, unsigned int physical, int offset, int size)
+pp_info_create(struct limare_state *state, struct limare_frame *frame)
 {
 	struct plb *plb;
 	struct pp_info *info;
@@ -56,30 +55,36 @@ pp_info_create(struct limare_state *state, struct limare_frame *frame,
 
 	plb = frame->plb;
 
+	if ((frame->mem_size - frame->mem_used) < 0x80) {
+		printf("%s: no space for the pp\n", __func__);
+		return NULL;
+	}
+
 	info = calloc(1, sizeof(struct pp_info));
 	if (!info)
-		return 0;
+		return NULL;
 
 	info->width = state->width;
 	info->height = state->height;
 	info->pitch = state->width * 4;
 	info->clear_color = state->clear_color;
 
-	info->plb_physical = plb->mem_physical + plb->pp_offset;
+	info->plb_physical = frame->mem_physical + plb->pp_offset;
 	info->plb_shift_w = plb->shift_w;
 	info->plb_shift_h = plb->shift_h;
 
 	/* now fill out our other requirements */
-	info->quad_address = address + offset;
-	info->quad_physical = physical + offset;
 	info->quad_size = 5;
+	info->quad_address = frame->mem_address + frame->mem_used;
+	info->quad_physical = frame->mem_physical + frame->mem_used;
+	frame->mem_used += 0x40;
 
 	memcpy(info->quad_address, quad, 4 * info->quad_size);
 
-	offset = ALIGN(info->quad_size, 0x40);
-	info->render_address = ((void *) info->quad_address) + offset;
-	info->render_physical = info->quad_physical + offset;
 	info->render_size = 0x40;
+	info->render_address = frame->mem_address + frame->mem_used;
+	info->render_physical = frame->mem_physical + frame->mem_used;
+	frame->mem_used += 0x40;
 
 	memset(info->render_address, 0, 0x40);
 

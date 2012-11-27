@@ -33,7 +33,8 @@ struct lima_cmd {
 
 struct limare_frame {
 	unsigned int mem_physical;
-	unsigned int mem_size;
+	int mem_size;
+	int mem_used;
 	void *mem_address;
 
 	unsigned int tile_heap_offset;
@@ -41,9 +42,6 @@ struct limare_frame {
 
 	struct draw_info *draws[32];
 	int draw_count;
-
-	unsigned int draw_mem_offset;
-	int draw_mem_size;
 
 	struct plb *plb;
 

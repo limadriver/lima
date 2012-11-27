@@ -35,10 +35,10 @@
  * Generate the plb address stream for the plbu.
  */
 static void
-plb_plbu_stream_create(struct plb *plb)
+plb_plbu_stream_create(struct limare_frame *frame, struct plb *plb)
 {
-	unsigned int address = plb->mem_physical + plb->plb_offset;
-	unsigned int *stream = plb->mem_address + plb->plbu_offset;
+	unsigned int address = frame->mem_physical + plb->plb_offset;
+	unsigned int *stream = frame->mem_address + plb->plbu_offset;
 	int i, size = plb->block_w * plb->block_h;
 
 	for (i = 0; i < size; i++)
@@ -49,10 +49,10 @@ plb_plbu_stream_create(struct plb *plb)
  * Generate the PLB desciptors for the PP.
  */
 static void
-plb_pp_stream_create(struct plb *plb)
+plb_pp_stream_create(struct limare_frame *frame, struct plb *plb)
 {
-	unsigned int address = plb->mem_physical + plb->plb_offset;
-	unsigned int *stream = plb->mem_address + plb->pp_offset;
+	unsigned int address = frame->mem_physical + plb->plb_offset;
+	unsigned int *stream = frame->mem_address + plb->pp_offset;
 	int x, y, index = 0;
 
 	for (y = 0; y < plb->tiled_h; y += 1) {
@@ -73,10 +73,10 @@ plb_pp_stream_create(struct plb *plb)
 }
 
 struct plb *
-plb_create(struct limare_state *state, unsigned int physical, void *address, int offset, int size)
+plb_create(struct limare_state *state, struct limare_frame *frame)
 {
 	struct plb *plb = calloc(1, sizeof(struct plb));
-	int width, height, limit;
+	int width, height, limit, mem_used = 0;
 
 	width = ALIGN(state->width, 16) >> 4;
 	height = ALIGN(state->height, 16) >> 4;
@@ -116,32 +116,31 @@ plb_create(struct limare_state *state, unsigned int physical, void *address, int
 #endif
 
 	plb->plb_size = plb->block_size * plb->block_w * plb->block_h;
-	plb->plb_offset = 0;
+	plb->plb_offset = frame->mem_used + mem_used;
+	mem_used += ALIGN(plb->plb_size, 0x40);
 
 	if (state->type == LIMARE_TYPE_M400)
 		plb->plbu_size = 4 * plb->block_w * plb->block_h;
 	else
 		/* fixed size on mali200 */
 		plb->plbu_size = 4 * 300;
-
-	plb->plbu_offset = ALIGN(plb->plb_size, 0x40);
+	plb->plbu_offset = frame->mem_used + mem_used;
+	mem_used += ALIGN(plb->plbu_size, 0x40);
 
 	plb->pp_size = 16 * (plb->tiled_w * plb->tiled_h + 1);
-	plb->pp_offset = ALIGN(plb->plbu_offset + plb->plbu_size, 0x40);
+	plb->pp_offset = frame->mem_used + mem_used;
+	mem_used += ALIGN(plb->pp_size, 0x40);
 
-	plb->mem_address = address + offset;
-	plb->mem_physical = physical + offset;
-	/* just align to page size for convenience */
-	plb->mem_size = ALIGN(plb->pp_offset + plb->pp_size, 0x1000);
-
-	if (plb->mem_size > size) {
-		printf("Error: plb size exceeds available space.\n");
+	if ((frame->mem_used + mem_used) > frame->mem_size) {
+		printf("%s: no space for the plb areas\n", __func__);
 		free(plb);
-		plb = NULL;
+		return NULL;
 	}
 
-	plb_plbu_stream_create(plb);
-	plb_pp_stream_create(plb);
+	frame->mem_used += mem_used;
+
+	plb_plbu_stream_create(frame, plb);
+	plb_pp_stream_create(frame, plb);
 
 	return plb;
 }

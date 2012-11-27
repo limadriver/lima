@@ -51,14 +51,9 @@ struct plb {
 	/* holds the coordinates and addresses of the primitives for the PP */
 	int pp_offset;
 	int pp_size; /* 16 * (width * height + 1) */
-
-	void *mem_address;
-	int mem_physical;
-	int mem_size;
 };
 
-struct plb *plb_create(struct limare_state *state, unsigned int physical,
-		       void *address, int offset, int size);
+struct plb *plb_create(struct limare_state *state, struct limare_frame *frame);
 void plb_destroy(struct plb *plb);
 
 #endif /* LIMARE_PLB_H */

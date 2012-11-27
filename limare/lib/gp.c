@@ -49,28 +49,50 @@
 #include "program.h"
 
 int
-vs_command_queue_create(struct limare_frame *frame, int offset, int size)
+vs_command_queue_create(struct limare_frame *frame, int size)
 {
-	frame->vs_commands = frame->mem_address + offset;
-	frame->vs_commands_physical = frame->mem_physical + offset;
+	size = ALIGN(size, 0x40);
+
+	if ((frame->mem_size - frame->mem_used) < size) {
+		printf("%s: no space for vs queue\n", __func__);
+		return -1;
+	}
+
+	frame->vs_commands = frame->mem_address + frame->mem_used;
+	frame->vs_commands_physical = frame->mem_physical + frame->mem_used;
 	frame->vs_commands_count = 0;
 	frame->vs_commands_size = size / 8;
+
+	frame->mem_used += size;
 
 	return 0;
 }
 
 int
 plbu_command_queue_create(struct limare_state *state,
-			  struct limare_frame *frame, int offset, int size)
+			  struct limare_frame *frame, int size, int heap_size)
 {
 	struct plb *plb = frame->plb;
 	struct lima_cmd *cmds;
 	int i = 0;
 
-	frame->plbu_commands = frame->mem_address + offset;
-	frame->plbu_commands_physical = frame->mem_physical + offset;
+	size = ALIGN(size, 0x40);
+	heap_size = ALIGN(heap_size, 0x40);
+
+	if ((frame->mem_size - frame->mem_used) < (size + heap_size)) {
+		printf("%s: no space for plbu queue and tile heap\n", __func__);
+		return -1;
+	}
+
+	frame->tile_heap_offset = frame->mem_used;
+	frame->tile_heap_size = heap_size;
+	frame->mem_used += heap_size;
+
+	frame->plbu_commands = frame->mem_address + frame->mem_used;
+	frame->plbu_commands_physical = frame->mem_physical + frame->mem_used;
 	frame->plbu_commands_count = 0;
 	frame->plbu_commands_size = size / 8;
+	frame->mem_used += size;
 
 	cmds = frame->plbu_commands;
 
@@ -99,7 +121,7 @@ plbu_command_queue_create(struct limare_state *state,
 	cmds[i].cmd = LIMA_PLBU_CMD_PLBU_BLOCK_STRIDE;
 	i++;
 
-	cmds[i].val = plb->mem_physical + plb->plbu_offset;
+	cmds[i].val = frame->mem_physical + plb->plbu_offset;
 	if (state->type == LIMARE_TYPE_M200)
 		cmds[i].cmd = LIMA_M200_PLBU_CMD_PLBU_ARRAY_ADDRESS;
 	else if (state->type == LIMARE_TYPE_M400) {
@@ -151,18 +173,25 @@ plbu_command_queue_create(struct limare_state *state,
 	return 0;
 }
 
-void
-vs_info_setup(struct limare_state *state, struct draw_info *draw)
+int
+vs_info_setup(struct limare_state *state, struct limare_frame *frame,
+	      struct draw_info *draw)
 {
 	struct vs_info *info = draw->vs;
 	int i;
 
 	if (state->type == LIMARE_TYPE_M200) {
+		if ((frame->mem_size - frame->mem_used) <
+		    sizeof(struct gp_common)) {
+			printf("%s: no space for vs common\n", __func__);
+			return -1;
+		}
+
 		/* lima200 has a common area for attributes and varyings. */
-		info->common = draw->mem_address + draw->mem_used;
-		info->common_offset = draw->mem_used;
+		info->common = frame->mem_address + frame->mem_used;
+		info->common_offset = frame->mem_used;
 		info->common_size = sizeof(struct gp_common);
-		draw->mem_used += ALIGN(info->common_size, 0x40);
+		frame->mem_used += ALIGN(info->common_size, 0x40);
 
 		/* initialize common */
 		for (i = 0; i < 0x10; i++) {
@@ -174,31 +203,46 @@ vs_info_setup(struct limare_state *state, struct draw_info *draw)
 			info->common->varyings[i].size = 0x3F;
 		}
 	} else if (state->type == LIMARE_TYPE_M400) {
-		info->attribute_area = draw->mem_address + draw->mem_used;
-		info->attribute_area_size = 0x10 * sizeof(struct gp_common_entry);
-		info->attribute_area_offset = draw->mem_used;
-		draw->mem_used += ALIGN(info->attribute_area_size, 0x40);
+		if ((frame->mem_size - frame->mem_used) <
+		    (0x20 * sizeof(struct gp_common_entry))) {
+			printf("%s: no space for vs attribute/varying area\n",
+			       __func__);
+			return -1;
+		}
 
-		info->varying_area = draw->mem_address + draw->mem_used;
+		info->attribute_area = frame->mem_address + frame->mem_used;
+		info->attribute_area_size = 0x10 * sizeof(struct gp_common_entry);
+		info->attribute_area_offset = frame->mem_used;
+		frame->mem_used += ALIGN(info->attribute_area_size, 0x40);
+
+		info->varying_area = frame->mem_address + frame->mem_used;
 		info->varying_area_size = 0x10 * sizeof(struct gp_common_entry);
-		info->varying_area_offset = draw->mem_used;
-		draw->mem_used += ALIGN(info->varying_area_size, 0x40);
+		info->varying_area_offset = frame->mem_used;
+		frame->mem_used += ALIGN(info->varying_area_size, 0x40);
 	}
+
+	return 0;
 }
 
 int
-vs_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
-			int count, int size)
+vs_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
+			struct symbol **uniforms, int count, int size)
 {
 	struct vs_info *info = draw->vs;
 	void *address;
 	int i;
 
-	info->uniform_offset = draw->mem_used;
-	info->uniform_size = size;
-	draw->mem_used += ALIGN(4 * size, 0x40);
+	if ((frame->mem_size - frame->mem_used) <
+	    ALIGN(4 * size, 0x40)) {
+		printf("%s: no space for uniforms\n", __func__);
+		return -1;
+	}
 
-	address = draw->mem_address + info->uniform_offset;
+	info->uniform_offset = frame->mem_used;
+	info->uniform_size = size;
+	frame->mem_used += ALIGN(4 * size, 0x40);
+
+	address = frame->mem_address + info->uniform_offset;
 
 	for (i = 0; i < count; i++) {
 		struct symbol *symbol = uniforms[i];
@@ -222,7 +266,8 @@ vs_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 }
 
 int
-vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute)
+vs_info_attach_attribute(struct limare_frame *frame, struct draw_info *draw,
+			 struct symbol *attribute)
 {
 	struct vs_info *info = draw->vs;
 	int size;
@@ -233,14 +278,14 @@ vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute)
 	}
 
 	size = ALIGN(attribute->size, 0x40);
-	if (size > (draw->mem_size - draw->mem_used)) {
+	if (size > (frame->mem_size - frame->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
 	}
 
-	attribute->address = draw->mem_address + draw->mem_used;
-	attribute->physical = draw->mem_physical + draw->mem_used;
-	draw->mem_used += size;
+	attribute->address = frame->mem_address + frame->mem_used;
+	attribute->physical = frame->mem_physical + frame->mem_used;
+	frame->mem_used += size;
 
 	info->attributes[attribute->offset / 4] = attribute;
 	info->attribute_count++;
@@ -251,27 +296,28 @@ vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute)
 }
 
 int
-vs_info_attach_varyings(struct limare_program *program, struct draw_info *draw)
+vs_info_attach_varyings(struct limare_program *program,
+			struct limare_frame *frame, struct draw_info *draw)
 {
 	struct vs_info *info = draw->vs;
 
 	info->varying_size = ALIGN(program->varying_map_size * draw->vertex_count, 0x40);
-	if (info->varying_size > (draw->mem_size - draw->mem_used)) {
+	if (info->varying_size > (frame->mem_size - frame->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
 	}
 
-	info->varying_offset = draw->mem_used;
-	draw->mem_used += info->varying_size;
+	info->varying_offset = frame->mem_used;
+	frame->mem_used += info->varying_size;
 
 	info->gl_Position_size = ALIGN(16 * draw->vertex_count, 0x40);
-	if (info->gl_Position_size > (draw->mem_size - draw->mem_used)) {
+	if (info->gl_Position_size > (frame->mem_size - frame->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
 	}
 
-	info->gl_Position_offset = draw->mem_used;
-	draw->mem_used += info->gl_Position_size;
+	info->gl_Position_offset = frame->mem_used;
+	frame->mem_used += info->gl_Position_size;
 
 	return 0;
 }
@@ -308,23 +354,23 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 	cmds[i].cmd = LIMA_VS_CMD_VARYING_ATTRIBUTE_COUNT;
 	i++;
 
-	cmds[i].val = draw->mem_physical + vs->uniform_offset;
+	cmds[i].val = frame->mem_physical + vs->uniform_offset;
 	cmds[i].cmd = LIMA_VS_CMD_UNIFORMS_ADDRESS |
 		(ALIGN(vs->uniform_size, 4) << 14);
 	i++;
 
 	if (state->type == LIMARE_TYPE_M200) {
-		cmds[i].val = draw->mem_physical + vs->common_offset;
+		cmds[i].val = frame->mem_physical + vs->common_offset;
 		cmds[i].cmd = LIMA_VS_CMD_COMMON_ADDRESS |
 			(vs->common_size << 14);
 		i++;
 	} else if (state->type == LIMARE_TYPE_M400) {
-		cmds[i].val = draw->mem_physical + vs->attribute_area_offset;
+		cmds[i].val = frame->mem_physical + vs->attribute_area_offset;
 		cmds[i].cmd = LIMA_VS_CMD_ATTRIBUTES_ADDRESS |
 			(vs->attribute_count << 17);
 		i++;
 
-		cmds[i].val = draw->mem_physical + vs->varying_area_offset;
+		cmds[i].val = frame->mem_physical + vs->varying_area_offset;
 		cmds[i].cmd = LIMA_VS_CMD_VARYINGS_ADDRESS |
 			((program->varying_map_count + 1) << 17);
 		i++;
@@ -351,7 +397,8 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 }
 
 void
-vs_info_finalize(struct limare_state *state, struct limare_program *program,
+vs_info_finalize(struct limare_state *state, struct limare_frame *frame,
+		 struct limare_program *program,
 		 struct draw_info *draw, struct vs_info *info)
 {
 	int i;
@@ -366,7 +413,7 @@ vs_info_finalize(struct limare_state *state, struct limare_program *program,
 		}
 
 		for (i = 0; i < program->varying_map_count; i++) {
-			info->common->varyings[i].physical = draw->mem_physical +
+			info->common->varyings[i].physical = frame->mem_physical +
 				info->varying_offset + program->varying_map[i].offset;
 			info->common->varyings[i].size =
 				(program->varying_map_size << 11) |
@@ -378,7 +425,7 @@ vs_info_finalize(struct limare_state *state, struct limare_program *program,
 
 		if (program->gl_Position) {
 			info->common->varyings[i].physical =
-				draw->mem_physical + info->gl_Position_offset;
+				frame->mem_physical + info->gl_Position_offset;
 			info->common->varyings[i].size = 0x8020;
 		}
 
@@ -392,7 +439,7 @@ vs_info_finalize(struct limare_state *state, struct limare_program *program,
 		}
 
 		for (i = 0; i < program->varying_map_count; i++) {
-			info->varying_area[i].physical = draw->mem_physical +
+			info->varying_area[i].physical = frame->mem_physical +
 				info->varying_offset + program->varying_map[i].offset;
 			info->varying_area[i].size =
 				(program->varying_map_size << 11) |
@@ -404,7 +451,7 @@ vs_info_finalize(struct limare_state *state, struct limare_program *program,
 
 		if (program->gl_Position) {
 			info->varying_area[i].physical =
-				draw->mem_physical + info->gl_Position_offset;
+				frame->mem_physical + info->gl_Position_offset;
 			info->varying_area[i].size = 0x8020;
 		}
 	}
@@ -429,9 +476,9 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 	cmds[i].cmd = LIMA_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
-	cmds[i].val = draw->mem_physical + info->render_state_offset;
+	cmds[i].val = frame->mem_physical + info->render_state_offset;
 	cmds[i].cmd = LIMA_PLBU_CMD_RSW_VERTEX_ARRAY;
-	cmds[i].cmd |= (draw->mem_physical + vs->gl_Position_offset) >> 4;
+	cmds[i].cmd |= (frame->mem_physical + vs->gl_Position_offset) >> 4;
 	i++;
 
 	cmds[i].val = (draw->vertex_count << 24); /* | draw->vertex_start; */
@@ -499,8 +546,8 @@ plbu_commands_finish(struct limare_frame *frame)
 }
 
 int
-plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
-			  int count, int size)
+plbu_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
+			  struct symbol **uniforms, int count, int size)
 {
 	struct plbu_info *info = draw->plbu;
 	void *address;
@@ -510,18 +557,23 @@ plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 	if (!count)
 		return 0;
 
-	info->uniform_array_offset = draw->mem_used;
+	if ((frame->mem_size - frame->mem_used) < (0x40 + ALIGN(size, 0x40))) {
+		printf("%s: no space for plbu uniforms\n", __func__);
+		return -1;
+	}
+
+	info->uniform_array_offset = frame->mem_used;
 	info->uniform_array_size = 4;
-	draw->mem_used += 0x40;
+	frame->mem_used += 0x40;
 
-	array = draw->mem_address + info->uniform_array_offset;
+	array = frame->mem_address + info->uniform_array_offset;
 
-	info->uniform_offset = draw->mem_used;
+	info->uniform_offset = frame->mem_used;
 	info->uniform_size = size;
-	draw->mem_used += ALIGN(4 * size, 0x40);
+	frame->mem_used += ALIGN(4 * size, 0x40);
 
-	address = draw->mem_address + info->uniform_offset;
-	array[0] = draw->mem_physical + info->uniform_offset;
+	address = frame->mem_address + info->uniform_offset;
+	array[0] = frame->mem_physical + info->uniform_offset;
 
 	for (i = 0; i < count; i++) {
 		struct symbol *symbol = uniforms[i];
@@ -534,8 +586,8 @@ plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 }
 
 int
-plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
-			  int count)
+plbu_info_attach_textures(struct limare_frame *frame, struct draw_info *draw,
+			  struct texture **textures, int count)
 {
 	unsigned int *list;
 	int i;
@@ -549,23 +601,28 @@ plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
 		return -1;
 	}
 
+	if ((frame->mem_size - frame->mem_used) < ALIGN(0x44 * count, 0x40)) {
+		printf("%s: no space for textures\n", __func__);
+		return -1;
+	}
+
 	draw->texture_descriptor_count = count;
-	draw->texture_descriptor_list_offset = draw->mem_used;
+	draw->texture_descriptor_list_offset = frame->mem_used;
 
-	draw->mem_used += ALIGN(4 * count, 0x40);
+	frame->mem_used += ALIGN(4 * count, 0x40);
 
-	list = draw->mem_address + draw->texture_descriptor_list_offset;
+	list = frame->mem_address + draw->texture_descriptor_list_offset;
 
 	for (i = 0; i < count; i++) {
 		struct texture *texture = textures[i];
 
-		texture->descriptor_offset = draw->mem_used;
-		draw->mem_used += ALIGN(4 * count, 0x40);
+		texture->descriptor_offset = frame->mem_used;
+		frame->mem_used += 0x40;
 
-		memcpy(draw->mem_address + texture->descriptor_offset,
+		memcpy(frame->mem_address + texture->descriptor_offset,
 		       texture->descriptor, 0x40);
 
-		list[i] = draw->mem_physical + textures[i]->descriptor_offset;
+		list[i] = frame->mem_physical + textures[i]->descriptor_offset;
 	}
 
 	return 0;
@@ -573,6 +630,7 @@ plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
 
 int
 plbu_info_render_state_create(struct limare_program *program,
+			      struct limare_frame *frame,
 			      struct draw_info *draw)
 {
 	struct plbu_info *info = draw->plbu;
@@ -586,15 +644,15 @@ plbu_info_render_state_create(struct limare_program *program,
 	}
 
 	size = ALIGN(sizeof(struct render_state), 0x40);
-	if (size > (draw->mem_size - draw->mem_used)) {
+	if (size > (frame->mem_size - frame->mem_used)) {
 		printf("%s: no more space\n", __func__);
 		return -2;
 	}
 
-	info->render_state = draw->mem_address + draw->mem_used;
-	info->render_state_offset = draw->mem_used;
+	info->render_state = frame->mem_address + frame->mem_used;
+	info->render_state_offset = frame->mem_used;
 	info->render_state_size = size;
-	draw->mem_used += size;
+	frame->mem_used += size;
 
 	/* this bit still needs some figuring out :) */
 	render = info->render_state;
@@ -620,7 +678,7 @@ plbu_info_render_state_create(struct limare_program *program,
 	render->unknown38 = 0x2000;
 
 	if (vs->varying_size) {
-		render->varyings_address = draw->mem_physical + vs->varying_offset;
+		render->varyings_address = frame->mem_physical + vs->varying_offset;
 		render->unknown34 |= program->varying_map_size >> 3;
 		render->varying_types = 0;
 
@@ -652,7 +710,7 @@ plbu_info_render_state_create(struct limare_program *program,
 
 	if (info->uniform_size) {
 		render->uniforms_address =
-			draw->mem_physical + info->uniform_array_offset;
+			frame->mem_physical + info->uniform_array_offset;
 
 		render->uniforms_address |=
 			(ALIGN(info->uniform_size, 4) / 4) - 1;
@@ -664,7 +722,7 @@ plbu_info_render_state_create(struct limare_program *program,
 	if (draw->texture_descriptor_count) {
 
 		render->textures_address =
-			draw->mem_physical + draw->texture_descriptor_list_offset;
+			frame->mem_physical + draw->texture_descriptor_list_offset;
 		render->unknown34 |= draw->texture_descriptor_count << 14;
 
 		render->unknown34 |= 0x20;
@@ -694,24 +752,21 @@ limare_gp_job_start(struct limare_state *state, struct limare_frame *frame)
 
 struct draw_info *
 draw_create_new(struct limare_state *state, struct limare_frame *frame,
-		int offset, int size, int draw_mode, int vertex_start,
-		int vertex_count)
+		int draw_mode, int vertex_start, int vertex_count)
 {
 	struct draw_info *draw = calloc(1, sizeof(struct draw_info));
 
 	if (!draw)
 		return NULL;
 
-	draw->mem_address = frame->mem_address + offset;
-	draw->mem_physical = frame->mem_physical + offset;
-	draw->mem_used = 0;
-	draw->mem_size = size;
-
 	draw->draw_mode = draw_mode;
 	draw->vertex_start = vertex_start;
 	draw->vertex_count = vertex_count;
 
-	vs_info_setup(state, draw);
+	if (vs_info_setup(state, frame, draw)) {
+		free(draw);
+		return NULL;
+	}
 
 	return draw;
 }

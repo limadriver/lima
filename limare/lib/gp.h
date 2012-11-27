@@ -64,17 +64,20 @@ struct vs_info {
 	int gl_Position_size;
 };
 
-int vs_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
-			    int count, int size);
+int vs_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
+			    struct symbol **uniforms, int count, int size);
 
-int vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute);
-int vs_info_attach_varyings(struct limare_program *program, struct draw_info *draw);
+int vs_info_attach_attribute(struct limare_frame *frame,
+			     struct draw_info *draw, struct symbol *attribute);
+int vs_info_attach_varyings(struct limare_program *program,
+			    struct limare_frame *frame, struct draw_info *draw);
 
 void vs_commands_draw_add(struct limare_state *state,
 			  struct limare_frame *frame,
 			  struct limare_program *program,
 			  struct draw_info *draw);
-void vs_info_finalize(struct limare_state *state, struct limare_program *program,
+void vs_info_finalize(struct limare_state *state, struct limare_frame *frame,
+		      struct limare_program *program,
 		      struct draw_info *draw, struct vs_info *info);
 
 struct plbu_info {
@@ -89,27 +92,26 @@ struct plbu_info {
 	int uniform_size;
 };
 
-int vs_command_queue_create(struct limare_frame *frame, int offset, int size);
+int vs_command_queue_create(struct limare_frame *frame, int size);
 int plbu_command_queue_create(struct limare_state *state,
-			      struct limare_frame *frame, int offset, int size);
+			      struct limare_frame *frame,
+			      int size, int heap_size);
 
 void plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw);
 void plbu_commands_finish(struct limare_frame *frame);
 
-int plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
-			    int count, int size);
-int plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
+int plbu_info_attach_uniforms(struct limare_frame *frame,
+			      struct draw_info *draw, struct symbol **uniforms,
+			      int count, int size);
+int plbu_info_attach_textures(struct limare_frame *frame,
+			      struct draw_info *draw, struct texture **textures,
 			      int count);
 
 int plbu_info_render_state_create(struct limare_program *program,
+				  struct limare_frame *frame,
 				  struct draw_info *draw);
 
 struct draw_info {
-	unsigned int mem_physical;
-	unsigned int mem_size;
-	int mem_used;
-	void *mem_address;
-
 	int draw_mode;
 	int vertex_start;
 	int vertex_count;
@@ -123,8 +125,7 @@ struct draw_info {
 };
 
 struct draw_info *draw_create_new(struct limare_state *state,
-				  struct limare_frame *frame,
-				  int offset, int size, int draw_mode,
+				  struct limare_frame *frame, int draw_mode,
 				  int vertex_start, int vertex_count);
 
 void draw_info_destroy(struct draw_info *draw);
