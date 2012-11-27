@@ -333,7 +333,7 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 	}
 
 	frame->draw_mem_offset = 0x40000;
-	frame->draw_mem_size = 0x70000;
+	frame->draw_mem_size =   0xC0000;
 
 	return frame;
 }
@@ -353,7 +353,7 @@ limare_state_setup(struct limare_state *state, int width, int height,
 
 	/* space for our programs and textures. */
 	state->aux_mem_size = 0x200000;
-	state->aux_mem_physical = state->mem_base + 0x200000;
+	state->aux_mem_physical = state->mem_base + 0x300000;
 	state->aux_mem_address = mmap(NULL, state->aux_mem_size,
 				       PROT_READ | PROT_WRITE,
 				       MAP_SHARED, state->fd,
@@ -369,7 +369,7 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	state->programs = calloc(1, sizeof(struct program *));
 	state->programs[0] = limare_program_create(state->aux_mem_address,
 						   state->aux_mem_physical,
-						   0, 0x10000);
+						   0, 0x1000);
 	state->program_count = 1;
 	state->program_current = 0;
 
@@ -377,7 +377,7 @@ limare_state_setup(struct limare_state *state, int width, int height,
 
 	/* try to grab the necessary space for our image */
 	state->dest_mem_size = state->width * state->height * 4;
-	state->dest_mem_physical = state->mem_base + 0x0400000;
+	state->dest_mem_physical = state->mem_base + 0x0500000;
 	state->dest_mem_address = mmap(NULL, state->dest_mem_size,
 				       PROT_READ | PROT_WRITE,
 				       MAP_SHARED, state->fd,
@@ -655,19 +655,20 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 		printf("%s: Error: too many draws already!\n", __func__);
 		return -1;
 	}
+#define DRAW_SIZE 0xC0000
 
-	if (frame->draw_mem_size < 0x1000) {
+	if (frame->draw_mem_size < DRAW_SIZE) {
 		printf("%s: Error: no more space available!\n", __func__);
 		return -1;
 	}
 
 	draw = draw_create_new(state, frame, frame->draw_mem_offset,
-			       0x1000, mode, start, count);
+			       DRAW_SIZE, mode, start, count);
 	frame->draws[frame->draw_count] = draw;
 	frame->draw_count++;
 
-	frame->draw_mem_offset += 0x1000;
-	frame->draw_mem_size -= 0x1000;
+	frame->draw_mem_offset += DRAW_SIZE;
+	frame->draw_mem_size -= DRAW_SIZE;
 	frame->draw_count++;
 
 	for (i = 0; i < program->vertex_attribute_count; i++) {
@@ -775,7 +776,7 @@ limare_new(struct limare_state *state)
 
 	state->frames[state->frame_current] =
 		limare_frame_create(state, 0x180000 * state->frame_current,
-				    0x100000);
+				    0x180000);
 	if (!state->frames[state->frame_current])
 		return -1;
 
