@@ -220,7 +220,7 @@ limare_mem_init(struct limare_state *state)
 	}
 
 	state->mem_physical = mem_init.mali_address_base;
-	state->mem_size = 0x100000;
+	state->mem_size = 0x200000;
 	state->mem_address = mmap(NULL, state->mem_size, PROT_READ | PROT_WRITE,
 				  MAP_SHARED, state->fd, state->mem_physical);
 	if (state->mem_address == MAP_FAILED) {
@@ -285,7 +285,7 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	/* now add the area for the pp, again, unchanged between draws. */
 	state->pp = pp_info_create(state, state->mem_address + 0x80000,
 				   state->mem_physical + 0x80000,
-				   0x1000, state->mem_physical + 0x100000);
+				   0x1000, state->mem_physical + 0x200000);
 	if (!state->pp)
 		return -1;
 
