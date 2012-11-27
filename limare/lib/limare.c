@@ -280,24 +280,24 @@ limare_state_setup(struct limare_state *state, int width, int height,
 
 	/* first, set up the plb, this is unchanged between draws. */
 	state->plb = plb_create(state, state->mem_physical, state->mem_address,
-				0x00000, 0x80000);
+				0x00000, 0x30000);
 	if (!state->plb)
 		return -1;
 
 	/* now add the area for the pp, again, unchanged between draws. */
 	state->pp = pp_info_create(state,
 				   state->mem_address, state->mem_physical,
-				   0x80000, 0x1000,
+				   0x30000, 0x1000,
 				   state->mem_physical + 0x200000);
 	if (!state->pp)
 		return -1;
 
 	/* now the two command queues */
-	if (vs_command_queue_create(state, 0x81000, 0x4000) ||
-	    plbu_command_queue_create(state, 0x85000, 0x4000))
+	if (vs_command_queue_create(state, 0x31000, 0x4000) ||
+	    plbu_command_queue_create(state, 0x35000, 0x4000))
 		return -1;
 
-	state->draw_mem_offset = 0x90000;
+	state->draw_mem_offset = 0x40000;
 	state->draw_mem_size = 0x70000;
 
 	state->texture_mem_offset = 0x100000;
