@@ -375,7 +375,6 @@ stream_uniform_table_to_symbols(struct stream_uniform_table *table,
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
 					      uniform->data->type,
-					      uniform->data->component_size,
 					      uniform->data->precision,
 					      uniform->data->component_count,
 					      uniform->data->entry_count,
@@ -386,7 +385,6 @@ stream_uniform_table_to_symbols(struct stream_uniform_table *table,
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
 					      uniform->data->type,
-					      uniform->data->component_size,
 					      uniform->data->precision,
 					      uniform->data->component_count,
 					      uniform->data->entry_count,
@@ -580,9 +578,8 @@ stream_attribute_table_print(struct stream_attribute_table *table)
 	attribute = table->attributes;
 	while (attribute) {
 		printf("attribute \"%s\" = {\n", attribute->string->string);
-		printf("\t type 0x%02x, unknown01 0x%02x, component_count 0x%04x\n",
-		       attribute->data->type, attribute->data->unknown01,
-		       attribute->data->component_count);
+		printf("\t type 0x%02x, component_count 0x%04x\n",
+		       attribute->data->type, attribute->data->component_count);
 		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
 		       attribute->data->component_size, attribute->data->entry_count);
 		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
@@ -626,7 +623,6 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 		symbol =
 			symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
 				      attribute->data->type,
-				      attribute->data->component_size,
 				      attribute->data->precision,
 				      attribute->data->component_count,
 				      attribute->data->entry_count,
@@ -868,7 +864,7 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 		int flag;
 
 		if (varying->data->ranking == 0x18)
-			flag = SYMBOL_SIZE_PRECISION_ADJUSTED;
+			flag = SYMBOL_USE_VERTEX_SIZE;
 		else
 			flag = 0;
 
@@ -879,7 +875,6 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 
 		symbol = symbol_create(varying->string->string, SYMBOL_VARYING,
 				       varying->data->type,
-				       varying->data->stride0,
 				       varying->data->precision,
 				       varying->data->component_count,
 				       varying->data->entry_count,
@@ -1201,19 +1196,11 @@ limare_link_varyings_match(struct limare_state *state)
 		struct symbol *fragment = state->fragment_varyings[i];
 		struct symbol *vertex = state->vertex_varyings[i];
 
-		if (fragment->flag & SYMBOL_SIZE_PRECISION_ADJUSTED) {
-			if ((fragment->component_size << vertex->precision) !=
-			    (vertex->component_size << fragment->precision)) {
-				printf("%s: Error: component_size mismatch for varying \"%s\".\n",
-				       __func__, fragment->name);
-				return -1;
-			}
-		} else {
-			if (fragment->component_size != vertex->component_size) {
-				printf("%s: Error: component_size mismatch for varying \"%s\".\n",
-				       __func__, fragment->name);
-				return -1;
-			}
+		if ((fragment->component_size << vertex->precision) !=
+		    (vertex->component_size << fragment->precision)) {
+			printf("%s: Error: component_size mismatch for varying \"%s\".\n",
+			       __func__, fragment->name);
+			return -1;
 		}
 
 		if (fragment->component_count != vertex->component_count) {
@@ -1228,19 +1215,11 @@ limare_link_varyings_match(struct limare_state *state)
 			return -1;
 		}
 
-		if (fragment->flag & SYMBOL_SIZE_PRECISION_ADJUSTED) {
-			if ((fragment->size << vertex->precision) !=
-			    (vertex->size << fragment->precision)) {
-				printf("%s: Error: size mismatch for varying \"%s\".\n",
-				       __func__, fragment->name);
-				return -1;
-			}
-		} else {
-			if (fragment->size != vertex->size) {
-				printf("%s: Error: size mismatch for varying \"%s\".\n",
-				       __func__, fragment->name);
-				return -1;
-			}
+		if ((fragment->size << vertex->precision) !=
+		    (vertex->size << fragment->precision)) {
+			printf("%s: Error: size mismatch for varying \"%s\".\n",
+			       __func__, fragment->name);
+			return -1;
 		}
 
 		break;
@@ -1366,14 +1345,11 @@ limare_varying_map_create(struct limare_state *state)
 		struct symbol *symbol = state->fragment_varyings[i];
 		int size;
 
-		if ((state->fragment_varyings[i]->flag &
-		     SYMBOL_SIZE_PRECISION_ADJUSTED) &&
-		    (state->vertex_varyings[i]->precision == 3))
+		if (state->fragment_varyings[i]->flag &
+		    SYMBOL_USE_VERTEX_SIZE)
 			size = state->vertex_varyings[i]->component_size;
-		else if (state->fragment_varyings[i]->precision == 2)
-			size = state->fragment_varyings[i]->component_size / 2;
 		else
-			size = state->fragment_varyings[i]->component_size;
+			size = symbol->component_size;
 
 		for (j = 0; j < symbol->component_count; j++)
 			table[symbol->offset + j] = size;

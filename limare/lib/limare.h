@@ -115,8 +115,8 @@ struct limare_state {
 struct limare_state *limare_init(void);
 int limare_state_setup(struct limare_state *state, int width, int height,
 			unsigned int clear_color);
-int limare_uniform_attach(struct limare_state *state, char *name, int size,
-			   int count, void *data);
+int limare_uniform_attach(struct limare_state *state, char *name,
+			  int count, float *data);
 int limare_attribute_pointer(struct limare_state *state, char *name, int size,
 			      int count, void *data);
 int limare_texture_attach(struct limare_state *state, char *uniform_name,

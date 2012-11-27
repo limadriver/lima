@@ -574,12 +574,9 @@ plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 
 	for (i = 0; i < count; i++) {
 		struct symbol *symbol = uniforms[i];
-		hfloat *halves = address +
-			symbol->component_size * symbol->offset;
-		float *fulls = symbol->data;
 
-		for (i = 0; i < symbol->component_count; i++)
-			halves[i] = float_to_hfloat(fulls[i]);
+		memcpy(address + symbol->component_size * symbol->offset,
+		       symbol->data, symbol->size);
 	}
 
 	return 0;

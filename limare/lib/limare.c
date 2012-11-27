@@ -44,6 +44,7 @@
 #include "symbols.h"
 #include "compiler.h"
 #include "texture.h"
+#include "hfloat.h"
 
 static int
 limare_fd_open(struct limare_state *state)
@@ -305,25 +306,53 @@ limare_state_setup(struct limare_state *state, int width, int height,
 }
 
 int
-limare_uniform_attach(struct limare_state *state, char *name, int size,
-		       int count, void *data)
+symbol_attach_data(struct symbol *symbol, int count, float *data)
 {
-	int found = 0, i;
+	if (symbol->data && symbol->data_allocated) {
+		free(symbol->data);
+		symbol->data = NULL;
+		symbol->data_allocated = 0;
+	}
+
+	if (symbol->precision == 3) {
+		symbol->data = data;
+		symbol->data_allocated = 0;
+	} else {
+		int i;
+
+		symbol->data = malloc(2 * count);
+		if (!symbol->data)
+			return -ENOMEM;
+
+		for (i = 0; i < count; i++)
+			((hfloat *) symbol->data)[i] = float_to_hfloat(data[i]);
+
+		symbol->data_allocated = 1;
+	}
+	return 0;
+}
+
+int
+limare_uniform_attach(struct limare_state *state, char *name, int count, float *data)
+{
+	int found = 0, i, ret;
 
 	for (i = 0; i < state->vertex_uniform_count; i++) {
 		struct symbol *symbol = state->vertex_uniforms[i];
 
 		if (!strcmp(symbol->name, name)) {
-			if ((symbol->component_size == size) &&
-			    (symbol->component_count == count)) {
-				symbol->data = data;
-				found = 1;
-				break;
+			if (symbol->component_count != count) {
+				printf("%s: Error: Uniform %s has wrong dimensions\n",
+				       __func__, name);
+				return -1;
 			}
 
-			printf("%s: Error: Uniform %s has wrong dimensions\n",
-			       __func__, name);
-			return -1;
+			ret = symbol_attach_data(symbol, count, data);
+			if (ret)
+				return ret;
+
+			found = 1;
+			break;
 		}
 	}
 
@@ -331,16 +360,18 @@ limare_uniform_attach(struct limare_state *state, char *name, int size,
 		struct symbol *symbol = state->fragment_uniforms[i];
 
 		if (!strcmp(symbol->name, name)) {
-			if ((symbol->component_size == size) &&
-			    (symbol->component_count == count)) {
-				symbol->data = data;
-				found = 1;
-				break;
+			if (symbol->component_count != count) {
+				printf("%s: Error: Uniform %s has wrong dimensions\n",
+				       __func__, name);
+				return -1;
 			}
 
-			printf("%s: Error: Uniform %s has wrong dimensions\n",
-			       __func__, name);
-			return -1;
+			ret = symbol_attach_data(symbol, count, data);
+			if (ret)
+				return ret;
+
+			found = 1;
+			break;
 		}
 	}
 
@@ -363,6 +394,12 @@ limare_attribute_pointer(struct limare_state *state, char *name, int size,
 		struct symbol *symbol = state->vertex_attributes[i];
 
 		if (!strcmp(symbol->name, name)) {
+			if (symbol->precision != 3) {
+				printf("%s: Attribute %s has unsupported precision\n",
+				       __func__, name);
+				return -1;
+			}
+
 			if (symbol->component_size == size) {
 				symbol->component_count = count;
 				symbol->data = data;
@@ -524,9 +561,9 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 				state->fragment_binary->shader_size / 4);
 
 	for (i = 0; i < state->vertex_attribute_count; i++) {
-		struct symbol *symbol =
-			symbol_copy(state->vertex_attributes[i], start, count);
+		struct symbol *symbol;
 
+		symbol = symbol_copy(state->vertex_attributes[i], start, count);
 		if (symbol)
 			vs_info_attach_attribute(draw, symbol);
 

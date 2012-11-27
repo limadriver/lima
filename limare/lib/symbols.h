@@ -61,7 +61,7 @@ struct symbol {
 	int size; /* size it takes in memory. */
 	short offset; /* offset from start of memory block */
 
-#define SYMBOL_SIZE_PRECISION_ADJUSTED 0x01
+#define SYMBOL_USE_VERTEX_SIZE 0x01
 	int flag;
 
 	void *address;
@@ -73,9 +73,9 @@ struct symbol {
 
 struct symbol *symbol_create(const char *name, enum symbol_type type,
 			     enum symbol_value_type value_type,
-			     int component_size, int precision, int component_count,
+			     int precision, int component_count,
 			     int entry_count, int src_stride, int dst_stride,
-			     void *data, int copy, int matrix);
+			     void *data, int copy, int flag);
 
 struct symbol *symbol_copy(struct symbol *original, int start, int count);
 

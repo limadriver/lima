@@ -224,9 +224,9 @@ main(int argc, char *argv[])
 	normal[7] = modelview.m[2][1];
 	normal[8] = modelview.m[2][2];
 
-	limare_uniform_attach(state, "modelviewMatrix", 4, 16, &modelview.m[0][0]);
-	limare_uniform_attach(state, "modelviewprojectionMatrix", 4, 16, &modelviewprojection.m[0][0]);
-	limare_uniform_attach(state, "normalMatrix", 4, 9, normal);
+	limare_uniform_attach(state, "modelviewMatrix", 16, &modelview.m[0][0]);
+	limare_uniform_attach(state, "modelviewprojectionMatrix", 16, &modelviewprojection.m[0][0]);
+	limare_uniform_attach(state, "normalMatrix", 9, normal);
 
 	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP,  0, 4);
 	if (ret)

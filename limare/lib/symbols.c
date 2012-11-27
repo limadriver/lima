@@ -34,18 +34,20 @@
 struct symbol *
 symbol_create(const char *name, enum symbol_type type,
 	      enum symbol_value_type value_type,
-	      int component_size, int precision, int component_count,
+	      int precision, int component_count,
 	      int entry_count, int src_stride, int dst_stride,
 	      void *data, int copy, int flag)
 {
 	struct symbol *symbol;
-	int size;
+	int size, component_size;
 
 	if (!entry_count)
 		entry_count = 1;
 
 	if (value_type == SYMBOL_MATRIX)
 		component_count *= component_count;
+
+	component_size = 1 << (precision - 1);
 
 	size = component_size * component_count * entry_count;
 

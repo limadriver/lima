@@ -54,7 +54,7 @@ main(int argc, char *argv[])
 	float color[] = {1.0, 0.0, 0.0, 1.0 };
 
 	const char *vertex_shader_source =
-		"precision mediump float;     \n"
+		//"precision mediump float;     \n"
 		"attribute vec4 aPosition;    \n"
 		"                             \n"
                 "void main()                  \n"
@@ -88,7 +88,7 @@ main(int argc, char *argv[])
 
 	limare_attribute_pointer(state, "aPosition", 4, 3, vertices);
 
-	limare_uniform_attach(state, "uColor", 4, 4, color);
+	limare_uniform_attach(state, "uColor", 4, color);
 
 	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 0, 4);
 	if (ret)
