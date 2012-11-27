@@ -26,7 +26,6 @@
 #include <GLES2/gl2.h>
 
 #include "limare.h"
-#include "bmp.h"
 #include "fb.h"
 #include "symbols.h"
 #include "gp.h"
@@ -251,8 +250,6 @@ main(int argc, char *argv[])
 	ret = limare_flush(state);
 	if (ret)
 		return ret;
-
-	bmp_dump(state->pp->frame_address, state, "/sdcard/limare.bmp");
 
 	fb_dump(state->pp->frame_address, 0, state->width, state->height);
 
