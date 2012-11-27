@@ -266,6 +266,44 @@ limare_init(void)
 	return NULL;
 }
 
+struct limare_frame *
+limare_frame_create(struct limare_state *state, void *address,
+		    unsigned int physical, int offset, int size)
+{
+	struct limare_frame *frame;
+
+	frame = calloc(1, sizeof(struct limare_frame));
+	if (!frame)
+		return NULL;
+
+	frame->mem_address = address + offset;
+	frame->mem_physical = physical + offset;
+	frame->mem_size = size;
+
+	/* first, set up the plb, this is unchanged between draws. */
+	frame->plb = plb_create(state, frame->mem_physical,
+				frame->mem_address, 0x00000, 0x30000);
+	if (!frame->plb)
+		return NULL;
+
+	/* now add the area for the pp, again, unchanged between draws. */
+	frame->pp = pp_info_create(state, frame,
+				   frame->mem_address, frame->mem_physical,
+				   0x30000, 0x1000);
+	if (!frame->pp)
+		return NULL;
+
+	/* now the two command queues */
+	if (vs_command_queue_create(frame, 0x31000, 0x4000) ||
+	    plbu_command_queue_create(state, frame, 0x35000, 0x4000))
+		return NULL;
+
+	frame->draw_mem_offset = 0x40000;
+	frame->draw_mem_size = 0x70000;
+
+	return frame;
+}
+
 /* here we still hardcode our memory addresses. */
 int
 limare_state_setup(struct limare_state *state, int width, int height,
@@ -279,26 +317,10 @@ limare_state_setup(struct limare_state *state, int width, int height,
 
 	state->clear_color = clear_color;
 
-	/* first, set up the plb, this is unchanged between draws. */
-	state->plb = plb_create(state, state->mem_physical, state->mem_address,
-				0x00000, 0x30000);
-	if (!state->plb)
+	state->frame = limare_frame_create(state, state->mem_address,
+					   state->mem_physical, 0, 0xF0000);
+	if (!state->frame)
 		return -1;
-
-	/* now add the area for the pp, again, unchanged between draws. */
-	state->pp = pp_info_create(state,
-				   state->mem_address, state->mem_physical,
-				   0x30000, 0x1000);
-	if (!state->pp)
-		return -1;
-
-	/* now the two command queues */
-	if (vs_command_queue_create(state, 0x31000, 0x4000) ||
-	    plbu_command_queue_create(state, 0x35000, 0x4000))
-		return -1;
-
-	state->draw_mem_offset = 0x40000;
-	state->draw_mem_size = 0x70000;
 
 	state->programs = calloc(1, sizeof(struct program *));
 	state->programs[0] = limare_program_create(state->mem_address,
@@ -527,10 +549,11 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 {
 	struct limare_program *program =
 		state->programs[state->program_current];
+	struct limare_frame *frame = state->frame;
 	struct draw_info *draw;
 	int i;
 
-	if (!state->plb) {
+	if (!frame->plb) {
 		printf("%s: Error: plb member is not set up yet.\n", __func__);
 		return -1;
 	}
@@ -566,23 +589,24 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 		}
 	}
 
-	if (state->draw_count >= 32) {
+	if (frame->draw_count >= 32) {
 		printf("%s: Error: too many draws already!\n", __func__);
 		return -1;
 	}
 
-	if (state->draw_mem_size < 0x1000) {
+	if (frame->draw_mem_size < 0x1000) {
 		printf("%s: Error: no more space available!\n", __func__);
 		return -1;
 	}
 
-	draw = draw_create_new(state, state->draw_mem_offset, 0x1000,
-			       mode, start, count);
-	state->draws[state->draw_count] = draw;
+	draw = draw_create_new(state, frame, frame->draw_mem_offset,
+			       0x1000, mode, start, count);
+	frame->draws[frame->draw_count] = draw;
+	frame->draw_count++;
 
-	state->draw_mem_offset += 0x1000;
-	state->draw_mem_size -= 0x1000;
-	state->draw_count++;
+	frame->draw_mem_offset += 0x1000;
+	frame->draw_mem_size -= 0x1000;
+	frame->draw_count++;
 
 	for (i = 0; i < program->vertex_attribute_count; i++) {
 		struct symbol *symbol;
@@ -609,11 +633,11 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 	if (plbu_info_attach_textures(draw, &state->texture, 1))
 		return -1;
 
-	vs_commands_draw_add(state, program, draw);
+	vs_commands_draw_add(state, frame, program, draw);
 	vs_info_finalize(state, program, draw, draw->vs);
 
-	plbu_info_render_state_create(state, program, draw);
-	plbu_commands_draw_add(state, draw);
+	plbu_info_render_state_create(program, draw);
+	plbu_commands_draw_add(frame, draw);
 
 	return 0;
 }
@@ -621,15 +645,16 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 int
 limare_flush(struct limare_state *state)
 {
+	struct limare_frame *frame = state->frame;
 	int ret;
 
-	plbu_commands_finish(state);
+	plbu_commands_finish(frame);
 
-	ret = limare_gp_job_start(state);
+	ret = limare_gp_job_start(state, frame);
 	if (ret)
 		return ret;
 
-	ret = limare_pp_job_start(state, state->pp);
+	ret = limare_pp_job_start(state, frame->pp);
 	if (ret)
 		return ret;
 

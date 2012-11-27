@@ -71,6 +71,7 @@ int vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute);
 int vs_info_attach_varyings(struct limare_program *program, struct draw_info *draw);
 
 void vs_commands_draw_add(struct limare_state *state,
+			  struct limare_frame *frame,
 			  struct limare_program *program,
 			  struct draw_info *draw);
 void vs_info_finalize(struct limare_state *state, struct limare_program *program,
@@ -88,19 +89,19 @@ struct plbu_info {
 	int uniform_size;
 };
 
-int vs_command_queue_create(struct limare_state *state, int offset, int size);
-int plbu_command_queue_create(struct limare_state *state, int offset, int size);
+int vs_command_queue_create(struct limare_frame *frame, int offset, int size);
+int plbu_command_queue_create(struct limare_state *state,
+			      struct limare_frame *frame, int offset, int size);
 
-void plbu_commands_draw_add(struct limare_state *state, struct draw_info *draw);
-void plbu_commands_finish(struct limare_state *state);
+void plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw);
+void plbu_commands_finish(struct limare_frame *frame);
 
 int plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			    int count, int size);
 int plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
 			      int count);
 
-int plbu_info_render_state_create(struct limare_state *state,
-				  struct limare_program *program,
+int plbu_info_render_state_create(struct limare_program *program,
 				  struct draw_info *draw);
 
 struct draw_info {
@@ -121,10 +122,12 @@ struct draw_info {
 	unsigned int texture_descriptor_list_offset;
 };
 
-struct draw_info *draw_create_new(struct limare_state *state, int offset,
-				  int size, int draw_mode, int vertex_start,
-				  int vertex_count);
+struct draw_info *draw_create_new(struct limare_state *state,
+				  struct limare_frame *frame,
+				  int offset, int size, int draw_mode,
+				  int vertex_start, int vertex_count);
 
-int limare_gp_job_start(struct limare_state *state);
+int limare_gp_job_start(struct limare_state *state,
+			struct limare_frame *frame);
 
 #endif /* LIMARE_GP_H */

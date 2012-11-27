@@ -31,22 +31,10 @@ struct lima_cmd {
 	unsigned int cmd;
 };
 
-struct limare_state {
-	int fd;
-	int kernel_version;
-
-#define LIMARE_TYPE_M200 200
-#define LIMARE_TYPE_M400 400
-	int type;
-
+struct limare_frame {
 	unsigned int mem_physical;
 	unsigned int mem_size;
 	void *mem_address;
-
-	int width;
-	int height;
-
-	unsigned int clear_color;
 
 	struct draw_info *draws[32];
 	int draw_count;
@@ -67,6 +55,26 @@ struct limare_state {
 	int plbu_commands_physical;
 	int plbu_commands_count;
 	int plbu_commands_size;
+};
+
+struct limare_state {
+	int fd;
+	int kernel_version;
+
+#define LIMARE_TYPE_M200 200
+#define LIMARE_TYPE_M400 400
+	int type;
+
+	unsigned int mem_physical;
+	unsigned int mem_size;
+	void *mem_address;
+
+	int width;
+	int height;
+
+	unsigned int clear_color;
+
+	struct limare_frame *frame;
 
 	unsigned int texture_mem_offset;
 	int texture_mem_size;

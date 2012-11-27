@@ -41,20 +41,20 @@
 #include "jobs.h"
 
 struct pp_info *
-pp_info_create(struct limare_state *state, void *address,
-	       unsigned int physical, int offset, int size)
+pp_info_create(struct limare_state *state, struct limare_frame *frame,
+	       void *address, unsigned int physical, int offset, int size)
 {
 	struct plb *plb;
 	struct pp_info *info;
 	unsigned int quad[5] =
 		{0x00020425, 0x0000000c, 0x01e007cf, 0xb0000000, 0x000005f5};
 
-	if (!state->plb) {
+	if (!frame->plb) {
 		printf("%s: Error: member plb not assigned yet!\n", __func__);
 		return NULL;
 	}
 
-	plb = state->plb;
+	plb = frame->plb;
 
 	info = calloc(1, sizeof(struct pp_info));
 	if (!info)

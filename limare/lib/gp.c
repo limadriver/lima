@@ -49,29 +49,30 @@
 #include "program.h"
 
 int
-vs_command_queue_create(struct limare_state *state, int offset, int size)
+vs_command_queue_create(struct limare_frame *frame, int offset, int size)
 {
-	state->vs_commands = state->mem_address + offset;
-	state->vs_commands_physical = state->mem_physical + offset;
-	state->vs_commands_count = 0;
-	state->vs_commands_size = size / 8;
+	frame->vs_commands = frame->mem_address + offset;
+	frame->vs_commands_physical = frame->mem_physical + offset;
+	frame->vs_commands_count = 0;
+	frame->vs_commands_size = size / 8;
 
 	return 0;
 }
 
 int
-plbu_command_queue_create(struct limare_state *state, int offset, int size)
+plbu_command_queue_create(struct limare_state *state,
+			  struct limare_frame *frame, int offset, int size)
 {
-	struct plb *plb = state->plb;
+	struct plb *plb = frame->plb;
 	struct lima_cmd *cmds;
 	int i = 0;
 
-	state->plbu_commands = state->mem_address + offset;
-	state->plbu_commands_physical = state->mem_physical + offset;
-	state->plbu_commands_count = 0;
-	state->plbu_commands_size = size / 8;
+	frame->plbu_commands = frame->mem_address + offset;
+	frame->plbu_commands_physical = frame->mem_physical + offset;
+	frame->plbu_commands_count = 0;
+	frame->plbu_commands_size = size / 8;
 
-	cmds = state->plbu_commands;
+	cmds = frame->plbu_commands;
 
 	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
 	if (state->type == LIMARE_TYPE_M400) {
@@ -145,7 +146,7 @@ plbu_command_queue_create(struct limare_state *state, int offset, int size)
 	cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_FAR;
 	i++;
 
-	state->plbu_commands_count = i;
+	frame->plbu_commands_count = i;
 
 	return 0;
 }
@@ -276,12 +277,12 @@ vs_info_attach_varyings(struct limare_program *program, struct draw_info *draw)
 }
 
 void
-vs_commands_draw_add(struct limare_state *state, struct limare_program *program,
-		     struct draw_info *draw)
+vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
+		     struct limare_program *program, struct draw_info *draw)
 {
 	struct vs_info *vs = draw->vs;
-	struct lima_cmd *cmds = state->vs_commands;
-	int i = state->vs_commands_count;
+	struct lima_cmd *cmds = frame->vs_commands;
+	int i = frame->vs_commands_count;
 
 	cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
 	cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
@@ -346,7 +347,7 @@ vs_commands_draw_add(struct limare_state *state, struct limare_program *program,
 	i++;
 
 	/* update our size so we can set the gp job properly */
-	state->vs_commands_count = i;
+	frame->vs_commands_count = i;
 }
 
 void
@@ -410,12 +411,12 @@ vs_info_finalize(struct limare_state *state, struct limare_program *program,
 }
 
 void
-plbu_commands_draw_add(struct limare_state *state, struct draw_info *draw)
+plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 {
 	struct plbu_info *info = draw->plbu;
 	struct vs_info *vs = draw->vs;
-	struct lima_cmd *cmds = state->plbu_commands;
-	int i = state->plbu_commands_count;
+	struct lima_cmd *cmds = frame->plbu_commands;
+	int i = frame->plbu_commands_count;
 
 	/*
 	 *
@@ -443,14 +444,14 @@ plbu_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 	i++;
 
 	/* update our size so we can set the gp job properly */
-	state->plbu_commands_count = i;
+	frame->plbu_commands_count = i;
 }
 
 void
-plbu_commands_finish(struct limare_state *state)
+plbu_commands_finish(struct limare_frame *frame)
 {
-	struct lima_cmd *cmds = state->plbu_commands;
-	int i = state->plbu_commands_count;
+	struct lima_cmd *cmds = frame->plbu_commands;
+	int i = frame->plbu_commands_count;
 
 	/*
 	 * Some inter-frame communication apparently.
@@ -494,7 +495,7 @@ plbu_commands_finish(struct limare_state *state)
 	i++;
 
 	/* update our size so we can set the gp job properly */
-	state->plbu_commands_count = i;
+	frame->plbu_commands_count = i;
 }
 
 int
@@ -571,8 +572,7 @@ plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
 }
 
 int
-plbu_info_render_state_create(struct limare_state *state,
-			      struct limare_program *program,
+plbu_info_render_state_create(struct limare_program *program,
 			      struct draw_info *draw)
 {
 	struct plbu_info *info = draw->plbu;
@@ -674,33 +674,34 @@ plbu_info_render_state_create(struct limare_state *state,
 }
 
 int
-limare_gp_job_start(struct limare_state *state)
+limare_gp_job_start(struct limare_state *state, struct limare_frame *frame)
 {
-	struct lima_gp_frame_registers frame = { 0 };
+	struct lima_gp_frame_registers frame_regs = { 0 };
 
-	frame.vs_commands_start = state->vs_commands_physical;
-	frame.vs_commands_end =
-		state->vs_commands_physical + 8 * state->vs_commands_count;
-	frame.plbu_commands_start = state->plbu_commands_physical;
-	frame.plbu_commands_end =
-		state->plbu_commands_physical + 8 * state->plbu_commands_count;
-	frame.tile_heap_start = 0;
-	frame.tile_heap_end = 0;
+	frame_regs.vs_commands_start = frame->vs_commands_physical;
+	frame_regs.vs_commands_end =
+		frame->vs_commands_physical + 8 * frame->vs_commands_count;
+	frame_regs.plbu_commands_start = frame->plbu_commands_physical;
+	frame_regs.plbu_commands_end =
+		frame->plbu_commands_physical + 8 * frame->plbu_commands_count;
+	frame_regs.tile_heap_start = 0;
+	frame_regs.tile_heap_end = 0;
 
-	return limare_gp_job_start_direct(state, &frame);
+	return limare_gp_job_start_direct(state, &frame_regs);
 }
 
 struct draw_info *
-draw_create_new(struct limare_state *state, int offset, int size,
-		int draw_mode, int vertex_start, int vertex_count)
+draw_create_new(struct limare_state *state, struct limare_frame *frame,
+		int offset, int size, int draw_mode, int vertex_start,
+		int vertex_count)
 {
 	struct draw_info *draw = calloc(1, sizeof(struct draw_info));
 
 	if (!draw)
 		return NULL;
 
-	draw->mem_address = state->mem_address + offset;
-	draw->mem_physical = state->mem_physical + offset;
+	draw->mem_address = frame->mem_address + offset;
+	draw->mem_physical = frame->mem_physical + offset;
 	draw->mem_used = 0;
 	draw->mem_size = size;
 
