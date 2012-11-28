@@ -94,6 +94,15 @@ struct limare_state {
 	int dest_mem_size;
 };
 
+/*
+ * Draws a quad from only 3 vertices.
+ *
+ * For correct drawing:
+ * - 3rd vertex must be the opposite side of the 1st.
+ * - 2nd vertex must be the side corner in the direction that is not culled.
+ */
+#define LIMA_DRAW_QUAD_DIRECT 0x0F
+
 /* from limare.c */
 struct limare_state *limare_init(void);
 
