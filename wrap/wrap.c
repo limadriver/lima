@@ -1443,24 +1443,39 @@ __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 
 	ret = orig__mali_compile_essl_shader(binary, type, source, length, count);
 
-	wrap_log("struct lima_shader_binary %p = {\n", binary);
+	wrap_log("struct lima_shader_binary shader_%p = {\n", binary);
 	wrap_log("\t.compile_status = %d,\n", binary->compile_status);
-	wrap_log("\t.error_log = \"%s\",\n", binary->error_log);
+	if (binary->error_log)
+		wrap_log("\t.error_log = \"%s\",\n", binary->error_log);
+	else
+		wrap_log("\t.error_log = NULL,\n");
 	wrap_log("\t.shader = {\n");
 	wrap_dump_shader(binary->shader, binary->shader_size / 4);
 	wrap_log("\t},\n");
 	wrap_log("\t.shader_size = 0x%x,\n", binary->shader_size);
-	wrap_log("\t.varying_stream = {\n");
-	hexdump(binary->varying_stream, binary->varying_stream_size);
-	wrap_log("\t},\n");
+
+	if (binary->varying_stream) {
+		wrap_log("\t.varying_stream = (char *) {\n");
+		hexdump(binary->varying_stream, binary->varying_stream_size);
+		wrap_log("\t},\n");
+	} else
+		wrap_log("\t.varying_stream = NULL,\n");
 	wrap_log("\t.varying_stream_size = 0x%x,\n", binary->varying_stream_size);
-	wrap_log("\t.uniform_stream = {\n");
-	hexdump(binary->uniform_stream, binary->uniform_stream_size);
-	wrap_log("\t},\n");
+
+	if (binary->uniform_stream) {
+		wrap_log("\t.uniform_stream = {\n");
+		hexdump(binary->uniform_stream, binary->uniform_stream_size);
+		wrap_log("\t},\n");
+	} else
+		wrap_log("\t.uniform_stream = NULL,\n");
 	wrap_log("\t.uniform_stream_size = 0x%x,\n", binary->uniform_stream_size);
-	wrap_log("\t.attribute_stream = {\n");
-	hexdump(binary->attribute_stream, binary->attribute_stream_size);
-	wrap_log("\t},\n");
+
+	if (binary->attribute_stream) {
+		wrap_log("\t.attribute_stream = (char *) {\n");
+		hexdump(binary->attribute_stream, binary->attribute_stream_size);
+		wrap_log("\t},\n");
+	} else
+		wrap_log("\t.attribute_stream = NULL,\n");
 	wrap_log("\t.attribute_stream_size = 0x%x,\n", binary->attribute_stream_size);
 
 	wrap_log("\t.parameters = {\n");
