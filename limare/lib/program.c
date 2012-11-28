@@ -905,10 +905,11 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 	return NULL;
 }
 
+#if 0
 /*
  *
  */
-void
+static void
 vertex_shader_attributes_patch(unsigned int *shader, int size)
 {
 	int i;
@@ -931,6 +932,7 @@ vertex_shader_attributes_patch(unsigned int *shader, int size)
 		shader[4 * i + 1] |= tmp << 26;
 	}
 }
+#endif
 
 static int
 vertex_shader_varyings_patch(unsigned int *shader, int size, int *indices)
@@ -981,7 +983,7 @@ vertex_shader_varyings_patch(unsigned int *shader, int size, int *indices)
 	return 0;
 }
 
-void
+static void
 limare_shader_binary_free(struct lima_shader_binary *binary)
 {
 	free(binary->error_log);
@@ -1065,7 +1067,9 @@ limare_shader_compile(struct limare_state *state, int type, const char *source)
 }
 
 int
-vertex_shader_attach(struct limare_state *state, const char *source)
+limare_program_vertex_shader_attach(struct limare_state *state,
+				    struct limare_program *program,
+				    const char *source)
 {
 	struct lima_shader_binary *binary;
 	struct stream_uniform_table *uniform_table;
@@ -1076,14 +1080,21 @@ vertex_shader_attach(struct limare_state *state, const char *source)
 	if (!binary)
 		return -1;
 
+	if (binary->shader_size > program->vertex_size) {
+		printf("%s: Vertex shader is too large: %d\n",
+		       __func__, binary->shader_size);
+		limare_shader_binary_free(binary);
+		return -1;
+	}
+
 	uniform_table =
 		stream_uniform_table_create(binary->uniform_stream,
 					    binary->uniform_stream_size);
 	if (uniform_table) {
-		state->vertex_uniforms =
+		program->vertex_uniforms =
 			stream_uniform_table_to_symbols(uniform_table,
-							&state->vertex_uniform_count,
-							&state->vertex_uniform_size);
+							&program->vertex_uniform_count,
+							&program->vertex_uniform_size);
 		stream_uniform_table_destroy(uniform_table);
 	}
 
@@ -1091,9 +1102,9 @@ vertex_shader_attach(struct limare_state *state, const char *source)
 		stream_attribute_table_create(binary->attribute_stream,
 					      binary->attribute_stream_size);
 	if (attribute_table) {
-		state->vertex_attributes =
+		program->vertex_attributes =
 			stream_attribute_table_to_symbols(attribute_table,
-							  &state->vertex_attribute_count);
+							  &program->vertex_attribute_count);
 		stream_attribute_table_destroy(attribute_table);
 	}
 
@@ -1101,19 +1112,21 @@ vertex_shader_attach(struct limare_state *state, const char *source)
 		stream_varying_table_create(binary->varying_stream,
 					    binary->varying_stream_size);
 	if (varying_table) {
-		state->vertex_varyings =
+		program->vertex_varyings =
 			stream_varying_table_to_symbols(varying_table,
-							&state->vertex_varying_count);
+							&program->vertex_varying_count);
 		stream_varying_table_destroy(varying_table);
 	}
 
-	state->vertex_binary = binary;
+	program->vertex_binary = binary;
 
 	return 0;
 }
 
 int
-fragment_shader_attach(struct limare_state *state, const char *source)
+limare_program_fragment_shader_attach(struct limare_state *state,
+				      struct limare_program *program,
+				      const char *source)
 {
 	struct lima_shader_binary *binary;
 	struct stream_uniform_table *uniform_table;
@@ -1123,14 +1136,21 @@ fragment_shader_attach(struct limare_state *state, const char *source)
 	if (!binary)
 		return -1;
 
+	if (binary->shader_size > program->fragment_size) {
+		printf("%s: Fragment shader is too large: %d\n",
+		       __func__, binary->shader_size);
+		limare_shader_binary_free(binary);
+		return -1;
+	}
+
 	uniform_table =
 		stream_uniform_table_create(binary->uniform_stream,
 					    binary->uniform_stream_size);
 	if (uniform_table) {
-		state->fragment_uniforms =
+		program->fragment_uniforms =
 			stream_uniform_table_to_symbols(uniform_table,
-							&state->fragment_uniform_count,
-							&state->fragment_uniform_size);
+							&program->fragment_uniform_count,
+							&program->fragment_uniform_size);
 		stream_uniform_table_destroy(uniform_table);
 	}
 
@@ -1138,63 +1158,63 @@ fragment_shader_attach(struct limare_state *state, const char *source)
 		stream_varying_table_create(binary->varying_stream,
 					    binary->varying_stream_size);
 	if (varying_table) {
-		state->fragment_varyings =
+		program->fragment_varyings =
 			stream_varying_table_to_symbols(varying_table,
-							&state->fragment_varying_count);
+							&program->fragment_varying_count);
 		stream_varying_table_destroy(varying_table);
 	}
 
-	state->fragment_binary = binary;
+	program->fragment_binary = binary;
 
 	return 0;
 }
 
-void
-state_symbols_print(struct limare_state *state)
+static void
+program_symbols_print(struct limare_program *program)
 {
 	int i;
 
 	printf("Vertex symbols:\n");
 
-	printf("\tAttributes: %d\n", state->vertex_attribute_count);
-	for (i = 0; i < state->vertex_attribute_count; i++)
-		symbol_print(state->vertex_attributes[i]);
+	printf("\tAttributes: %d\n", program->vertex_attribute_count);
+	for (i = 0; i < program->vertex_attribute_count; i++)
+		symbol_print(program->vertex_attributes[i]);
 
-	printf("\tVaryings: %d\n", state->vertex_varying_count);
-	for (i = 0; i < state->vertex_varying_count; i++)
-		symbol_print(state->vertex_varyings[i]);
-	if (state->gl_Position)
-		symbol_print(state->gl_Position);
-	if (state->gl_PointSize)
-		symbol_print(state->gl_PointSize);
+	printf("\tVaryings: %d\n", program->vertex_varying_count);
+	for (i = 0; i < program->vertex_varying_count; i++)
+		symbol_print(program->vertex_varyings[i]);
+	if (program->gl_Position)
+		symbol_print(program->gl_Position);
+	if (program->gl_PointSize)
+		symbol_print(program->gl_PointSize);
 
-	printf("\tUniforms: %d\n", state->vertex_uniform_count);
-	for (i = 0; i < state->vertex_uniform_count; i++)
-		symbol_print(state->vertex_uniforms[i]);
+	printf("\tUniforms: %d\n", program->vertex_uniform_count);
+	for (i = 0; i < program->vertex_uniform_count; i++)
+		symbol_print(program->vertex_uniforms[i]);
 
 	printf("Fragment symbols:\n");
 
-	printf("\tVaryings: %d\n", state->fragment_varying_count);
-	for (i = 0; i < state->fragment_varying_count; i++)
-		symbol_print(state->fragment_varyings[i]);
+	printf("\tVaryings: %d\n", program->fragment_varying_count);
+	for (i = 0; i < program->fragment_varying_count; i++)
+		symbol_print(program->fragment_varyings[i]);
 
-	printf("\tUniforms: %d\n", state->fragment_uniform_count);
-	for (i = 0; i < state->fragment_uniform_count; i++)
-		symbol_print(state->fragment_uniforms[i]);
+	printf("\tUniforms: %d\n", program->fragment_uniform_count);
+	for (i = 0; i < program->fragment_uniform_count; i++)
+		symbol_print(program->fragment_uniforms[i]);
 }
 
 /*
  * Checks whether vertex and fragment attributes match.
  */
 static int
-limare_link_varyings_match(struct limare_state *state)
+link_varyings_match(struct limare_program *program)
 {
 	int i;
 
 	/* make sure that our varyings are present in both */
-	for (i = 0; i < state->fragment_varying_count; i++) {
-		struct symbol *fragment = state->fragment_varyings[i];
-		struct symbol *vertex = state->vertex_varyings[i];
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		struct symbol *fragment = program->fragment_varyings[i];
+		struct symbol *vertex = program->vertex_varyings[i];
 
 		if ((fragment->component_size << vertex->precision) !=
 		    (vertex->component_size << fragment->precision)) {
@@ -1233,73 +1253,68 @@ limare_link_varyings_match(struct limare_state *state)
  * how do we order then? Most likely from symbol->offset too.
  */
 static void
-limare_link_varyings_indices_get(struct limare_state *state, int *varyings)
+link_varyings_indices_get(struct limare_program *program, int *varyings)
 {
 	int i;
 
-	for (i = 0; i < state->fragment_varying_count; i++) {
-		struct symbol *fragment = state->fragment_varyings[i];
-		struct symbol *vertex = state->vertex_varyings[i];
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		struct symbol *fragment = program->fragment_varyings[i];
+		struct symbol *vertex = program->vertex_varyings[i];
 
 		varyings[vertex->offset / 4] = fragment->offset / 4;
 	}
 
-	if (state->gl_Position)
-		varyings[state->gl_Position->offset / 4] =
-			state->varying_map_count;
+	if (program->gl_Position)
+		varyings[program->gl_Position->offset / 4] =
+			program->varying_map_count;
 }
 
 static void
-vertex_shader_varyings_rewrite(struct limare_state *state)
+vertex_shader_varyings_rewrite(struct limare_program *program)
 {
 	int varyings[16] = { -1, -1, -1, -1, -1, -1, -1, -1,
 			     -1, -1, -1, -1, -1, -1, -1, -1 };
 
-#if 0
-	if (limare_link_varyings_match(state))
-		return -1;
-#endif
-
-	limare_link_varyings_indices_get(state, varyings);
-	vertex_shader_varyings_patch(state->vertex_binary->shader,
-				     state->vertex_binary->shader_size / 16,
+	link_varyings_indices_get(program, varyings);
+	vertex_shader_varyings_patch(program->vertex_binary->shader,
+				     program->vertex_binary->shader_size / 16,
 				     varyings);
 }
 
 static int
-vertex_varyings_reorder(struct limare_state *state)
+vertex_varyings_reorder(struct limare_program *program)
 {
 	struct symbol *new[16] = {0};
 	int i, j;
 
-	for (i = 0; i < state->vertex_varying_count; i++) {
-		if (!state->vertex_varyings[i]) {
+	for (i = 0; i < program->vertex_varying_count; i++) {
+		if (!program->vertex_varyings[i]) {
 			printf("%s: empty vertex varying slot %d\n",
 			       __func__, i);
 			continue;
 		}
 
-		if (!strcmp(state->vertex_varyings[i]->name, "gl_Position")) {
-			state->gl_Position = state->vertex_varyings[i];
+		if (!strcmp(program->vertex_varyings[i]->name, "gl_Position")) {
+			program->gl_Position = program->vertex_varyings[i];
 			continue;
-		} else if (!strcmp(state->vertex_varyings[i]->name,
+		} else if (!strcmp(program->vertex_varyings[i]->name,
 				 "gl_PointSize")) {
-			state->gl_PointSize = state->vertex_varyings[i];
+			program->gl_PointSize = program->vertex_varyings[i];
 			continue;
 		}
 
-		for (j = 0; j < state->fragment_varying_count; j++)
-			if (!strcmp(state->vertex_varyings[i]->name,
-				    state->fragment_varyings[j]->name))
+		for (j = 0; j < program->fragment_varying_count; j++)
+			if (!strcmp(program->vertex_varyings[i]->name,
+				    program->fragment_varyings[j]->name))
 				break;
 
-		if (j < state->fragment_varying_count) {
-			new[j] = state->vertex_varyings[i];
+		if (j < program->fragment_varying_count) {
+			new[j] = program->vertex_varyings[i];
 			continue;
 		}
 
 		printf("%s: unmatched vertex varying %s.\n",
-		       __func__, state->vertex_varyings[i]->name);
+		       __func__, program->vertex_varyings[i]->name);
 		return -1;
 	}
 
@@ -1309,45 +1324,45 @@ vertex_varyings_reorder(struct limare_state *state)
 		if (!new[i])
 			break;
 
-	if (i != state->fragment_varying_count) {
+	if (i != program->fragment_varying_count) {
 		printf("%s: unmatched fragment varying %s.\n",
-		       __func__, state->fragment_varyings[i]->name);
+		       __func__, program->fragment_varyings[i]->name);
 		return -1;
 	}
 
-	memcpy(state->vertex_varyings, new,
-	       state->vertex_varying_count * sizeof(struct symbol *));
-	state->vertex_varying_count = state->fragment_varying_count;
+	memcpy(program->vertex_varyings, new,
+	       program->vertex_varying_count * sizeof(struct symbol *));
+	program->vertex_varying_count = program->fragment_varying_count;
 
 	return 0;
 }
 
-void
-state_varying_map_print(struct limare_state *state)
+static void
+varying_map_print(struct limare_program *program)
 {
 	int i;
 
-	printf("Varying map (0x%03X):\n", state->varying_map_size);
+	printf("Varying map (0x%03X):\n", program->varying_map_size);
 	for (i = 0; i < 12; i++)
 		printf("\t%2d: offset 0x%02X, entries %d, entry_size %d\n",
-		       i, state->varying_map[i].offset,
-		       state->varying_map[i].entries,
-		       state->varying_map[i].entry_size);
+		       i, program->varying_map[i].offset,
+		       program->varying_map[i].entries,
+		       program->varying_map[i].entry_size);
 }
 
-int
-limare_varying_map_create(struct limare_state *state)
+static int
+varying_map_create(struct limare_program *program)
 {
 	int table[12 * 4] = {0};
 	int i, j, offset = 0;
 
-	for (i = 0; i < state->fragment_varying_count; i++) {
-		struct symbol *symbol = state->fragment_varyings[i];
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		struct symbol *symbol = program->fragment_varyings[i];
 		int size;
 
-		if (state->fragment_varyings[i]->flag &
+		if (program->fragment_varyings[i]->flag &
 		    SYMBOL_USE_VERTEX_SIZE)
-			size = state->vertex_varyings[i]->component_size;
+			size = program->vertex_varyings[i]->component_size;
 		else
 			size = symbol->component_size;
 
@@ -1357,86 +1372,125 @@ limare_varying_map_create(struct limare_state *state)
 
 	for (i = 0; i < 12; i++) {
 		if (table[4 * i + 2] || table[4 * i + 3])
-			state->varying_map[i].entries = 4;
+			program->varying_map[i].entries = 4;
 		else if (table[4 * i + 0] || table[4 * i + 1])
-			state->varying_map[i].entries = 2;
+			program->varying_map[i].entries = 2;
 
-		if (state->varying_map[i].entries) {
+		if (program->varying_map[i].entries) {
 			if ((table[4 * i + 0] == 4) ||
 			    (table[4 * i + 1] == 4) ||
 			    (table[4 * i + 2] == 4) ||
 			    (table[4 * i + 3] == 4))
-				state->varying_map[i].entry_size = 4;
+				program->varying_map[i].entry_size = 4;
 			else
-				state->varying_map[i].entry_size = 2;
+				program->varying_map[i].entry_size = 2;
 		}
 	}
 
 	for (i = 0; i < 12; i++) {
-		if (!state->varying_map[i].entries)
+		if (!program->varying_map[i].entries)
 			break;
 
-		state->varying_map[i].offset = offset;
+		program->varying_map[i].offset = offset;
 
-		offset += state->varying_map[i].entries *
-			state->varying_map[i].entry_size;
+		offset += program->varying_map[i].entries *
+			program->varying_map[i].entry_size;
 	}
 
-	state->varying_map_count = i;
-	state->varying_map_size = ALIGN(offset, 8);
+	program->varying_map_count = i;
+	program->varying_map_size = ALIGN(offset, 8);
 
 	return 0;
 }
 
 int
-limare_link(struct limare_state *state)
+limare_program_link(struct limare_program *program)
 {
 	int ret;
 	int i;
 
-	ret = vertex_varyings_reorder(state);
+	ret = vertex_varyings_reorder(program);
 	if (ret)
 		return ret;
 
-	ret = limare_link_varyings_match(state);
+	ret = link_varyings_match(program);
 	if (ret)
 		return ret;
 
 	/* temporary safeguard */
-	for (i = 0; i < state->vertex_varying_count; i++) {
-		if (state->fragment_varyings[i]->value_type != 1) {
+	for (i = 0; i < program->vertex_varying_count; i++) {
+		if (program->fragment_varyings[i]->value_type != 1) {
 			printf("%s: Vertex Varying %s has unhandled type %d\n",
-			       __func__, state->fragment_varyings[i]->name,
-			       state->fragment_varyings[i]->value_type);
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->value_type);
 			return -1;
-		} else if (state->fragment_varyings[i]->entry_count != 1) {
+		} else if (program->fragment_varyings[i]->entry_count != 1) {
 			printf("%s: Vertex Varying %s has unhandled count %d\n",
-			       __func__, state->fragment_varyings[i]->name,
-			       state->fragment_varyings[i]->entry_count);
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->entry_count);
 			return -1;
 		}
 	}
 
 	/* temporary safeguard */
-	for (i = 0; i < state->fragment_varying_count; i++) {
-		if (state->fragment_varyings[i]->value_type != 1) {
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		if (program->fragment_varyings[i]->value_type != 1) {
 			printf("%s: Fragment Varying %s has unhandled type %d\n",
-			       __func__, state->fragment_varyings[i]->name,
-			       state->fragment_varyings[i]->value_type);
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->value_type);
 			return -1;
-		} else if (state->fragment_varyings[i]->entry_count != 1) {
+		} else if (program->fragment_varyings[i]->entry_count != 1) {
 			printf("%s: Fragment Varying %s has unhandled count %d\n",
-			       __func__, state->fragment_varyings[i]->name,
-			       state->fragment_varyings[i]->entry_count);
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->entry_count);
 			return -1;
 		}
 	}
 
-	ret = limare_varying_map_create(state);
+	ret = varying_map_create(program);
 	if (ret)
 		return ret;
 
-	vertex_shader_varyings_rewrite(state);
+	vertex_shader_varyings_rewrite(program);
+
+	/* now throw the shaders into mali mem. */
+	memcpy(program->mem_address + program->vertex_offset,
+	       program->vertex_binary->shader,
+	       program->vertex_binary->shader_size);
+
+	memcpy(program->mem_address + program->fragment_offset,
+	       program->fragment_binary->shader,
+	       program->fragment_binary->shader_size);
 
 	return ret;
+}
+
+/*
+ *
+ *
+ */
+struct limare_program *
+limare_program_create(void *address, unsigned int physical,
+		      int offset, int size)
+{
+	struct limare_program *program =
+		calloc(1, sizeof(struct limare_program));
+
+	if (!program) {
+		printf("%s: allocation failed\n", __func__);
+		return NULL;
+	}
+
+	program->mem_address = address + offset;
+	program->mem_physical = physical + offset;
+	program->mem_size = size;
+
+	/* when we have proper memory management... */
+	program->vertex_offset = 0;
+	program->vertex_size = ALIGN(program->mem_size / 2, 0x40);
+
+	program->fragment_offset = program->vertex_size;
+	program->fragment_size = program->mem_size - program->vertex_size;
+
+	return program;
 }

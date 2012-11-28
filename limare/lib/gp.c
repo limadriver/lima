@@ -46,6 +46,7 @@
 #include "hfloat.h"
 #include "from_float.h"
 #include "texture.h"
+#include "program.h"
 
 int
 vs_command_queue_create(struct limare_state *state, int offset, int size)
@@ -249,11 +250,11 @@ vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute)
 }
 
 int
-vs_info_attach_varyings(struct limare_state *state, struct draw_info *draw)
+vs_info_attach_varyings(struct limare_program *program, struct draw_info *draw)
 {
 	struct vs_info *info = draw->vs;
 
-	info->varying_size = ALIGN(state->varying_map_size, 0x40);
+	info->varying_size = ALIGN(program->varying_map_size, 0x40);
 	if (info->varying_size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
@@ -274,35 +275,9 @@ vs_info_attach_varyings(struct limare_state *state, struct draw_info *draw)
 	return 0;
 }
 
-int
-vs_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size)
-{
-	struct vs_info *info = draw->vs;
-	int mem_size;
-
-	if (info->shader != NULL) {
-		printf("%s: shader already assigned\n", __func__);
-		return -1;
-	}
-
-	mem_size = ALIGN(size * 16, 0x40);
-	if (mem_size > (draw->mem_size - draw->mem_used)) {
-		printf("%s: no more space\n", __func__);
-		return -2;
-	}
-
-	info->shader = draw->mem_address + draw->mem_used;
-	info->shader_offset = draw->mem_used;
-	info->shader_size = size;
-	draw->mem_used += mem_size;
-
-	memcpy(info->shader, shader, 16 * size);
-
-	return 0;
-}
-
 void
-vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
+vs_commands_draw_add(struct limare_state *state, struct limare_program *program,
+		     struct draw_info *draw)
 {
 	struct vs_info *vs = draw->vs;
 	struct lima_cmd *cmds = state->vs_commands;
@@ -316,18 +291,19 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 	cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
-	cmds[i].val = draw->mem_physical + vs->shader_offset;
-	cmds[i].cmd = LIMA_VS_CMD_SHADER_ADDRESS | (vs->shader_size << 16);
+	cmds[i].val = program->mem_physical + program->vertex_offset;
+	cmds[i].cmd = LIMA_VS_CMD_SHADER_ADDRESS |
+		((program->vertex_binary->shader_size / 16) << 16);
 	i++;
 
 	cmds[i].val =
-		(state->vertex_binary->parameters.vertex.varying_something - 1)
+		(program->vertex_binary->parameters.vertex.varying_something - 1)
 		<< 20;
-	cmds[i].val |= (vs->shader_size - 1) << 10;
+	cmds[i].val |= ((program->vertex_binary->shader_size / 16) - 1) << 10;
 	cmds[i].cmd = LIMA_VS_CMD_SHADER_INFO;
 	i++;
 
-	cmds[i].val = (state->varying_map_count << 8) | ((vs->attribute_count - 1) << 24);
+	cmds[i].val = (program->varying_map_count << 8) | ((vs->attribute_count - 1) << 24);
 	cmds[i].cmd = LIMA_VS_CMD_VARYING_ATTRIBUTE_COUNT;
 	i++;
 
@@ -349,7 +325,7 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 
 		cmds[i].val = draw->mem_physical + vs->varying_area_offset;
 		cmds[i].cmd = LIMA_VS_CMD_VARYINGS_ADDRESS |
-			((state->varying_map_count + 1) << 17);
+			((program->varying_map_count + 1) << 17);
 		i++;
 	}
 
@@ -374,7 +350,8 @@ vs_commands_draw_add(struct limare_state *state, struct draw_info *draw)
 }
 
 void
-vs_info_finalize(struct limare_state *state, struct draw_info *draw, struct vs_info *info)
+vs_info_finalize(struct limare_state *state, struct limare_program *program,
+		 struct draw_info *draw, struct vs_info *info)
 {
 	int i;
 
@@ -387,18 +364,18 @@ vs_info_finalize(struct limare_state *state, struct draw_info *draw, struct vs_i
 				(info->attributes[i]->component_count - 1);
 		}
 
-		for (i = 0; i < state->varying_map_count; i++) {
+		for (i = 0; i < program->varying_map_count; i++) {
 			info->common->varyings[i].physical = draw->mem_physical +
-				info->varying_offset + state->varying_map[i].offset;
+				info->varying_offset + program->varying_map[i].offset;
 			info->common->varyings[i].size =
-				(state->varying_map_size << 11) |
-				(state->varying_map[i].entries - 1);
+				(program->varying_map_size << 11) |
+				(program->varying_map[i].entries - 1);
 
-			if (state->varying_map[i].entry_size == 2)
+			if (program->varying_map[i].entry_size == 2)
 				info->common->varyings[i].size |= 0x0C;
 		}
 
-		if (state->gl_Position) {
+		if (program->gl_Position) {
 			info->common->varyings[i].physical =
 				draw->mem_physical + info->gl_Position_offset;
 			info->common->varyings[i].size = 0x8020;
@@ -413,18 +390,18 @@ vs_info_finalize(struct limare_state *state, struct draw_info *draw, struct vs_i
 				(info->attributes[i]->component_count - 1);
 		}
 
-		for (i = 0; i < state->varying_map_count; i++) {
+		for (i = 0; i < program->varying_map_count; i++) {
 			info->varying_area[i].physical = draw->mem_physical +
-				info->varying_offset + state->varying_map[i].offset;
+				info->varying_offset + program->varying_map[i].offset;
 			info->varying_area[i].size =
-				(state->varying_map_size << 11) |
-				(state->varying_map[i].entries - 1);
+				(program->varying_map_size << 11) |
+				(program->varying_map[i].entries - 1);
 
-			if (state->varying_map[i].entry_size == 2)
+			if (program->varying_map[i].entry_size == 2)
 				info->varying_area[i].size |= 0x0C;
 		}
 
-		if (state->gl_Position) {
+		if (program->gl_Position) {
 			info->varying_area[i].physical =
 				draw->mem_physical + info->gl_Position_offset;
 			info->varying_area[i].size = 0x8020;
@@ -521,35 +498,6 @@ plbu_commands_finish(struct limare_state *state)
 }
 
 int
-plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader,
-			int size, int something)
-{
-	struct plbu_info *info = draw->plbu;
-	int mem_size;
-
-	if (info->shader != NULL) {
-		printf("%s: shader already assigned\n", __func__);
-		return -1;
-	}
-
-	mem_size = ALIGN(size, 0x40);
-	if (mem_size > (draw->mem_size - draw->mem_used)) {
-		printf("%s: no more space\n", __func__);
-		return -2;
-	}
-
-	info->shader = draw->mem_address + draw->mem_used;
-	info->shader_offset = draw->mem_used;
-	info->shader_size = size;
-	info->shader_something = something;
-	draw->mem_used += mem_size;
-
-	memcpy(info->shader, shader, 4 * size);
-
-	return 0;
-}
-
-int
 plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			  int count, int size)
 {
@@ -623,7 +571,9 @@ plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
 }
 
 int
-plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw)
+plbu_info_render_state_create(struct limare_state *state,
+			      struct limare_program *program,
+			      struct draw_info *draw)
 {
 	struct plbu_info *info = draw->plbu;
 	struct vs_info *vs = draw->vs;
@@ -639,11 +589,6 @@ plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw
 	if (size > (draw->mem_size - draw->mem_used)) {
 		printf("%s: no more space\n", __func__);
 		return -2;
-	}
-
-	if (!info->shader) {
-		printf("%s: no shader attached yet!\n", __func__);
-		return -3;
 	}
 
 	info->render_state = draw->mem_address + draw->mem_used;
@@ -665,8 +610,8 @@ plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw
 	render->unknown20 = 0xF807;
 	/* enable 4x MSAA */
 	render->unknown20 |= 0x68;
-	render->shader_address = (draw->mem_physical + info->shader_offset) |
-		info->shader_something;
+	render->shader_address = (program->mem_physical + program->fragment_offset) |
+		program->fragment_binary->parameters.fragment.unknown04;
 
 	render->uniforms_address = 0;
 
@@ -676,19 +621,19 @@ plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw
 
 	if (vs->varying_size) {
 		render->varyings_address = draw->mem_physical + vs->varying_offset;
-		render->unknown34 |= state->varying_map_size >> 3;
+		render->unknown34 |= program->varying_map_size >> 3;
 		render->varying_types = 0;
 
-		for (i = 0; i < state->varying_map_count; i++) {
+		for (i = 0; i < program->varying_map_count; i++) {
 			int val;
 
-			if (state->varying_map[i].entry_size == 4) {
-				if (state->varying_map[i].entries == 4)
+			if (program->varying_map[i].entry_size == 4) {
+				if (program->varying_map[i].entries == 4)
 					val = 0;
 				else
 					val = 1;
 			} else {
-				if (state->varying_map[i].entries == 4)
+				if (program->varying_map[i].entries == 4)
 					val = 2;
 				else
 					val = 3;

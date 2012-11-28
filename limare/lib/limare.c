@@ -45,6 +45,7 @@
 #include "compiler.h"
 #include "texture.h"
 #include "hfloat.h"
+#include "program.h"
 
 static int
 limare_fd_open(struct limare_state *state)
@@ -300,6 +301,13 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	state->draw_mem_offset = 0x40000;
 	state->draw_mem_size = 0x70000;
 
+	state->programs = calloc(1, sizeof(struct program *));
+	state->programs[0] = limare_program_create(state->mem_address,
+						   state->mem_physical,
+						   0xF0000, 0x10000);
+	state->program_count = 1;
+	state->program_current = 0;
+
 	state->texture_mem_offset = 0x100000;
 	state->texture_mem_size = 0x100000;
 
@@ -336,10 +344,12 @@ symbol_attach_data(struct symbol *symbol, int count, float *data)
 int
 limare_uniform_attach(struct limare_state *state, char *name, int count, float *data)
 {
+	struct limare_program *program =
+		state->programs[state->program_current];
 	int found = 0, i, ret;
 
-	for (i = 0; i < state->vertex_uniform_count; i++) {
-		struct symbol *symbol = state->vertex_uniforms[i];
+	for (i = 0; i < program->vertex_uniform_count; i++) {
+		struct symbol *symbol = program->vertex_uniforms[i];
 
 		if (!strcmp(symbol->name, name)) {
 			if (symbol->component_count != count) {
@@ -357,8 +367,8 @@ limare_uniform_attach(struct limare_state *state, char *name, int count, float *
 		}
 	}
 
-	for (i = 0; i < state->fragment_uniform_count; i++) {
-		struct symbol *symbol = state->fragment_uniforms[i];
+	for (i = 0; i < program->fragment_uniform_count; i++) {
+		struct symbol *symbol = program->fragment_uniforms[i];
 
 		if (!strcmp(symbol->name, name)) {
 			if (symbol->component_count != count) {
@@ -389,10 +399,12 @@ int
 limare_attribute_pointer(struct limare_state *state, char *name, int size,
 			  int count, void *data)
 {
+	struct limare_program *program =
+		state->programs[state->program_current];
 	int i;
 
-	for (i = 0; i < state->vertex_attribute_count; i++) {
-		struct symbol *symbol = state->vertex_attributes[i];
+	for (i = 0; i < program->vertex_attribute_count; i++) {
+		struct symbol *symbol = program->vertex_attributes[i];
 
 		if (!strcmp(symbol->name, name)) {
 			if (symbol->precision != 3) {
@@ -454,8 +466,10 @@ limare_gl_mali_ViewPortTransform(struct limare_state *state,
 
 int
 limare_texture_attach(struct limare_state *state, char *uniform_name,
-		      void *pixels, int width, int height, int format)
+		      const void *pixels, int width, int height, int format)
 {
+	struct limare_program *program =
+		state->programs[state->program_current];
 	struct symbol *symbol;
 	int unit = 0, i;
 
@@ -464,8 +478,8 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 		return -1;
 	}
 
-	for (i = 0; i < state->fragment_uniform_count; i++) {
-		symbol = state->fragment_uniforms[i];
+	for (i = 0; i < program->fragment_uniform_count; i++) {
+		symbol = program->fragment_uniforms[i];
 
 		if (!strcmp(symbol->name, uniform_name))
 			break;
@@ -498,6 +512,8 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 int
 limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 {
+	struct limare_program *program =
+		state->programs[state->program_current];
 	struct draw_info *draw;
 	int i;
 
@@ -509,8 +525,8 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 
 	/* Todo, check whether attributes all have data attached! */
 
-	for (i = 0; i < state->vertex_uniform_count; i++) {
-		struct symbol *symbol = state->vertex_uniforms[i];
+	for (i = 0; i < program->vertex_uniform_count; i++) {
+		struct symbol *symbol = program->vertex_uniforms[i];
 
 		if (symbol->data)
 			continue;
@@ -526,8 +542,8 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 		}
 	}
 
-	for (i = 0; i < state->fragment_uniform_count; i++) {
-		struct symbol *symbol = state->fragment_uniforms[i];
+	for (i = 0; i < program->fragment_uniform_count; i++) {
+		struct symbol *symbol = program->fragment_uniforms[i];
 
 		if (!symbol->data) {
 			printf("%s: Error: vertex uniform %s is empty.\n",
@@ -555,42 +571,35 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 	state->draw_mem_size -= 0x1000;
 	state->draw_count++;
 
-	vs_info_attach_shader(draw, state->vertex_binary->shader,
-			      state->vertex_binary->shader_size / 16);
-
-	plbu_info_attach_shader(draw, state->fragment_binary->shader,
-				state->fragment_binary->shader_size,
-				state->fragment_binary->parameters.fragment.unknown04);
-
-	for (i = 0; i < state->vertex_attribute_count; i++) {
+	for (i = 0; i < program->vertex_attribute_count; i++) {
 		struct symbol *symbol;
 
-		symbol = symbol_copy(state->vertex_attributes[i], start, count);
+		symbol = symbol_copy(program->vertex_attributes[i], start, count);
 		if (symbol)
 			vs_info_attach_attribute(draw, symbol);
 
 	}
 
-	if (vs_info_attach_varyings(state, draw))
+	if (vs_info_attach_varyings(program, draw))
 		return -1;
 
-	if (vs_info_attach_uniforms(draw, state->vertex_uniforms,
-				    state->vertex_uniform_count,
-				    state->vertex_uniform_size))
+	if (vs_info_attach_uniforms(draw, program->vertex_uniforms,
+				    program->vertex_uniform_count,
+				    program->vertex_uniform_size))
 		return -1;
 
-	if (plbu_info_attach_uniforms(draw, state->fragment_uniforms,
-				      state->fragment_uniform_count,
-				      state->fragment_uniform_size))
+	if (plbu_info_attach_uniforms(draw, program->fragment_uniforms,
+				      program->fragment_uniform_count,
+				      program->fragment_uniform_size))
 		return -1;
 
 	if (plbu_info_attach_textures(draw, &state->texture, 1))
 		return -1;
 
-	vs_commands_draw_add(state, draw);
-	vs_info_finalize(state, draw, draw->vs);
+	vs_commands_draw_add(state, program, draw);
+	vs_info_finalize(state, program, draw, draw->vs);
 
-	plbu_info_render_state_create(state, draw);
+	plbu_info_render_state_create(state, program, draw);
 	plbu_commands_draw_add(state, draw);
 
 	return 0;
@@ -622,4 +631,31 @@ limare_finish(void)
 {
 	fflush(stdout);
 	sleep(1);
+}
+
+int
+vertex_shader_attach(struct limare_state *state, const char *source)
+{
+	struct limare_program *program =
+		state->programs[state->program_current];
+
+	return limare_program_vertex_shader_attach(state, program, source);
+}
+
+int
+fragment_shader_attach(struct limare_state *state, const char *source)
+{
+	struct limare_program *program =
+		state->programs[state->program_current];
+
+	return limare_program_fragment_shader_attach(state, program, source);
+}
+
+int
+limare_link(struct limare_state *state)
+{
+	struct limare_program *program =
+		state->programs[state->program_current];
+
+	return limare_program_link(program);
 }

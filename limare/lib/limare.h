@@ -31,12 +31,6 @@ struct lima_cmd {
 	unsigned int cmd;
 };
 
-struct varying_map {
-	int offset;
-	int entries;
-	int entry_size;
-};
-
 struct limare_state {
 	int fd;
 	int kernel_version;
@@ -78,43 +72,20 @@ struct limare_state {
 	int texture_mem_size;
 	struct texture *texture;
 
-	/* program */
-	struct lima_shader_binary *vertex_binary;
-
-	struct symbol **vertex_uniforms;
-	int vertex_uniform_count;
-	int vertex_uniform_size;
-
-	struct symbol **vertex_attributes;
-	int vertex_attribute_count;
-
-	struct symbol **vertex_varyings;
-	int vertex_varying_count;
-
-	struct lima_shader_binary *fragment_binary;
-
-	struct symbol **fragment_uniforms;
-	int fragment_uniform_count;
-	int fragment_uniform_size;
-
-	struct symbol **fragment_varyings;
-	int fragment_varying_count;
-
-	struct symbol *gl_Position;
-	struct symbol *gl_PointSize;
-
-	struct sampler **fragment_samplers;
-	int fragment_sampler_count;
-
-	struct varying_map varying_map[12];
-	int varying_map_count;
-	int varying_map_size;
+	int program_count;
+	struct limare_program **programs;
+	int program_current;
 };
 
 /* from limare.c */
 struct limare_state *limare_init(void);
+
 int limare_state_setup(struct limare_state *state, int width, int height,
 			unsigned int clear_color);
+int vertex_shader_attach(struct limare_state *state, const char *source);
+int fragment_shader_attach(struct limare_state *state, const char *source);
+int limare_link(struct limare_state *state);
+
 int limare_uniform_attach(struct limare_state *state, char *name,
 			  int count, float *data);
 int limare_attribute_pointer(struct limare_state *state, char *name, int size,
@@ -125,6 +96,7 @@ int limare_texture_attach(struct limare_state *state, char *uniform_name,
 int limare_draw_arrays(struct limare_state *state, int mode,
 			int vertex_start, int vertex_count);
 int limare_flush(struct limare_state *state);
+
 void limare_finish(void);
 
 #endif /* LIMARE_LIMARE_H */

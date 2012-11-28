@@ -62,31 +62,24 @@ struct vs_info {
 
 	int gl_Position_offset;
 	int gl_Position_size;
-
-	unsigned int *shader;
-	int shader_offset;
-	int shader_size;
 };
 
 int vs_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			    int count, int size);
 
 int vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute);
-int vs_info_attach_varyings(struct limare_state *state, struct draw_info *draw);
-int vs_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size);
+int vs_info_attach_varyings(struct limare_program *program, struct draw_info *draw);
 
-void vs_commands_draw_add(struct limare_state *state, struct draw_info *draw);
-void vs_info_finalize(struct limare_state *state, struct draw_info *draw, struct vs_info *info);
+void vs_commands_draw_add(struct limare_state *state,
+			  struct limare_program *program,
+			  struct draw_info *draw);
+void vs_info_finalize(struct limare_state *state, struct limare_program *program,
+		      struct draw_info *draw, struct vs_info *info);
 
 struct plbu_info {
 	struct render_state *render_state;
 	int render_state_offset;
 	int render_state_size;
-
-	unsigned int *shader;
-	int shader_offset;
-	int shader_size;
-	int shader_something;
 
 	int uniform_array_offset;
 	int uniform_array_size;
@@ -101,14 +94,14 @@ int plbu_command_queue_create(struct limare_state *state, int offset, int size);
 void plbu_commands_draw_add(struct limare_state *state, struct draw_info *draw);
 void plbu_commands_finish(struct limare_state *state);
 
-int plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader,
-			    int size, int something);
 int plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
 			    int count, int size);
 int plbu_info_attach_textures(struct draw_info *draw, struct texture **textures,
 			      int count);
 
-int plbu_info_render_state_create(struct limare_state *state, struct draw_info *draw);
+int plbu_info_render_state_create(struct limare_state *state,
+				  struct limare_program *program,
+				  struct draw_info *draw);
 
 struct draw_info {
 	unsigned int mem_physical;
