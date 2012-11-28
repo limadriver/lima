@@ -54,6 +54,11 @@ static void mali_wrap_bmp_dump(void);
 
 static pthread_mutex_t serializer[1] = { PTHREAD_MUTEX_INITIALIZER };
 
+unsigned int render_address;
+int render_pitch;
+int render_height;
+int render_format;
+
 static int mali_type = 400;
 static int mali_version;
 
@@ -129,11 +134,13 @@ serialized_stop(void)
  *
  */
 FILE *lima_wrap_log;
+int frame_count;
 
 void
 lima_wrap_log_open(void)
 {
 	char *filename;
+	char buffer[1024];
 
 	if (lima_wrap_log)
 		return;
@@ -142,7 +149,9 @@ lima_wrap_log_open(void)
 	if (!filename)
 		filename = "/tmp/lima.wrap.log";
 
-	lima_wrap_log = fopen(filename, "w");
+	snprintf(buffer, sizeof(buffer), "%s.%04d", filename, frame_count);
+
+	lima_wrap_log = fopen(buffer, "w");
 	if (!lima_wrap_log) {
 		printf("Error: failed to open wrap log %s: %s\n", filename,
 		       strerror(errno));
@@ -163,6 +172,25 @@ wrap_log(const char *format, ...)
 	va_end(args);
 
 	return ret;
+}
+
+void
+lima_wrap_log_next(void)
+{
+	if (lima_wrap_log) {
+		fclose(lima_wrap_log);
+		lima_wrap_log = NULL;
+	}
+
+	frame_count++;
+
+	lima_wrap_log_open();
+
+	if (mali_type == 400)
+		wrap_log("#define LIMA_M400 1\n\n");
+
+	wrap_log("int dump_render_width = %d;\n", render_pitch / 4);
+	wrap_log("int dump_render_height = %d;\n\n", render_height / 2);
 }
 
 /*
@@ -549,6 +577,9 @@ dev_mali_get_system_info_post(void *data)
 	wrap_log("};\n\n");
 
 	wrap_log("#endif /* System Info */\n\n");
+
+	if (mali_type == 400)
+		wrap_log("#define LIMA_M400 1\n\n");
 }
 
 static void
@@ -664,9 +695,6 @@ dev_mali_wait_for_notification_post(void *data)
 			wrap_log("\t},\n");
 
 			//mali_memory_dump();
-
-			/* We finished a frame, we dump the result */
-			mali_wrap_bmp_dump();
 		}
 		break;
 	case _MALI_NOTIFICATION_GP_STALLED:
@@ -688,6 +716,14 @@ dev_mali_wait_for_notification_post(void *data)
 
 	wrap_log("};\n\n");
 	wrap_log("#endif /* Notification */\n\n");
+
+	/* some post-processing */
+	if (notification->code.type == _MALI_NOTIFICATION_PP_FINISHED) {
+		/* We finished a frame, we dump the result */
+		mali_wrap_bmp_dump();
+
+		lima_wrap_log_next();
+	}
 }
 
 static void
@@ -771,11 +807,6 @@ dev_mali_gp_job_start_post(void *data)
 	if (mali_version < MALI_DRIVER_VERSION_R3P0)
 		dev_mali_gp_job_start_r2p1_post(data);
 }
-
-unsigned int render_address;
-int render_pitch;
-int render_height;
-int render_format;
 
 static void
 dev_mali200_pp_job_start_pre(void *data)
@@ -1310,12 +1341,13 @@ mali_wrap_bmp_dump(void)
 
 	if (render_height < 16) {
 		wrap_log("/* %s: invalid height: %d */\n", __func__, render_height);
-		//return;
-		render_pitch = 400 * 4;
-		render_height = 240 * 2;
+		render_height = 480 * 2;
 	}
 
 	wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/tmp/lima.wrap.bmp");
+
+	wrap_log("int dump_render_width = %d;\n", render_pitch / 4);
+	wrap_log("int dump_render_height = %d;\n\n", render_height / 2);
 }
 
 /*

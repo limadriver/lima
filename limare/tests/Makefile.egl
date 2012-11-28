@@ -21,9 +21,9 @@ egl_install: egl_$(NAME)
 egl_wrap:
 ifeq ($(OS),android)
 	$(ADB) shell "rm $(EGL_BMP)"
-	$(ADB) shell "rm $(EGL_LOG)"
+	$(ADB) shell "rm $(EGL_LOG).0000"
 	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(EGL_LOG) $(INSTALL_DIR)/egl/$(NAME)"
-	$(ADB) pull $(EGL_LOG)
+	$(ADB) pull $(EGL_LOG).0000
 	$(ADB) pull $(EGL_BMP)
 else
 	$(shell LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(EGL_LOG) $(INSTALL_DIR)/egl/$(NAME))

@@ -16,9 +16,9 @@ limare_install: limare_$(NAME)
 limare_wrap:
 ifeq ($(OS),android)
 	$(ADB) shell "rm $(LIMARE_BMP)"
-	$(ADB) shell "rm $(LIMARE_LOG)"
+	$(ADB) shell "rm $(LIMARE_LOG).0000"
 	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(LIMARE_LOG) $(INSTALL_DIR)/limare/$(NAME)"
-	$(ADB) pull $(LIMARE_LOG)
+	$(ADB) pull $(LIMARE_LOG).0000
 	$(ADB) pull $(LIMARE_BMP)
 else
 	$(shell LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(LIMARE_LOG) $(INSTALL_DIR)/limare/$(NAME))
