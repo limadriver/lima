@@ -8,7 +8,8 @@ DIRS =	common \
 	quad_textured \
 	cube_textured \
 	cube_textured_spinning \
-	cube_companion
+	cube_companion \
+	cube_companion_spinning \
 
 .PHONY: all clean install $(DIRS)
 
