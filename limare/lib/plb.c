@@ -109,9 +109,11 @@ plb_create(struct limare_state *state, unsigned int physical, void *address, int
 	plb->block_w = width;
 	plb->block_h = height;
 
+#if 0
 	printf("%s: (%dx%d) == (%d << %d, %d << %d);\n", __func__,
 	       plb->tiled_w, plb->tiled_h,
 	       plb->block_w, plb->shift_w, plb->block_h, plb->shift_h);
+#endif
 
 	plb->plb_size = plb->block_size * plb->block_w * plb->block_h;
 	plb->plb_offset = 0;
