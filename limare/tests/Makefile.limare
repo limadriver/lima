@@ -1,6 +1,6 @@
 .PHONY : limare limare_install limare_run limare_wrap
 
-LIMARE_LOG = /sdcard/limare.wrap.log
+LIMARE_LOG = /sdcard/limare.wrap.c
 LIMARE_BMP = /sdcard/limare.wrap.bmp
 LIMARE_OBJS = limare.o $(objs)
 

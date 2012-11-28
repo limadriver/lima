@@ -239,7 +239,7 @@ open(const char* path, int flags, ...)
 
 		if ((ret != -1) && hello) {
 			dev_mali_fd = ret;
-			wrap_log("OPEN;\n");
+			wrap_log("/* OPEN */\n");
 		}
 	}
 
@@ -266,7 +266,7 @@ close(int fd)
 		orig_close = libc_dlsym(__func__);
 
 	if (fd == dev_mali_fd) {
-		wrap_log("CLOSE;");
+		wrap_log("/* CLOSE */");
 		dev_mali_fd = -1;
 	}
 
@@ -353,7 +353,7 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 	ret = orig_mmap(addr, length, prot, flags, fd, offset);
 
 	if (fd == dev_mali_fd) {
-		wrap_log("MMAP 0x%08lx (0x%08x) = %p;\n", offset, length, ret);
+		wrap_log("/* MMAP 0x%08lx (0x%08x) = %p */\n\n", offset, length, ret);
 		mali_address_add(ret, length, offset);
 		memset(ret, 0, length);
 	}
@@ -381,7 +381,7 @@ munmap(void *addr, size_t length)
 	ret = orig_munmap(addr, length);
 
 	if (!mali_address_remove(addr, length))
-		wrap_log("MUNMAP %p (0x%08x);\n", addr, length);
+		wrap_log("/* MUNMAP %p (0x%08x) */\n\n", addr, length);
 
 	serialized_stop();
 
@@ -436,9 +436,15 @@ dev_mali_get_api_version_pre(void *data)
 {
 	_mali_uk_get_api_version_s *version = data;
 
-	wrap_log("IOCTL MALI_IOC_GET_API_VERSION IN = {\n");
+	wrap_log("/* IOCTL MALI_IOC_GET_API_VERSION IN */\n");
+
+	wrap_log("#if 0 /* API Version */\n\n");
+
+	wrap_log("_mali_uk_get_api_version_s mali_version_in = {\n");
 	wrap_log("\t.version = 0x%08x,\n", version->version);
-	wrap_log("};\n");
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* API Version */\n\n");
 }
 
 static void
@@ -446,10 +452,16 @@ dev_mali_get_api_version_post(void *data)
 {
 	_mali_uk_get_api_version_s *version = data;
 
-	wrap_log("IOCTL MALI_IOC_GET_API_VERSION OUT = {\n");
+	wrap_log("/* IOCTL MALI_IOC_GET_API_VERSION OUT */\n");
+
+	wrap_log("#if 0 /* API Version */\n\n");
+
+	wrap_log("_mali_uk_get_api_version_s mali_version_out = {\n");
 	wrap_log("\t.version = 0x%08x,\n", version->version);
 	wrap_log("\t.compatible = %d,\n", version->compatible);
-	wrap_log("};\n");
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* API Version */\n\n");
 
 	mali_version = version->version & 0xFFFF;
 
@@ -461,9 +473,15 @@ dev_mali_get_system_info_size_post(void *data)
 {
 	_mali_uk_get_system_info_size_s *size = data;
 
-	wrap_log("IOCTL MALI_IOC_GET_SYSTEM_INFO_SIZE OUT = {\n");
+	wrap_log("/* IOCTL MALI_IOC_GET_SYSTEM_INFO_SIZE OUT */\n");
+
+	wrap_log("#if 0 /* System Info */\n\n");
+
+	wrap_log("_mali_uk_get_system_info_size_s mali_system_info_size_out = {\n");
 	wrap_log("\t.size = 0x%x,\n", size->size);
-	wrap_log("};\n");
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* System Info */\n\n");
 }
 
 static void
@@ -471,11 +489,17 @@ dev_mali_get_system_info_pre(void *data)
 {
 	_mali_uk_get_system_info_s *info = data;
 
-	wrap_log("IOCTL MALI_IOC_GET_SYSTEM_INFO IN = {\n");
+	wrap_log("/* IOCTL MALI_IOC_GET_SYSTEM_INFO IN */\n");
+
+	wrap_log("#if 0 /* System Info */\n\n");
+
+	wrap_log("_mali_uk_get_system_info_s mali_system_info_in = {\n");
 	wrap_log("\t.size = 0x%x,\n", info->size);
 	wrap_log("\t.system_info = <malloced, above size>,\n");
 	wrap_log("\t.ukk_private = 0x%x,\n", info->ukk_private);
-	wrap_log("};\n");
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* System Info */\n\n");
 }
 
 static void
@@ -485,18 +509,22 @@ dev_mali_get_system_info_post(void *data)
 	struct _mali_core_info *core;
 	struct _mali_mem_info *mem;
 
-	wrap_log("IOCTL MALI_IOC_GET_SYSTEM_INFO OUT = {\n");
+	wrap_log("/* IOCTL MALI_IOC_GET_SYSTEM_INFO OUT */\n");
+
+	wrap_log("#if 0 /* System Info */\n\n");
+
+	wrap_log("_mali_uk_get_system_info_s mali_system_info_out = {\n");
 	wrap_log("\t.system_info = {\n");
 
 	core = info->system_info->core_info;
 	while (core) {
-		wrap_log("\t\t.core_info = {\n");
+		wrap_log("\t\t\t.core_info = {\n");
 		wrap_log("\t\t\t.type = 0x%x,\n", core->type);
 		if (core->type == 7)
 			mali_type = 400;
 		else if (core->type == 5)
 			mali_type = 200;
-		wrap_log("\t\t\t.version = 0x%x,\n", core->version);
+		wrap_log("\t\t.version = 0x%x,\n", core->version);
 		wrap_log("\t\t\t.reg_address = 0x%x,\n", core->reg_address);
 		wrap_log("\t\t\t.core_nr = 0x%x,\n", core->core_nr);
 		wrap_log("\t\t\t.flags = 0x%x,\n", core->flags);
@@ -518,7 +546,9 @@ dev_mali_get_system_info_post(void *data)
 	wrap_log("\t\t.has_mmu = %d,\n", info->system_info->has_mmu);
 	wrap_log("\t\t.drivermode = 0x%x,\n", info->system_info->drivermode);
 	wrap_log("\t},\n");
-	wrap_log("};\n");
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* System Info */\n\n");
 }
 
 static void
@@ -526,10 +556,16 @@ dev_mali_memory_init_mem_post(void *data)
 {
 	_mali_uk_init_mem_s *mem = data;
 
-	wrap_log("IOCTL MALI_IOC_MEM_INIT OUT = {\n");
+	wrap_log("/* IOCTL MALI_IOC_MEM_INIT OUT */\n");
+
+	wrap_log("#if 0 /* Memory Init */\n\n");
+
+	wrap_log("_mali_uk_init_mem_s mali_mem_init = {\n");
 	wrap_log("\t.mali_address_base = 0x%x,\n", mem->mali_address_base);
 	wrap_log("\t.memory_size = 0x%x,\n", mem->memory_size);
 	wrap_log("};\n");
+
+	wrap_log("#endif /* Memory Init */\n\n");
 }
 
 static void
@@ -537,9 +573,15 @@ dev_mali_pp_core_version_post(void *data)
 {
 	_mali_uk_get_pp_core_version_s *version = data;
 
-	wrap_log("IOCTL MALI_IOC_PP_CORE_VERSION_GET OUT = {\n");
+	wrap_log("/* IOCTL MALI_IOC_PP_CORE_VERSION_GET OUT */\n");
+
+	wrap_log("#if 0 /* PP Core Version */\n\n");
+
+	wrap_log("_mali_uk_get_pp_core_version_s mali_pp_version = {\n");
 	wrap_log("\t.version = 0x%x,\n", version->version);
-	wrap_log("};\n");
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* PP Core Version */\n\n");
 }
 
 static void
@@ -547,9 +589,15 @@ dev_mali_wait_for_notification_pre(void *data)
 {
 	_mali_uk_wait_for_notification_s *notification = data;
 
-	wrap_log("IOCTL MALI_IOC_WAIT_FOR_NOTIFICATION IN = {\n");
+	wrap_log("/* IOCTL MALI_IOC_WAIT_FOR_NOTIFICATION IN */\n");
+
+	wrap_log("#if 0 /* Notification */\n\n");
+
+	wrap_log("_mali_uk_wait_for_notification_s mali_notification_in = {\n");
 	wrap_log("\t.code.timeout = 0x%x,\n", notification->code.timeout);
-	wrap_log("};\n");
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* Notification */\n\n");
 
 	/* some kernels wait forever otherwise */
 	serialized_stop();
@@ -566,7 +614,11 @@ dev_mali_wait_for_notification_post(void *data)
 	/* to match the pre function */
 	serialized_start(__func__);
 
-	wrap_log("IOCTL MALI_IOC_WAIT_FOR_NOTIFICATION OUT = {\n");
+	wrap_log("/* IOCTL MALI_IOC_WAIT_FOR_NOTIFICATION OUT */\n");
+
+	wrap_log("#if 0 /* Notification */\n\n");
+
+	wrap_log("_mali_uk_wait_for_notification_s wait_for_notification = {\n");
 	wrap_log("\t.code.type = 0x%x,\n", notification->code.type);
 
 	switch (notification->code.type) {
@@ -630,9 +682,12 @@ dev_mali_wait_for_notification_post(void *data)
 		}
 		break;
 	default:
+		wrap_log("};\n\n");
 		break;
 	}
-	wrap_log("};\n");
+
+	wrap_log("};\n\n");
+	wrap_log("#endif /* Notification */\n\n");
 }
 
 static void
@@ -640,7 +695,7 @@ dev_mali_gp_job_start_r2p1_pre(void *data)
 {
 	struct lima_gp_job_start_r2p1 *job = data;
 
-	wrap_log("IOCTL MALI_IOC_GP2_START_JOB IN;\n");
+	wrap_log("/* IOCTL MALI_IOC_GP2_START_JOB IN */\n");
 
 	wrap_log("struct lima_gp_job_start_r2p1 gp_job = {\n");
 
@@ -679,7 +734,7 @@ dev_mali_gp_job_start_r3p0_pre(void *data)
 	wrap_log("\t.frame.tile_heap_start = 0x%x,\n", job->frame.tile_heap_start);
 	wrap_log("\t.frame.tile_heap_end = 0x%x,\n", job->frame.tile_heap_end);
 
-	wrap_log("};\n");
+	wrap_log("};\n\n");
 }
 
 static void
@@ -699,13 +754,15 @@ dev_mali_gp_job_start_r2p1_post(void *data)
 {
 	struct lima_gp_job_start_r2p1 *job = data;
 
-	wrap_log("IOCTL MALI_IOC_GP2_START_JOB OUT = {\n");
+	wrap_log("/* IOCTL MALI_IOC_GP2_START_JOB OUT */\n");
 
+
+	wrap_log("struct lima_gp_job_start gp_job_out = {\n");
 	wrap_log("\t.returned_user_job_ptr = 0x%x,\n",
 		 job->returned_user_job_ptr);
 	wrap_log("\t.status = 0x%x,\n", job->status);
 
-	wrap_log("};\n");
+	wrap_log("};\n\n");
 }
 
 static void
@@ -726,7 +783,7 @@ dev_mali200_pp_job_start_pre(void *data)
 	struct lima_m200_pp_job_start *job = data;
 	int i;
 
-	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
+	wrap_log("/* IOCTL MALI_IOC_PP_START_JOB IN */\n");
 
 	wrap_log("struct lima_m200_pp_job_start pp_job = {\n");
 
@@ -766,7 +823,7 @@ dev_mali200_pp_job_start_pre(void *data)
 
 	wrap_log("\t.abort_id = 0x%x,\n", job->abort_id);
 
-	wrap_log("};\n");
+	wrap_log("};\n\n");
 
 	/*
 	 * Now store where our final render is headed, and what it looks like.
@@ -789,7 +846,7 @@ dev_mali400_pp_job_start_r2p1_pre(void *data)
 	struct lima_m400_pp_job_start_r2p1 *job = data;
 	int i;
 
-	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
+	wrap_log("/* IOCTL MALI_IOC_PP_START_JOB IN */\n");
 
 	wrap_log("struct lima_m400_pp_job_start_r2p1 pp_job = {\n");
 
@@ -832,7 +889,7 @@ dev_mali400_pp_job_start_r2p1_pre(void *data)
 
 	wrap_log("\t.abort_id = 0x%x,\n", job->abort_id);
 
-	wrap_log("};\n");
+	wrap_log("};\n\n");
 
 	/*
 	 * Now store where our final render is headed, and what it looks like.
@@ -955,13 +1012,14 @@ dev_mali200_pp_job_start_post(void *data)
 {
 	struct lima_m200_pp_job_start *job = data;
 
-	wrap_log("IOCTL MALI_IOC_PP_START_JOB OUT = {\n");
+	wrap_log("/* IOCTL MALI_IOC_PP_START_JOB OUT */\n");
 
+	wrap_log("struct lima_m200_pp_job_start pp_job_out = {\n");
 	wrap_log("\t.returned_user_job_ptr = 0x%x,\n",
 		 job->returned_user_job_ptr);
 	wrap_log("\t.status = 0x%x,\n", job->status);
 
-	wrap_log("};\n");
+	wrap_log("};\n\n");
 }
 
 static void
@@ -969,13 +1027,14 @@ dev_mali400_pp_job_start_r2p1_post(void *data)
 {
 	struct lima_m400_pp_job_start_r2p1 *job = data;
 
-	wrap_log("IOCTL MALI_IOC_PP_START_JOB OUT = {\n");
+	wrap_log("/* IOCTL MALI_IOC_PP_START_JOB OUT */\n");
 
+	wrap_log("struct lima_m400_pp_job_start pp_job_out = {\n");
 	wrap_log("\t.returned_user_job_ptr = 0x%x,\n",
 		 job->returned_user_job_ptr);
 	wrap_log("\t.status = 0x%x,\n", job->status);
 
-	wrap_log("};\n");
+	wrap_log("};\n\n");
 }
 
 static void
@@ -1038,7 +1097,7 @@ mali_ioctl(int request, void *data)
 	}
 
 	if (!ioctl)
-		wrap_log("Error: No mali ioctl wrapping implemented for %02X:%02X\n",
+		wrap_log("/* Error: No mali ioctl wrapping implemented for %02X:%02X */\n",
 		       ioc_type, ioc_nr);
 
 	if (ioctl && ioctl->pre)
@@ -1051,10 +1110,10 @@ mali_ioctl(int request, void *data)
 
 	if (ioctl && !ioctl->pre && !ioctl->post) {
 		if (data)
-			wrap_log("IOCTL %s(%s) %p = %d\n",
+			wrap_log("/* IOCTL %s(%s) %p = %d */\n",
 				 ioc_string, ioctl->name, data, ret);
 		else
-			wrap_log("IOCTL %s(%s) = %d\n",
+			wrap_log("/* IOCTL %s(%s) = %d */\n",
 				 ioc_string, ioctl->name, ret);
 	}
 
@@ -1144,7 +1203,7 @@ mali_memory_dump_block(unsigned int *address, int start, int stop,
 {
 	int i;
 
-	wrap_log("struct lima_dumped_mem_content mem_0x%08x_0x%08x = {\n",
+	wrap_log("static struct lima_dumped_mem_content mem_0x%08x_0x%08x = {\n",
 	       physical, count);
 
 	wrap_log("\t0x%08x,\n", 4 * start);
@@ -1152,12 +1211,12 @@ mali_memory_dump_block(unsigned int *address, int start, int stop,
 	wrap_log("\t{\n");
 
 	for (i = start; i < stop; i += 4)
-		wrap_log("\t\t\t0x%08x, 0x%08x, 0x%08x, 0x%08x, /* 0x%08X */\n",
+		wrap_log("\t\t0x%08x, 0x%08x, 0x%08x, 0x%08x, /* 0x%08X */\n",
 			 address[i + 0], address[i + 1],
 			 address[i + 2], address[i + 3], 4 * (i - start));
 
 	wrap_log("\t}\n");
-	wrap_log("};\n");
+	wrap_log("};\n\n");
 }
 
 static void
@@ -1193,7 +1252,7 @@ mali_memory_dump_address(unsigned int *address, unsigned int size,
 		count++;
 	}
 
-	wrap_log("struct lima_dumped_mem_block mem_0x%08x = {\n", physical);
+	wrap_log("static struct lima_dumped_mem_block mem_0x%08x = {\n", physical);
 	wrap_log("\tNULL,\n");
 	wrap_log("\t0x%08x,\n", physical);
 	wrap_log("\t0x%08x,\n", 4 * size);
@@ -1204,7 +1263,7 @@ mali_memory_dump_address(unsigned int *address, unsigned int size,
 		wrap_log("\t\t&mem_0x%08x_0x%08x,\n", physical, i);
 
 	wrap_log("\t},\n");
-	wrap_log("};\n");
+	wrap_log("};\n\n");
 }
 
 static void
@@ -1220,7 +1279,7 @@ mali_memory_dump(void)
 			count++;
 		}
 
-	wrap_log("struct lima_dumped_mem dumped_mem = {\n");
+	wrap_log("static struct lima_dumped_mem dumped_mem = {\n");
 	wrap_log("\t0x%08x,\n", count);
 	wrap_log("\t{\n");
 
@@ -1229,7 +1288,7 @@ mali_memory_dump(void)
 			wrap_log("\t\t&mem_0x%08x,\n", mali_addresses[i].physical);
 
 	wrap_log("\t},\n");
-	wrap_log("};\n");
+	wrap_log("};\n\n");
 }
 
 static void
@@ -1238,19 +1297,19 @@ mali_wrap_bmp_dump(void)
 	void *address = mali_address_retrieve(render_address);
 
 	if (!address) {
-		wrap_log("%s: Failed to dump bmp at 0x%x\n",
+		wrap_log("/* %s: Failed to dump bmp at 0x%x */\n",
 			 __func__, render_address);
 		return;
 	}
 
 	if (render_format != LIMA_PIXEL_FORMAT_RGBA_8888) {
-		wrap_log("%s: Pixel format 0x%x is currently not implemented\n",
+		wrap_log("/* %s: Pixel format 0x%x is currently not implemented */\n",
 			 __func__, render_format);
 		return;
 	}
 
 	if (render_height < 16) {
-		wrap_log("%s: invalid height: %d\n", __func__, render_height);
+		wrap_log("/* %s: invalid height: %d */\n", __func__, render_height);
 		//return;
 		render_pitch = 400 * 4;
 		render_height = 240 * 2;
@@ -1307,7 +1366,7 @@ hexdump(const void *data, int size)
 
 	for (i = 0; i < size; i++) {
 		if (!(i % 16))
-			wrap_log("\t\t%08X", (unsigned int) buf + i);
+			wrap_log("\t\t/* %08X", (unsigned int) buf + i);
 
 		if (((void *) (buf + i)) < ((void *) data)) {
 			wrap_log("   ");
@@ -1323,7 +1382,7 @@ hexdump(const void *data, int size)
 
 		if ((i % 16) == 15) {
 			alpha[16] = 0;
-			wrap_log("\t|%s|\n", alpha);
+			wrap_log("\t |%s| */\n", alpha);
 		}
 	}
 
@@ -1334,7 +1393,7 @@ hexdump(const void *data, int size)
 
 			if (i == 15) {
 				alpha[16] = 0;
-				wrap_log("\t|%s|\n", alpha);
+				wrap_log("\t |%s| */\n", alpha);
 			}
 		}
 	}
@@ -1371,12 +1430,16 @@ __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 		wrap_log("WARNING: the binary structure of the shader compiler "
 			 "has changed and will not be valid as is!\n");
 
+	wrap_log("#if 0 /* Shader */\n\n");
+
 	for (i = 0, offset = 0; i < count; i++) {
-		wrap_log("%s shader source %d:\n",
+		wrap_log("/* %s shader source %d:\n",
 		       (type == 0x8B31) ? "Vertex" : "Fragment", i);
-		wrap_log("\"%s\"\n", &source[offset]);
+		wrap_log("\"%s\" */\n", &source[offset]);
 		offset += length[i];
 	}
+
+	wrap_log("\n");
 
 	ret = orig__mali_compile_essl_shader(binary, type, source, length, count);
 
@@ -1400,35 +1463,40 @@ __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 	wrap_log("\t},\n");
 	wrap_log("\t.attribute_stream_size = 0x%x,\n", binary->attribute_stream_size);
 
+	wrap_log("\t.parameters = {\n");
 	if (type == 0x8B31) {
-		wrap_log("\t.parameters (vertex) = {\n");
-		wrap_log("\t\t.unknown00 = 0x%x,\n", binary->parameters.vertex.unknown00);
-		wrap_log("\t\t.unknown04 = 0x%x,\n", binary->parameters.vertex.unknown04);
-		wrap_log("\t\t.unknown08 = 0x%x,\n", binary->parameters.vertex.unknown08);
-		wrap_log("\t\t.unknown0C = 0x%x,\n", binary->parameters.vertex.unknown0C);
-		wrap_log("\t\t.attribute_count = 0x%x,\n", binary->parameters.vertex.attribute_count);
-		wrap_log("\t\t.varying_count = 0x%x,\n", binary->parameters.vertex.varying_count);
-		wrap_log("\t\t.unknown18 = 0x%x,\n", binary->parameters.vertex.unknown18);
-		wrap_log("\t\t.size = 0x%x,\n", binary->parameters.vertex.size);
-		wrap_log("\t\t.varying_something = 0x%x,\n", binary->parameters.vertex.varying_something);
-		wrap_log("\t},\n");
+		wrap_log("\t\t.vertex = {\n");
+		wrap_log("\t\t\t.unknown00 = 0x%x,\n", binary->parameters.vertex.unknown00);
+		wrap_log("\t\t\t.unknown04 = 0x%x,\n", binary->parameters.vertex.unknown04);
+		wrap_log("\t\t\t.unknown08 = 0x%x,\n", binary->parameters.vertex.unknown08);
+		wrap_log("\t\t\t.unknown0C = 0x%x,\n", binary->parameters.vertex.unknown0C);
+		wrap_log("\t\t\t.attribute_count = 0x%x,\n", binary->parameters.vertex.attribute_count);
+		wrap_log("\t\t\t.varying_count = 0x%x,\n", binary->parameters.vertex.varying_count);
+		wrap_log("\t\t\t.unknown18 = 0x%x,\n", binary->parameters.vertex.unknown18);
+		wrap_log("\t\t\t.size = 0x%x,\n", binary->parameters.vertex.size);
+		wrap_log("\t\t\t.varying_something = 0x%x,\n", binary->parameters.vertex.varying_something);
+		wrap_log("\t\t},\n");
 	} else {
-		wrap_log("\t.parameters (fragment) = {\n");
-		wrap_log("\t\t.unknown00 = 0x%x,\n", binary->parameters.fragment.unknown00);
-		wrap_log("\t\t.unknown04 = 0x%x,\n", binary->parameters.fragment.unknown04);
-		wrap_log("\t\t.unknown08 = 0x%x,\n", binary->parameters.fragment.unknown08);
-		wrap_log("\t\t.unknown0C = 0x%x,\n", binary->parameters.fragment.unknown0C);
-		wrap_log("\t\t.unknown10 = 0x%x,\n", binary->parameters.fragment.unknown10);
-		wrap_log("\t\t.unknown14 = 0x%x,\n", binary->parameters.fragment.unknown14);
-		wrap_log("\t\t.unknown18 = 0x%x,\n", binary->parameters.fragment.unknown18);
-		wrap_log("\t\t.unknown1C = 0x%x,\n", binary->parameters.fragment.unknown1C);
-		wrap_log("\t\t.unknown20 = 0x%x,\n", binary->parameters.fragment.unknown20);
-		wrap_log("\t\t.unknown24 = 0x%x,\n", binary->parameters.fragment.unknown24);
-		wrap_log("\t\t.unknown28 = 0x%x,\n", binary->parameters.fragment.unknown28);
-		wrap_log("\t\t.unknown2C = 0x%x,\n", binary->parameters.fragment.unknown2C);
-		wrap_log("\t}\n");
+		wrap_log("\t\t.fragment = {\n");
+		wrap_log("\t\t\t.unknown00 = 0x%x,\n", binary->parameters.fragment.unknown00);
+		wrap_log("\t\t\t.unknown04 = 0x%x,\n", binary->parameters.fragment.unknown04);
+		wrap_log("\t\t\t.unknown08 = 0x%x,\n", binary->parameters.fragment.unknown08);
+		wrap_log("\t\t\t.unknown0C = 0x%x,\n", binary->parameters.fragment.unknown0C);
+		wrap_log("\t\t\t.unknown10 = 0x%x,\n", binary->parameters.fragment.unknown10);
+		wrap_log("\t\t\t.unknown14 = 0x%x,\n", binary->parameters.fragment.unknown14);
+		wrap_log("\t\t\t.unknown18 = 0x%x,\n", binary->parameters.fragment.unknown18);
+		wrap_log("\t\t\t.unknown1C = 0x%x,\n", binary->parameters.fragment.unknown1C);
+		wrap_log("\t\t\t.unknown20 = 0x%x,\n", binary->parameters.fragment.unknown20);
+		wrap_log("\t\t\t.unknown24 = 0x%x,\n", binary->parameters.fragment.unknown24);
+		wrap_log("\t\t\t.unknown28 = 0x%x,\n", binary->parameters.fragment.unknown28);
+		wrap_log("\t\t\t.unknown2C = 0x%x,\n", binary->parameters.fragment.unknown2C);
+		wrap_log("\t\t}\n");
 	}
-	wrap_log("}\n");
+	wrap_log("\t}\n");
+
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* Shader */\n\n");
 
 	serialized_stop();
 

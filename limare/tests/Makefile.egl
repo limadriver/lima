@@ -1,6 +1,6 @@
 .PHONY : egl egl_install egl_run egl_wrap
 
-EGL_LOG = /sdcard/egl.wrap.log
+EGL_LOG = /sdcard/egl.wrap.c
 EGL_BMP = /sdcard/egl.wrap.BMP
 EGL_OBJS = egl.o $(objs)
 
