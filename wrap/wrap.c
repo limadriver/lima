@@ -1159,7 +1159,7 @@ mali_ioctl(int request, void *data)
  * Memory dumper.
  *
  */
-#define MALI_ADDRESSES 0x10
+#define MALI_ADDRESSES 0x40
 
 static struct mali_address {
 	void *address; /* mapped address */
