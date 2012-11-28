@@ -37,9 +37,9 @@
 static void
 plb_plbu_stream_create(struct plb *plb)
 {
-	int i, size = plb->width * plb->height;
 	unsigned int address = plb->mem_physical + plb->plb_offset;
 	unsigned int *stream = plb->mem_address + plb->plbu_offset;
+	int i, size = plb->block_w * plb->block_h;
 
 	for (i = 0; i < size; i++)
 		stream[i] = address + (i * plb->block_size);
@@ -51,27 +51,20 @@ plb_plbu_stream_create(struct plb *plb)
 static void
 plb_pp_stream_create(struct plb *plb)
 {
-	int x, y, i, j;
-	int offset = 0, index = 0;
-	int step_x = 1 << plb->shift_w;
-	int step_y = 1 << plb->shift_h;
 	unsigned int address = plb->mem_physical + plb->plb_offset;
 	unsigned int *stream = plb->mem_address + plb->pp_offset;
+	int x, y, index = 0;
 
-	for (y = 0; y < plb->height; y += step_y) {
-		for (x = 0; x < plb->width; x += step_x) {
-			for (j = 0; j < step_y; j++) {
-				for (i = 0; i < step_x; i++) {
-					stream[index + 0] = 0;
-					stream[index + 1] = 0xB8000000 | (x + i) | ((y + j) << 8);
-					stream[index + 2] = 0xE0000002 | (((address + offset) >> 3) & ~0xE0000003);
-					stream[index + 3] = 0xB0000000;
+	for (y = 0; y < plb->tiled_h; y += 1) {
+		for (x = 0; x < plb->tiled_w; x += 1) {
+			int offset = ((y >> plb->shift_h) * plb->block_w + (x >> plb->shift_w)) * plb->block_size;
 
-					index += 4;
-				}
-			}
+			stream[index + 0] = 0;
+			stream[index + 1] = 0xB8000000 | x | (y << 8);
+			stream[index + 2] = 0xE0000002 | (((address + offset) >> 3) & ~0xE0000003);
+			stream[index + 3] = 0xB0000000;
 
-			offset += plb->block_size;
+			index += 4;
 		}
 	}
 
@@ -88,8 +81,11 @@ plb_create(struct limare_state *state, unsigned int physical, void *address, int
 	width = ALIGN(state->width, 16) >> 4;
 	height = ALIGN(state->height, 16) >> 4;
 
+	plb->tiled_w = width;
+	plb->tiled_h = height;
+
 	/* limit the amount of plb's the pp has to chew through */
-	while ((width * height) > 320) {
+	while ((width * height) > 300) { // was 320
 		if (width >= height) {
 			width = (width + 1) >> 1;
 			plb->shift_w++;
@@ -101,19 +97,22 @@ plb_create(struct limare_state *state, unsigned int physical, void *address, int
 
 	plb->block_size = 0x200;
 
-	plb->width = width << plb->shift_w;
-	plb->height = height << plb->shift_h;
+	plb->block_w = width;
+	plb->block_h = height;
 
 	printf("%s: (%dx%d) == (%d << %d, %d << %d);\n", __func__,
-	       plb->width, plb->height, width, plb->shift_w, height, plb->shift_h);
+	       plb->tiled_w, plb->tiled_h,
+	       plb->block_w, plb->shift_w, plb->block_h, plb->shift_h);
 
-	plb->plb_size = plb->block_size * width * height;
+	plb->plb_size = plb->block_size * plb->block_w * plb->block_h;
 	plb->plb_offset = 0;
 
-	plb->plbu_size = 4 * plb->width * plb->height;
+	/* 300 is the space needed to not run into issues with the next
+	 * block. Not all of them have to be filled in of course. */
+	plb->plbu_size = 4 * 300;
 	plb->plbu_offset = ALIGN(plb->plb_size, 0x40);
 
-	plb->pp_size = 16 * (plb->width * plb->height + 1);
+	plb->pp_size = 16 * (plb->tiled_w * plb->tiled_h + 1);
 	plb->pp_offset = ALIGN(plb->plbu_offset + plb->plbu_size, 0x40);
 
 	plb->mem_address = address + offset;

@@ -31,8 +31,11 @@
 struct plb {
 	int block_size; /* 0x200 */
 
-	int width; /* aligned already */
-	int height;
+	int tiled_w;
+	int tiled_h;
+
+	int block_w;
+	int block_h;
 
 	int shift_w;
 	int shift_h;

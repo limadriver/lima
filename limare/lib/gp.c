@@ -87,11 +87,11 @@ plbu_command_queue_create(struct limare_state *state, int offset, int size)
 	cmds[i].cmd = LIMA_PLBU_CMD_BLOCK_STEP;
 	i++;
 
-	cmds[i].val = ((plb->width - 1) << 24) | ((plb->height - 1) << 8);
+	cmds[i].val = ((plb->tiled_w - 1) << 24) | ((plb->tiled_h - 1) << 8);
 	cmds[i].cmd = LIMA_PLBU_CMD_TILED_DIMENSIONS;
 	i++;
 
-	cmds[i].val = plb->width >> plb->shift_w;
+	cmds[i].val = plb->block_w;
 	cmds[i].cmd = LIMA_PLBU_CMD_PLBU_BLOCK_STRIDE;
 	i++;
 
@@ -100,8 +100,7 @@ plbu_command_queue_create(struct limare_state *state, int offset, int size)
 		cmds[i].cmd = LIMA_M200_PLBU_CMD_PLBU_ARRAY_ADDRESS;
 	else if (state->type == LIMARE_TYPE_M400) {
 		cmds[i].cmd = LIMA_M400_PLBU_CMD_PLBU_ARRAY_ADDRESS;
-		cmds[i].cmd |= ((plb->width * plb->height) >>
-				(plb->shift_w + plb->shift_h)) - 1;
+		cmds[i].cmd |= plb->block_w * plb->block_h - 1;
 	}
 	i++;
 
