@@ -2,11 +2,13 @@
 
 DUMP_LOG = /sdcard/dump.wrap.log
 DUMP_BMP = /sdcard/dump.wrap.bmp
+DUMP_OBJS = dump.o dumped_stream.o
+
 
 dump: limare_dump
 
 limare_dump: dump.c dumped_stream.c
-	$(CC) $(CFLAGS) -o $@ dump.c -llimare
+	$(CC) $(CFLAGS) -o $@ $^ -llimare
 
 dump_install: limare_dump
 	$(INSTALL) limare_dump $(INSTALL_DIR)/limare/dump
@@ -31,3 +33,5 @@ endif
 
 dump_clean:
 	rm -f limare_dump
+
+-include $(DUMP_OBJS:%.o=%.P)

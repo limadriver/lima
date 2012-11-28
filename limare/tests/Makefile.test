@@ -8,8 +8,12 @@ INSTALL_DIR = $(prefix)/bin/limare/
 
 all: $(targets:=_$(NAME))
 install: $(targets:=_install)
-clean: $(targets:=_clean)
 
+clean: $(targets:=_clean)
+	rm -f *.P
+	rm -f *.o
+
+include $(TOP)Makefile.post
 include ../Makefile.limare
 include ../Makefile.egl
 include ../Makefile.dump

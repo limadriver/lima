@@ -4,17 +4,16 @@ TOP=..
 
 CFLAGS += -I$(TOP)/include
 
+OBJS = bmp.o wrap.o
+
 all: libMali_wrap.so
 
-bmp.o: bmp.c bmp.h
-
-wrap.o: wrap.c bmp.h
-
 clean:
+	rm -f *.P
 	rm -f *.o
 	rm -f *.so
 
-libMali_wrap.so: bmp.o wrap.o
+libMali_wrap.so: $(OBJS)
 	$(CC) -shared -Wl -o $@ $^ -ldl
 
 install: libMali_wrap.so

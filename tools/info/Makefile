@@ -4,17 +4,20 @@ include $(TOP)/Makefile.inc
 
 CFLAGS += -I$(TOP)/include
 
+OBJS = info.o
+
 all: mali_info
 
 clean:
+	rm -f *.P
 	rm -f *.o
 	rm -f mali_info
 
-mali_info: info.c
+mali_info: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
 install: mali_info
-	$(INSTALL) mali_info $(prefix)/bin
+	$(INSTALL) $^ $(prefix)/bin
 
 run:
 ifeq ($(OS),android)

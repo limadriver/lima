@@ -1,6 +1,6 @@
 NAME = cube
 
-objs = esTransform.c
+objs = esTransform.o
 
 targets = limare egl
 

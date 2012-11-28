@@ -2,10 +2,12 @@
 
 LIMARE_LOG = /sdcard/limare.wrap.log
 LIMARE_BMP = /sdcard/limare.wrap.bmp
+LIMARE_OBJS = limare.o $(objs)
+
 
 limare: limare_$(NAME)
 
-limare_$(NAME): limare.c $(objs)
+limare_$(NAME): $(LIMARE_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ -L$(TOP)/limare/lib/ -llimare
 
 limare_install: limare_$(NAME)
@@ -31,3 +33,5 @@ endif
 
 limare_clean:
 	rm -f limare_$(NAME)
+
+-include $(LIMARE_OBJS:%.o=%.P)

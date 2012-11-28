@@ -2,10 +2,12 @@
 
 EGL_LOG = /sdcard/egl.wrap.log
 EGL_BMP = /sdcard/egl.wrap.BMP
+EGL_OBJS = egl.o $(objs)
+
 
 egl: egl_$(NAME)
 
-egl_$(NAME): egl.c $(objs)
+egl_$(NAME): $(EGL_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ -lEGL_mali -lGLESv2_mali
 
 egl_install: egl_$(NAME)
@@ -31,3 +33,5 @@ endif
 
 egl_clean:
 	rm -f egl_$(NAME)
+
+-include $(EGL_OBJS:%.o=%.P)
