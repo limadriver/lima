@@ -191,9 +191,9 @@ main(int argc, char *argv[])
 
 	limare_link(state);
 
-	limare_attribute_pointer(state, "in_position", 4, 3, vVertices);
-	limare_attribute_pointer(state, "in_color", 4, 3, vColors);
-	limare_attribute_pointer(state, "in_normal", 4, 3, vNormals);
+	limare_attribute_pointer(state, "in_position", 4, 3, 24, vVertices);
+	limare_attribute_pointer(state, "in_color", 4, 3, 24, vColors);
+	limare_attribute_pointer(state, "in_normal", 4, 3, 24, vNormals);
 
 	ESMatrix modelview;
 	esMatrixLoadIdentity(&modelview);

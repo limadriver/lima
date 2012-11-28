@@ -105,8 +105,9 @@ int limare_link(struct limare_state *state);
 
 int limare_uniform_attach(struct limare_state *state, char *name,
 			  int count, float *data);
-int limare_attribute_pointer(struct limare_state *state, char *name, int size,
-			      int count, void *data);
+int limare_attribute_pointer(struct limare_state *state, char *name,
+			     int component_size, int component_count,
+			     int entry_count, void *data);
 int limare_texture_attach(struct limare_state *state, char *uniform_name,
 			  const void *pixels, int width, int height,
 			  int format);

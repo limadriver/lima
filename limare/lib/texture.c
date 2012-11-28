@@ -86,7 +86,7 @@ texture_create(struct limare_state *state, const void *src,
 	       int width, int height, int format)
 {
 	struct texture *texture = calloc(1, sizeof(struct texture));
-	int flag0 = 0, flag1 = 1, layout = 0;
+	int flag0 = 0, flag1 = 1, layout = 0, size;
 
 	texture->width = width;
 	texture->height = height;
@@ -104,7 +104,9 @@ texture_create(struct limare_state *state, const void *src,
 		texture->pitch = 3 * width;
 		texture->size = texture->pitch * height;
 
-		if ((state->aux_mem_size - state->aux_mem_used) < texture->size) {
+		size = ALIGN(texture->size, 0x40);
+
+		if ((state->aux_mem_size - state->aux_mem_used) < size) {
 			printf("%s: size (0x%X) exceeds available size (0x%X)\n",
 			       __func__, texture->size,
 			       state->aux_mem_size - state->aux_mem_used);
@@ -112,7 +114,7 @@ texture_create(struct limare_state *state, const void *src,
 			return NULL;
 		}
 
-		state->aux_mem_used += ALIGN(texture->size, 0x40);
+		state->aux_mem_used += size;
 
 		flag0 = 1;
 		flag1 = 0;

@@ -86,7 +86,7 @@ main(int argc, char *argv[])
 
 	limare_link(state);
 
-	limare_attribute_pointer(state, "aPosition", 4, 3, vertices);
+	limare_attribute_pointer(state, "aPosition", 4, 3, 4, vertices);
 
 	limare_uniform_attach(state, "uColor", 4, color);
 

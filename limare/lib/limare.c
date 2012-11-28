@@ -466,8 +466,9 @@ limare_uniform_attach(struct limare_state *state, char *name, int count, float *
 }
 
 int
-limare_attribute_pointer(struct limare_state *state, char *name, int size,
-			  int count, void *data)
+limare_attribute_pointer(struct limare_state *state, char *name,
+			 int component_size, int component_count,
+			 int entry_count, void *data)
 {
 	struct limare_program *program =
 		state->programs[state->program_current];
@@ -493,7 +494,7 @@ limare_attribute_pointer(struct limare_state *state, char *name, int size,
 		return -1;
 	}
 
-	if (symbol->component_size != size) {
+	if (symbol->component_size != component_size) {
 		printf("%s: Error: Attribute %s has different dimensions\n",
 		       __func__, name);
 		return -1;
@@ -505,7 +506,10 @@ limare_attribute_pointer(struct limare_state *state, char *name, int size,
 		symbol->data_allocated = 0;
 	}
 
-	symbol->component_count = count;
+	symbol->component_count = component_count;
+	symbol->entry_count = entry_count;
+	symbol->size = symbol->component_size * symbol->component_count *
+		symbol->entry_count;
 	symbol->data = data;
 	return 0;
 }
@@ -543,6 +547,31 @@ limare_gl_mali_ViewPortTransform(struct limare_state *state,
 	viewport[5] = (y0 + y1) / 2;
 	viewport[6] = (depth_near + depth_far) / 2;
 	viewport[7] = depth_near;
+
+	return 0;
+}
+
+int
+attribute_upload(struct limare_state *state, struct symbol *symbol)
+{
+	int size;
+
+	/* already uploaded? */
+	if (symbol->physical)
+		return 0;
+
+	size = ALIGN(symbol->size, 0x40);
+
+	if ((state->aux_mem_size - state->aux_mem_used) < size) {
+		printf("%s: Not enough space for %s\n", __func__, symbol->name);
+		return -1;
+	}
+
+	symbol->address = state->aux_mem_address + state->aux_mem_used;
+	symbol->physical = state->aux_mem_physical + state->aux_mem_used;
+	state->aux_mem_used += size;
+
+	memcpy(symbol->address, symbol->data, symbol->size);
 
 	return 0;
 }
@@ -636,7 +665,7 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 		struct symbol *symbol = program->fragment_uniforms[i];
 
 		if (!symbol->data) {
-			printf("%s: Error: vertex uniform %s is empty.\n",
+			printf("%s: Error: fragment uniform %s is empty.\n",
 			       __func__, symbol->name);
 
 			return -1;
@@ -653,12 +682,8 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 	frame->draw_count++;
 
 	for (i = 0; i < program->vertex_attribute_count; i++) {
-		struct symbol *symbol;
-
-		symbol = symbol_copy(program->vertex_attributes[i], start, count);
-		if (symbol)
-			vs_info_attach_attribute(frame, draw, symbol);
-
+		attribute_upload(state, program->vertex_attributes[i]);
+		vs_info_attach_attribute(frame, draw, program->vertex_attributes[i]);
 	}
 
 	if (vs_info_attach_varyings(program, frame, draw))

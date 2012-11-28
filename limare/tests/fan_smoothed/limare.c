@@ -96,8 +96,8 @@ main(int argc, char *argv[])
 	fragment_shader_attach(state, fragment_shader_source);
 	limare_link(state);
 
-	limare_attribute_pointer(state, "aPosition", 4, 3, vertices);
-	limare_attribute_pointer(state, "aColor", 4, 4, colors);
+	limare_attribute_pointer(state, "aPosition", 4, 3, 6, vertices);
+	limare_attribute_pointer(state, "aColor", 4, 4, 6, colors);
 
 	limare_new(state);
 

@@ -270,27 +270,14 @@ vs_info_attach_attribute(struct limare_frame *frame, struct draw_info *draw,
 			 struct symbol *attribute)
 {
 	struct vs_info *info = draw->vs;
-	int size;
 
 	if (info->attribute_count == 0x10) {
 		printf("%s: No more attributes\n", __func__);
 		return -1;
 	}
 
-	size = ALIGN(attribute->size, 0x40);
-	if (size > (frame->mem_size - frame->mem_used)) {
-		printf("%s: No more space\n", __func__);
-		return -2;
-	}
-
-	attribute->address = frame->mem_address + frame->mem_used;
-	attribute->physical = frame->mem_physical + frame->mem_used;
-	frame->mem_used += size;
-
 	info->attributes[attribute->offset / 4] = attribute;
 	info->attribute_count++;
-
-	memcpy(attribute->address, attribute->data, attribute->size);
 
 	return 0;
 }
@@ -405,16 +392,20 @@ vs_info_finalize(struct limare_state *state, struct limare_frame *frame,
 
 	if (state->type == LIMARE_TYPE_M200) {
 		for (i = 0; i < info->attribute_count; i++) {
-			info->common->attributes[i].physical = info->attributes[i]->physical;
+			struct symbol *symbol = info->attributes[i];
+
+			info->common->attributes[i].physical = symbol->physical;
 			info->common->attributes[i].size =
-				((info->attributes[i]->component_size *
-				  info->attributes[i]->component_count) << 11) |
-				(info->attributes[i]->component_count - 1);
+				((symbol->component_size *
+				  symbol->component_count) << 11) |
+				(symbol->component_count - 1);
 		}
 
 		for (i = 0; i < program->varying_map_count; i++) {
-			info->common->varyings[i].physical = frame->mem_physical +
-				info->varying_offset + program->varying_map[i].offset;
+			info->common->varyings[i].physical =
+				frame->mem_physical +
+				info->varying_offset +
+				program->varying_map[i].offset;
 			info->common->varyings[i].size =
 				(program->varying_map_size << 11) |
 				(program->varying_map[i].entries - 1);
@@ -431,16 +422,24 @@ vs_info_finalize(struct limare_state *state, struct limare_frame *frame,
 
 	} else if (state->type == LIMARE_TYPE_M400) {
 		for (i = 0; i < info->attribute_count; i++) {
-			info->attribute_area[i].physical = info->attributes[i]->physical;
+			struct symbol *symbol = info->attributes[i];
+
+
+			info->attribute_area[i].physical = symbol->physical +
+				((symbol->component_size *
+				  symbol->component_count) *
+				 draw->vertex_start);
 			info->attribute_area[i].size =
-				((info->attributes[i]->component_size *
-				  info->attributes[i]->component_count) << 11) |
-				(info->attributes[i]->component_count - 1);
+				((symbol->component_size *
+				  symbol->component_count) << 11) |
+				(symbol->component_count - 1);
 		}
 
 		for (i = 0; i < program->varying_map_count; i++) {
-			info->varying_area[i].physical = frame->mem_physical +
-				info->varying_offset + program->varying_map[i].offset;
+			info->varying_area[i].physical =
+				frame->mem_physical +
+				info->varying_offset +
+				program->varying_map[i].offset;
 			info->varying_area[i].size =
 				(program->varying_map_size << 11) |
 				(program->varying_map[i].entries - 1);
@@ -481,7 +480,7 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 	cmds[i].cmd |= (frame->mem_physical + vs->gl_Position_offset) >> 4;
 	i++;
 
-	cmds[i].val = (draw->vertex_count << 24); /* | draw->vertex_start; */
+	cmds[i].val = (draw->vertex_count << 24) | draw->vertex_start;
 	cmds[i].cmd = LIMA_PLBU_CMD_VERTEX_COUNT |
 		((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
 	i++;
@@ -774,10 +773,5 @@ draw_create_new(struct limare_state *state, struct limare_frame *frame,
 void
 draw_info_destroy(struct draw_info *draw)
 {
-	int i;
-
-	for (i = 0; i < draw->vs->attribute_count; i++)
-		symbol_destroy(draw->vs->attributes[i]);
-
 	free(draw);
 }
