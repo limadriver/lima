@@ -602,7 +602,7 @@ plbu_info_render_state_create(struct draw_info *draw)
 	render->unknown00 = 0;
 	render->unknown04 = 0;
 	render->unknown08 = 0xfc3b1ad2;
-	render->unknown0C = 0x3E;
+	render->unknown0C = 0x33;
 	render->depth_range = 0xFFFF0000;
 	render->unknown14 = 7;
 	render->unknown18 = 7;
