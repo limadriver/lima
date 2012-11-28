@@ -1,6 +1,6 @@
 NAME = cube_textured
 
-targets = egl
+targets = egl limare
 
 objs = ../common/esTransform.o ../common/companion_texture_flat.o
 
