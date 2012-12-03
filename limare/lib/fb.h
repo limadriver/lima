@@ -27,7 +27,6 @@
 
 int fb_open(struct limare_state *state);
 void fb_clear(struct limare_state *state);
-void fb_dump(struct limare_state *state, unsigned char *buffer, int size,
-	     int width, int height);
+void fb_dump(struct limare_state *state);
 
 #endif /* LIMARE_FB_H */

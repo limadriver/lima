@@ -161,7 +161,7 @@ main(int argc, char *argv[])
 
 	limare_flush(state);
 
-	fb_dump(state, state->dest_mem_address, 0, state->width, state->height);
+	fb_dump(state);
 
 	limare_finish(state);
 
