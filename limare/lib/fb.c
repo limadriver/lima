@@ -32,6 +32,7 @@
 
 #include <linux/fb.h>
 
+#include "limare.h"
 #include "fb.h"
 
 #ifdef ANDROID
@@ -40,89 +41,76 @@
 #define FBDEV_DEV "/dev/fb0"
 #endif
 
-void
-fb_clear(void)
+int
+fb_open(struct limare_state *state)
 {
-	int fd = open(FBDEV_DEV, O_RDWR);
 	struct fb_var_screeninfo info;
-	unsigned char *fb;
 
-	if (fd == -1) {
+	state->fb_fd = open(FBDEV_DEV, O_RDWR);
+	if (state->fb_fd == -1) {
 		printf("Error: failed to open %s: %s\n",
 			FBDEV_DEV, strerror(errno));
-		return;
+		return errno;
 	}
 
-	if (ioctl(fd, FBIOGET_VSCREENINFO, &info)) {
+	if (ioctl(state->fb_fd, FBIOGET_VSCREENINFO, &info)) {
 		printf("Error: failed to run ioctl on %s: %s\n",
 			FBDEV_DEV, strerror(errno));
-		close(fd);
-		return;
+		close(state->fb_fd);
+		state->fb_fd = -1;
+		return errno;
 	}
 
 	printf("FB has dimensions: %dx%d@%dbpp\n",
 	       info.xres, info.yres, info.bits_per_pixel);
+	state->fb_width = info.xres;
+	state->fb_height = info.yres;
+	state->fb_size = info.xres * info.yres * 4;
 
-	fb = mmap(0, info.xres * info.yres * 4, PROT_READ | PROT_WRITE,
-		  MAP_SHARED, fd, 0);
-	if (!fb) {
+	state->fb_map = mmap(0, info.xres * info.yres * 4,
+			     PROT_READ | PROT_WRITE, MAP_SHARED,
+			     state->fb_fd, 0);
+	if (state->fb_map == MAP_FAILED) {
 		printf("Error: failed to run mmap on %s: %s\n",
 			FBDEV_DEV, strerror(errno));
-		close(fd);
-		return;
+		close(state->fb_fd);
+		state->fb_fd = -1;
+		return errno;
 	}
 
-	memset(fb, 0xFF, info.xres * info.yres * 4);
-
-	munmap(fb, info.xres * info.yres * 4);
-
-	close(fd);
-	return;
+	return 0;
 }
 
 void
-fb_dump(unsigned char *buffer, int size, int width, int height)
+fb_clear(struct limare_state *state)
 {
-	int fd = open(FBDEV_DEV, O_RDWR);
-	struct fb_var_screeninfo info;
-	unsigned char *fb;
+	if (state->fb_fd == -1)
+		return;
+
+	memset(state->fb_map, 0xFF, state->fb_size);
+}
+
+void
+fb_dump(struct limare_state *state, unsigned char *buffer, int size,
+	int width, int height)
+{
 	int i;
 
-	if (fd == -1) {
-		printf("Error: failed to open %s: %s\n",
-			FBDEV_DEV, strerror(errno));
+	if (state->fb_fd == -1)
 		return;
-	}
 
-	if (ioctl(fd, FBIOGET_VSCREENINFO, &info)) {
-		printf("Error: failed to run ioctl on %s: %s\n",
-			FBDEV_DEV, strerror(errno));
-		close(fd);
-		return;
-	}
-
-	fb = mmap(0, info.xres * info.yres * 4, PROT_READ | PROT_WRITE,
-		  MAP_SHARED, fd, 0);
-	if (!fb) {
-		printf("Error: failed to run mmap on %s: %s\n",
-			FBDEV_DEV, strerror(errno));
-		close(fd);
-		return;
-	}
-
-	if ((info.xres == width) && (info.yres == height)) {
-		memcpy(fb, buffer, width * height * 4);
-	} else if ((info.xres >= width) && (info.yres >= height)) {
+	if ((state->fb_width == width) && (state->fb_height == height)) {
+		memcpy(state->fb_map, buffer, state->fb_size);
+	} else if ((state->fb_width >= width) && (state->fb_height >= height)) {
 		int fb_offset, buf_offset;
 
 		for (i = 0, fb_offset = 0, buf_offset = 0;
 		     i < height;
-		     i++, fb_offset += 4 * info.xres, buf_offset += 4 * width) {
-			memcpy(fb + fb_offset, buffer + buf_offset, 4 * width);
+		     i++, fb_offset += 4 * state->fb_width,
+			     buf_offset += 4 * width) {
+			memcpy(state->fb_map + fb_offset,
+			       buffer + buf_offset, 4 * width);
 		}
 	} else
 		printf("%s: dimensions not implemented\n", __func__);
-
-	munmap(fb, info.xres * info.yres * 4);
-	close(fd);
 }

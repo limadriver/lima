@@ -37,6 +37,7 @@
 
 #include "version.h"
 #include "limare.h"
+#include "fb.h"
 #include "plb.h"
 #include "gp.h"
 #include "pp.h"
@@ -251,6 +252,8 @@ limare_init(void)
 	ret = limare_mem_init(state);
 	if (ret)
 		goto error;
+
+	fb_open(state);
 
 	return state;
  error:

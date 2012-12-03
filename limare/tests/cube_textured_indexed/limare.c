@@ -204,11 +204,11 @@ main(int argc, char *argv[])
 		23, 22, 21,
 	};
 
-	fb_clear();
-
 	state = limare_init();
 	if (!state)
 		return -1;
+
+	fb_clear(state);
 
 	ret = limare_state_setup(state, WIDTH, HEIGHT, 0xFF505050);
 	if (ret)
@@ -271,7 +271,7 @@ main(int argc, char *argv[])
 
 	limare_flush(state);
 
-	fb_dump(state->dest_mem_address, 0, state->width, state->height);
+	fb_dump(state, state->dest_mem_address, 0, state->width, state->height);
 
 	limare_finish(state);
 

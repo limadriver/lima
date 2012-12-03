@@ -92,6 +92,12 @@ struct limare_state {
 	void *dest_mem_address;
 	unsigned int dest_mem_physical;
 	int dest_mem_size;
+
+	int fb_fd;
+	void *fb_map;
+	int fb_width;
+	int fb_height;
+	int fb_size;
 };
 
 /*
