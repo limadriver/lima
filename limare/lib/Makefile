@@ -15,7 +15,7 @@ clean:
 	rm -f *.so
 
 liblimare.so: $(OBJS)
-	$(CC) -shared -Wall -o $@ $^ -lMali
+	$(CC) -shared -Wall -o $@ $^ -lMali -lrt
 
 install: liblimare.so
 	$(INSTALL) liblimare.so $(prefix)/lib/

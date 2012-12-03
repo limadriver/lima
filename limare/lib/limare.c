@@ -31,6 +31,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <string.h>
+#include <time.h>
 
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
@@ -228,6 +229,38 @@ limare_mem_init(struct limare_state *state)
 	return 0;
 }
 
+/*
+ * simplistic benchmarking.
+ */
+static struct timespec framerate_time;
+
+static void
+limare_framerate_init(struct limare_state *state)
+{
+	if (clock_gettime(CLOCK_MONOTONIC, &framerate_time))
+		printf("Error: failed to get time: %s\n", strerror(errno));
+}
+
+static void
+limare_framerate_print(struct limare_state *state, int count)
+{
+	struct timespec new = { 0 };
+	int usec;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &new)) {
+		printf("Error: failed to get time: %s\n", strerror(errno));
+		return;
+	}
+
+	usec = (new.tv_sec - framerate_time.tv_sec) * 1000000;
+	usec += (new.tv_nsec - framerate_time.tv_nsec) / 1000;
+
+	framerate_time = new;
+
+	printf("%d frames in %f seconds: %f fps\n", count,
+	       (float) usec / 1000000, (float) (count * 1000000) / usec);
+}
+
 struct limare_state *
 limare_init(void)
 {
@@ -254,6 +287,7 @@ limare_init(void)
 		goto error;
 
 	fb_open(state);
+	limare_framerate_init(state);
 
 	return state;
  error:
@@ -815,6 +849,9 @@ limare_new(struct limare_state *state)
 		return -1;
 
 	state->frame_count++;
+
+	if (!(state->frame_count & 0x3F))
+		limare_framerate_print(state, 64);
 
 	return 0;
 }
