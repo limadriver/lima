@@ -845,3 +845,15 @@ limare_new(struct limare_state *state)
 
 	return 0;
 }
+
+void
+limare_buffer_clear(struct limare_state *state)
+{
+	fb_clear(state);
+}
+
+void
+limare_buffer_swap(struct limare_state *state)
+{
+	fb_dump(state);
+}

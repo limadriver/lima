@@ -128,4 +128,7 @@ void limare_finish(struct limare_state *state);
 
 int limare_new(struct limare_state *state);
 
+void limare_buffer_clear(struct limare_state *state);
+void limare_buffer_swap(struct limare_state *state);
+
 #endif /* LIMARE_LIMARE_H */

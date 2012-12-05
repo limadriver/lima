@@ -32,11 +32,6 @@
 #include <GLES2/gl2.h>
 
 #include "limare.h"
-#include "fb.h"
-#include "symbols.h"
-#include "gp.h"
-#include "pp.h"
-#include "program.h"
 
 #define WIDTH 800
 #define HEIGHT 480
@@ -85,7 +80,7 @@ main(int argc, char *argv[])
 	if (!state)
 		return -1;
 
-	fb_clear(state);
+	limare_buffer_clear(state);
 
 	ret = limare_state_setup(state, WIDTH, HEIGHT, 0xFF505050);
 	if (ret)
@@ -109,7 +104,7 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	fb_dump(state);
+	limare_buffer_swap(state);
 
 	limare_finish(state);
 
