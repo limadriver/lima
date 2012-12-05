@@ -405,18 +405,8 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	state->aux_mem_used += 0x1000;
 
 	/* try to grab the necessary space for our image */
-	state->dest_mem_size = state->width * state->height * 4;
-	state->dest_mem_physical = state->mem_base + 0x0500000;
-	state->dest_mem_address = mmap(NULL, state->dest_mem_size,
-				       PROT_READ | PROT_WRITE,
-				       MAP_SHARED, state->fd,
-				       state->dest_mem_physical);
-	if (state->dest_mem_address == MAP_FAILED) {
-		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
-		       state->dest_mem_physical, state->dest_mem_size,
-		       strerror(errno));
+	if (fb_init(state, width, height, 0x0500000))
 		return -1;
-	}
 
 	return 0;
 }

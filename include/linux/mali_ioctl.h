@@ -808,3 +808,24 @@ typedef struct
     void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
     _mali_core_version version;     /**< [out] version returned from core, see \ref _mali_core_version */
 } _mali_uk_get_gp_core_version_s;
+
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+	u32 phys_addr;                  /**< [in] physical address */
+	u32 size;                       /**< [in] size */
+	u32 mali_address;               /**< [in] mali address to map the physical memory to */
+	u32 rights;                     /**< [in] rights necessary for accessing memory */
+	u32 flags;                      /**< [in] flags, see \ref _MALI_MAP_EXTERNAL_MAP_GUARD_PAGE */
+	u32 cookie;                     /**< [out] identifier for mapped memory object in kernel space  */
+} _mali_uk_map_external_mem_s;
+
+/** Flag for _mali_uk_map_external_mem_s and _mali_uk_attach_ump_mem_s */
+#define _MALI_MAP_EXTERNAL_MAP_GUARD_PAGE (1<<0)
+
+/** @note Mali-MMU only */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+	u32 cookie;                     /**< [out] identifier for mapped memory object in kernel space  */
+} _mali_uk_unmap_external_mem_s;

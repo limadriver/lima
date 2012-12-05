@@ -25,7 +25,33 @@
 #ifndef LIMARE_FB_H
 #define LIMARE_FB_H 1
 
+struct limare_fb {
+	int fd;
+
+	/* one single fb */
+	int width;
+	int height;
+	int size;
+
+	int direct;
+	int dual_buffer;
+
+	/* mapped fb */
+	void *map;
+	int map_size;
+
+	/* for when we do not have direct writing */
+	void *buffer;
+	int buffer_size;
+
+	int fb_physical;
+	int mali_physical[2];
+
+	int mali_handle;
+};
+
 int fb_open(struct limare_state *state);
+int fb_init(struct limare_state *state, int width, int height, int offset);
 void fb_clear(struct limare_state *state);
 void fb_dump(struct limare_state *state);
 

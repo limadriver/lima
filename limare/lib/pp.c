@@ -36,6 +36,7 @@
 #include "formats.h"
 #include "ioctl_registers.h"
 #include "limare.h"
+#include "fb.h"
 #include "plb.h"
 #include "pp.h"
 #include "jobs.h"
@@ -145,7 +146,7 @@ limare_m200_pp_job_start(struct limare_state *state, struct pp_info *info)
 
 	/* write back registers */
 	wb.type = LIMA_PP_WB_TYPE_COLOR;
-	wb.address = state->dest_mem_physical;
+	wb.address = state->fb->mali_physical[0];
 	wb.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 	wb.downsample_factor = 0;
 	wb.pixel_layout = 0;
@@ -223,7 +224,7 @@ limare_m400_pp_job_start(struct limare_state *state, struct pp_info *info)
 
 	/* write back registers */
 	wb.type = LIMA_PP_WB_TYPE_COLOR;
-	wb.address = state->dest_mem_physical;
+	wb.address = state->fb->mali_physical[0];
 	wb.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 	wb.downsample_factor = 0;
 	wb.pixel_layout = 0;
