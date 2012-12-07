@@ -47,37 +47,76 @@
 #define FBDEV_DEV "/dev/fb0"
 #endif
 
+void
+fb_destroy(struct limare_state *state)
+{
+	struct limare_fb *fb = state->fb;
+
+	if (fb->direct) {
+		_mali_uk_unmap_external_mem_s unmap = { 0 };
+
+		unmap.cookie = fb->mali_handle;
+
+		if (ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT, &unmap))
+			printf("Error: failed to unmap external memory: %s\n",
+			       strerror(errno));
+	} else
+		munmap(fb->buffer, fb->buffer_size);
+
+	munmap(fb->map, fb->map_size);
+
+	close(fb->fd);
+
+	free(fb->fb_var);
+	free(fb);
+	state->fb = NULL;
+}
+
 int
 fb_open(struct limare_state *state)
 {
-	struct fb_var_screeninfo info;
-	struct fb_fix_screeninfo fix;
 	struct limare_fb *fb = calloc(1, sizeof(struct limare_fb));
+	struct fb_var_screeninfo *fb_var =
+		calloc(1, sizeof(struct fb_var_screeninfo));
+	struct fb_fix_screeninfo fix;
 
-	state->fb = fb;
+	if (!fb) {
+		printf("Error: failed to alloc limare_fb: %s\n",
+		       strerror(errno));
+		return errno;
+	}
+
+	if (!fb_var) {
+		printf("Error: failed to alloc fb_var_vscreeninfo: %s\n",
+		       strerror(errno));
+		free(fb);
+		return errno;
+	}
 
 	fb->fd = open(FBDEV_DEV, O_RDWR);
 	if (fb->fd == -1) {
 		printf("Error: failed to open %s: %s\n",
 			FBDEV_DEV, strerror(errno));
+		free(fb);
 		return errno;
 	}
 
-	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &info) ||
+	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, fb_var) ||
 	    ioctl(fb->fd, FBIOGET_FSCREENINFO, &fix)) {
 		printf("Error: failed to run ioctl on %s: %s\n",
 			FBDEV_DEV, strerror(errno));
 		close(fb->fd);
-		fb->fd = -1;
+		free(fb);
 		return errno;
 	}
 
-	printf("FB: %dx%d@%dbpp at 0x%08lX (0x%08X)\n", info.xres, info.yres,
-	       info.bits_per_pixel, fix.smem_start, fix.smem_len);
+	printf("FB: %dx%d@%dbpp at 0x%08lX (0x%08X)\n",
+	       fb_var->xres, fb_var->yres, fb_var->bits_per_pixel,
+	       fix.smem_start, fix.smem_len);
 
-	fb->width = info.xres;
-	fb->height = info.yres;
-	fb->size = info.xres * info.yres * 4;
+	fb->width = fb_var->xres;
+	fb->height = fb_var->yres;
+	fb->size = fb_var->xres * fb_var->yres * 4;
 
 	fb->fb_physical = fix.smem_start;
 
@@ -88,9 +127,12 @@ fb_open(struct limare_state *state)
 		printf("Error: failed to run mmap on %s: %s\n",
 			FBDEV_DEV, strerror(errno));
 		close(fb->fd);
-		fb->fd = -1;
+		free(fb);
 		return errno;
 	}
+
+	fb->fb_var = fb_var;
+	state->fb = fb;
 
 	return 0;
 }
@@ -172,6 +214,26 @@ fb_clear(struct limare_state *state)
 }
 
 static void
+fb_switch(struct limare_state *state)
+{
+	struct limare_fb *fb = state->fb;
+	int sync_arg = 0;
+
+	if (state->frame_current)
+		fb->fb_var->yoffset = fb->height;
+	else
+		fb->fb_var->yoffset = 0;
+
+	if (ioctl(fb->fd, FBIO_WAITFORVSYNC, &sync_arg))
+		printf("Error: failed to run ioctl on %s: %s\n",
+			FBDEV_DEV, strerror(errno));
+
+	if (ioctl(fb->fd, FBIOPAN_DISPLAY, fb->fb_var))
+		printf("Error: failed to run ioctl on %s: %s\n",
+			FBDEV_DEV, strerror(errno));
+}
+
+static void
 fb_dump_memcpy(struct limare_state *state)
 {
 	struct limare_fb *fb = state->fb;
@@ -203,6 +265,8 @@ fb_dump(struct limare_state *state)
 {
 	struct limare_fb *fb = state->fb;
 
-	if (!fb->direct)
+	if (fb->dual_buffer)
+		fb_switch(state);
+	else if (!fb->direct)
 		fb_dump_memcpy(state);
 }

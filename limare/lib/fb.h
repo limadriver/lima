@@ -48,6 +48,8 @@ struct limare_fb {
 	int mali_physical[2];
 
 	int mali_handle;
+
+	struct fb_var_screeninfo *fb_var;
 };
 
 int fb_open(struct limare_state *state);
