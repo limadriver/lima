@@ -26,6 +26,7 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <inttypes.h>
 #include <pthread.h>
@@ -131,6 +132,9 @@ limare_gp_job_start_r2p1(struct limare_state *state,
 
 	limare_jobs_wait();
 
+	/* wait for the plb to be fully written out */
+	usleep(8500);
+
 	return 0;
 }
 
@@ -155,6 +159,9 @@ limare_gp_job_start_r3p0(struct limare_state *state,
 	}
 
 	limare_jobs_wait();
+
+	/* wait for the plb to be fully written out */
+	usleep(8500);
 
 	return 0;
 }
