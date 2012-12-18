@@ -34,6 +34,8 @@ struct varying_map {
 };
 
 struct limare_program {
+	int handle;
+
 	unsigned int mem_physical;
 	unsigned int mem_size;
 	void *mem_address;

@@ -678,8 +678,7 @@ plbu_info_attach_textures(struct limare_state *state,
 			  struct limare_frame *frame,
 			  struct draw_info *draw)
 {
-	struct limare_program *program =
-		state->programs[state->program_current];
+	struct limare_program *program = state->program_current;
 	unsigned int *list;
 	int i;
 

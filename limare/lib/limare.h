@@ -81,9 +81,15 @@ struct limare_state {
 	int frame_current;
 	struct limare_frame *frames[2];
 
-	int program_count;
-	struct limare_program **programs;
-	int program_current;
+#define LIMARE_PROGRAM_COUNT 16
+#define LIMARE_PROGRAM_SIZE 0x1000
+	void *program_mem_address;
+	unsigned int program_mem_physical;
+	int program_mem_size;
+
+	struct limare_program *programs[LIMARE_PROGRAM_COUNT];
+	struct limare_program *program_current;
+	int program_handles;
 
 	/* space used for vertex buffers and textures */
 	void *aux_mem_address;
@@ -112,8 +118,14 @@ struct limare_state *limare_init(void);
 
 int limare_state_setup(struct limare_state *state, int width, int height,
 			unsigned int clear_color);
-int vertex_shader_attach(struct limare_state *state, const char *source);
-int fragment_shader_attach(struct limare_state *state, const char *source);
+
+int limare_program_new(struct limare_state *state);
+int limare_program_current(struct limare_state *state, int handle);
+
+int vertex_shader_attach(struct limare_state *state, int program_handle,
+			 const char *source);
+int fragment_shader_attach(struct limare_state *state, int program_handle,
+			   const char *source);
 int limare_link(struct limare_state *state);
 
 int limare_texture_upload(struct limare_state *state, const void *pixels,
@@ -132,11 +144,9 @@ int limare_attribute_pointer(struct limare_state *state, char *name,
 			     int component_size, int component_count,
 			     int entry_count, void *data);
 int limare_draw_arrays(struct limare_state *state, int mode,
-			int vertex_start, int vertex_count);
+		       int vertex_start, int vertex_count);
 int limare_draw_elements(struct limare_state *state, int mode, int count,
 			 void *indices, int indices_type);
-
-void limare_finish(struct limare_state *state);
 
 int limare_frame_new(struct limare_state *state);
 int limare_frame_flush(struct limare_state *state);
@@ -144,5 +154,7 @@ int limare_frame_flush(struct limare_state *state);
 void limare_buffer_clear(struct limare_state *state);
 void limare_buffer_swap(struct limare_state *state);
 void limare_buffer_size(struct limare_state *state, int *width, int *height);
+
+void limare_finish(struct limare_state *state);
 
 #endif /* LIMARE_LIMARE_H */

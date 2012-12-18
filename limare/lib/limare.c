@@ -392,9 +392,31 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	if (!state)
 		return -1;
 
-	/* space for our programs and textures. */
+	/*
+	 * we have two frames, FRAME_MEMORY_SIZE large, so available memory
+	 * starts at 0x300000.
+	 */
+
+	/*
+	 * Statically assign a given number of blocks for a fixed number of
+	 * programs. Later on diverge them one by one.
+	 */
+	state->program_mem_physical = state->mem_base + 2 * FRAME_MEMORY_SIZE;
+	state->program_mem_size = LIMARE_PROGRAM_COUNT * LIMARE_PROGRAM_SIZE;
+	state->program_mem_address =
+		mmap(NULL, state->program_mem_size, PROT_READ | PROT_WRITE,
+		     MAP_SHARED, state->fd, state->program_mem_physical);
+	if (state->program_mem_address == MAP_FAILED) {
+		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
+		       state->program_mem_physical, state->program_mem_size,
+		       strerror(errno));
+		return -1;
+	}
+
+	/* space for our textures. */
 	state->aux_mem_size = AUX_MEMORY_SIZE;
-	state->aux_mem_physical = state->mem_base + 2 * FRAME_MEMORY_SIZE;
+	state->aux_mem_physical =
+		state->program_mem_physical + state->program_mem_size;
 	state->aux_mem_address = mmap(NULL, state->aux_mem_size,
 				       PROT_READ | PROT_WRITE,
 				       MAP_SHARED, state->fd,
@@ -405,16 +427,6 @@ limare_state_setup(struct limare_state *state, int width, int height,
 		       strerror(errno));
 		return -1;
 	}
-
-
-	state->programs = calloc(1, sizeof(struct program *));
-	state->programs[0] = limare_program_create(state->aux_mem_address,
-						   state->aux_mem_physical,
-						   0, 0x1000);
-	state->program_count = 1;
-	state->program_current = 0;
-
-	state->aux_mem_used += 0x1000;
 
 	/* try to grab the necessary space for our image */
 	if (fb_init(state, width, height, FB_MEMORY_OFFSET))
@@ -455,8 +467,7 @@ symbol_attach_data(struct symbol *symbol, int count, float *data)
 int
 limare_uniform_attach(struct limare_state *state, char *name, int count, float *data)
 {
-	struct limare_program *program =
-		state->programs[state->program_current];
+	struct limare_program *program = state->program_current;
 	int found = 0, i, ret;
 
 	for (i = 0; i < program->vertex_uniform_count; i++) {
@@ -511,8 +522,7 @@ limare_attribute_pointer(struct limare_state *state, char *name,
 			 int component_size, int component_count,
 			 int entry_count, void *data)
 {
-	struct limare_program *program =
-		state->programs[state->program_current];
+	struct limare_program *program = state->program_current;
 	struct symbol *symbol;
 	int i;
 
@@ -748,8 +758,7 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 		      int handle)
 {
 	struct limare_texture *texture = limare_texture_find(state, handle);
-	struct limare_program *program =
-		state->programs[state->program_current];
+	struct limare_program *program = state->program_current;
 	struct symbol *symbol = NULL;
 	int i;
 
@@ -791,8 +800,7 @@ static int
 limare_draw(struct limare_state *state, int mode, int start, int count,
 	    void *indices, int indices_type)
 {
-	struct limare_program *program =
-		state->programs[state->program_current];
+	struct limare_program *program = state->program_current;
 	struct limare_frame *frame =
 		state->frames[state->frame_current];
 	struct draw_info *draw;
@@ -936,20 +944,98 @@ limare_finish(struct limare_state *state)
 	sleep(1);
 }
 
-int
-vertex_shader_attach(struct limare_state *state, const char *source)
+static struct limare_program *
+limare_program_find(struct limare_state *state, int handle)
 {
-	struct limare_program *program =
-		state->programs[state->program_current];
+	int i;
+
+	for (i = 0; i < LIMARE_PROGRAM_COUNT; i++) {
+		struct limare_program *program = state->programs[i];
+
+		if (program && (program->handle == handle))
+			return program;
+	}
+
+	return NULL;
+}
+
+int
+limare_program_current(struct limare_state *state, int handle)
+{
+	struct limare_program *program = limare_program_find(state, handle);
+
+	if (!program) {
+		printf("%s: unable to find program with handle 0x%08X\n",
+		       __func__, handle);
+
+		return -1;
+	}
+
+	state->program_current = program;
+
+	return 0;
+}
+
+int
+limare_program_new(struct limare_state *state)
+{
+	struct limare_program *program;
+	int i;
+
+	for (i = 0; i < LIMARE_PROGRAM_COUNT; i++)
+		if (!state->programs[i])
+			break;
+
+	if (i == LIMARE_PROGRAM_COUNT) {
+		printf("%s: Error: no more program slots available!\n",
+		       __func__);
+		return -1;
+	}
+
+	program = limare_program_create(state->program_mem_address,
+					state->program_mem_physical,
+					i * LIMARE_PROGRAM_SIZE,
+					LIMARE_PROGRAM_SIZE);
+	if (!program)
+		return -ENOMEM;
+
+	program->handle = state->program_handles;
+	state->program_handles++;
+
+	state->program_current = program;
+	state->programs[i] = program;
+
+	return program->handle;
+}
+
+int
+vertex_shader_attach(struct limare_state *state, int handle,
+		     const char *source)
+{
+	struct limare_program *program = limare_program_find(state, handle);
+
+	if (!program) {
+		printf("%s: unable to find program with handle 0x%08X\n",
+		       __func__, handle);
+
+		return -1;
+	}
 
 	return limare_program_vertex_shader_attach(state, program, source);
 }
 
 int
-fragment_shader_attach(struct limare_state *state, const char *source)
+fragment_shader_attach(struct limare_state *state, int handle,
+		       const char *source)
 {
-	struct limare_program *program =
-		state->programs[state->program_current];
+	struct limare_program *program = limare_program_find(state, handle);
+
+	if (!program) {
+		printf("%s: unable to find program with handle 0x%08X\n",
+		       __func__, handle);
+
+		return -1;
+	}
 
 	return limare_program_fragment_shader_attach(state, program, source);
 }
@@ -957,8 +1043,7 @@ fragment_shader_attach(struct limare_state *state, const char *source)
 int
 limare_link(struct limare_state *state)
 {
-	struct limare_program *program =
-		state->programs[state->program_current];
+	struct limare_program *program = state->program_current;
 
 	return limare_program_link(program);
 }

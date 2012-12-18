@@ -71,8 +71,9 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	vertex_shader_attach(state, vertex_shader_source);
-	fragment_shader_attach(state, fragment_shader_source);
+	int program = limare_program_new(state);
+	vertex_shader_attach(state, program, vertex_shader_source);
+	fragment_shader_attach(state, program, fragment_shader_source);
 
 	limare_link(state);
 
