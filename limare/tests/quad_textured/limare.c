@@ -85,10 +85,9 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	limare_attribute_pointer(state, "in_vertex", 4,
+	limare_attribute_pointer(state, "in_vertex", LIMARE_ATTRIB_FLOAT,
 				 3, 0, 4, vertices);
-
-	limare_attribute_pointer(state, "in_coord", 4,
+	limare_attribute_pointer(state, "in_coord", LIMARE_ATTRIB_FLOAT,
 				 2, 0, 4, coords);
 
 	int texture = limare_texture_upload(state, companion_texture_flat,

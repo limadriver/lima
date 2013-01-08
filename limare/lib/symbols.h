@@ -53,7 +53,10 @@ struct symbol {
 	int precision;
 	int component_count;
 	int entry_count;
-	int entry_stride; /* for attributes */
+
+	/* for attributes */
+	int component_type;
+	int entry_stride;
 
 	int src_stride;
 	int dst_stride;

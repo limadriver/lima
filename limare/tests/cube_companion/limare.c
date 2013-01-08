@@ -102,12 +102,12 @@ main(int argc, char *argv[])
 
 	limare_link(state);
 
-	limare_attribute_pointer(state, "in_position", 4,
+	limare_attribute_pointer(state, "in_position", LIMARE_ATTRIB_FLOAT,
 				 3, 0, COMPANION_ARRAY_COUNT, vertices_array);
-	limare_attribute_pointer(state, "in_coord", 4,
+	limare_attribute_pointer(state, "in_coord", LIMARE_ATTRIB_FLOAT,
 				 2, 0, COMPANION_ARRAY_COUNT,
 				 texture_coordinates_array);
-	limare_attribute_pointer(state, "in_normal", 4,
+	limare_attribute_pointer(state, "in_normal", LIMARE_ATTRIB_FLOAT,
 				 3, 0, COMPANION_ARRAY_COUNT, normals_array);
 
 	ESMatrix modelview;

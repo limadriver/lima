@@ -68,10 +68,25 @@ struct limare_frame {
 	int plbu_commands_size;
 };
 
+enum limare_attrib_type {
+	LIMARE_ATTRIB_FLOAT = 0x000,
+	/* todo: find out what lives here. */
+	LIMARE_ATTRIB_I16   = 0x004,
+	LIMARE_ATTRIB_U16   = 0x005,
+	LIMARE_ATTRIB_I8    = 0x006,
+	LIMARE_ATTRIB_U8    = 0x007,
+	LIMARE_ATTRIB_I8N   = 0x008,
+	LIMARE_ATTRIB_U8N   = 0x009,
+	LIMARE_ATTRIB_I16N  = 0x00A,
+	LIMARE_ATTRIB_U16N  = 0x00B,
+	/* todo: find out what lives here. */
+	LIMARE_ATTRIB_FIXED = 0x101
+};
+
 struct limare_attribute_buffer {
 	int handle;
 
-	int component_size;
+	enum limare_attrib_type component_type;
 	int component_count;
 	int entry_stride;
 	int entry_count;
@@ -186,12 +201,12 @@ int limare_texture_attach(struct limare_state *state, char *uniform_name,
 int limare_uniform_attach(struct limare_state *state, char *name,
 			  int count, float *data);
 int limare_attribute_pointer(struct limare_state *state, char *name,
-			     int component_size, int component_count,
+			     enum limare_attrib_type type, int component_count,
 			     int entry_stride, int entry_count, void *data);
 int limare_attribute_buffer_upload(struct limare_state *state,
-				   int component_size, int component_count,
-				   int entry_stride, int entry_count,
-				   void *data);
+				   enum limare_attrib_type type,
+				   int component_count, int entry_stride,
+				   int entry_count, void *data);
 int limare_attribute_buffer_attach(struct limare_state *state, char *name,
 				   int buffer_handle);
 

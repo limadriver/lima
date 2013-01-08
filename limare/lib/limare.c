@@ -516,13 +516,44 @@ limare_uniform_attach(struct limare_state *state, char *name, int count, float *
 	return 0;
 }
 
+static struct {
+	enum limare_attrib_type type;
+	char *name;
+	int size;
+} limare_attrib_types[] = {
+	{LIMARE_ATTRIB_FLOAT,	"LIMARE_ATTRIB_FLOAT",	 4},
+	{LIMARE_ATTRIB_I16,	"LIMARE_ATTRIB_I16",	 2},
+	{LIMARE_ATTRIB_U16,	"LIMARE_ATTRIB_U16",	 2},
+	{LIMARE_ATTRIB_I8,	"LIMARE_ATTRIB_I8",	 1},
+	{LIMARE_ATTRIB_U8,	"LIMARE_ATTRIB_U8",	 1},
+	{LIMARE_ATTRIB_I8N,	"LIMARE_ATTRIB_I8N",	 1},
+	{LIMARE_ATTRIB_U8N,	"LIMARE_ATTRIB_U8N",	 1},
+	{LIMARE_ATTRIB_I16N,	"LIMARE_ATTRIB_I16N",	 2},
+	{LIMARE_ATTRIB_U16N,	"LIMARE_ATTRIB_U16N",	 2},
+	{LIMARE_ATTRIB_FIXED,	"LIMARE_ATTRIB_FIXED",	 4},
+	{0, NULL, 0},
+};
+
+int
+limare_attrib_type_size(enum limare_attrib_type type)
+{
+	int i;
+
+	for (i = 0; limare_attrib_types[i].name; i++)
+		if (limare_attrib_types[i].type == type)
+			return limare_attrib_types[i].size;
+
+	return 0;
+}
+
 int
 limare_attribute_pointer(struct limare_state *state, char *name,
-			 int component_size, int component_count,
+			 enum limare_attrib_type type, int component_count,
 			 int entry_stride, int entry_count, void *data)
 {
 	struct limare_program *program = state->program_current;
 	struct symbol *symbol = NULL;
+	int component_size;
 	int i;
 
 	for (i = 0; i < program->vertex_attribute_count; i++) {
@@ -544,11 +575,19 @@ limare_attribute_pointer(struct limare_state *state, char *name,
 		return -1;
 	}
 
+	component_size = limare_attrib_type_size(type);
+	if (!component_size)
+		printf("%s: Invalid attribute type %d\n", __func__, type);
+
+	if (!entry_stride)
+		entry_stride = component_size * component_count;
+#if 0
 	if (symbol->component_size != component_size) {
 		printf("%s: Error: Attribute %s has different dimensions\n",
 		       __func__, name);
 		return -1;
 	}
+#endif
 
 	if (symbol->data && symbol->data_allocated)
 		free(symbol->data);
@@ -556,8 +595,7 @@ limare_attribute_pointer(struct limare_state *state, char *name,
 	symbol->data_allocated = 0;
 	symbol->data_handle = 0;
 
-	if (!entry_stride)
-		entry_stride = component_size * component_count;
+	symbol->component_type = type;
 	symbol->component_count = component_count;
 	symbol->entry_count = entry_count;
 	symbol->entry_stride = entry_stride;
@@ -592,11 +630,12 @@ attribute_upload(struct limare_frame *frame, struct symbol *symbol)
 
 int
 limare_attribute_buffer_upload(struct limare_state *state,
-			       int component_size, int component_count,
-			       int entry_stride, int entry_count, void *data)
+			       enum limare_attrib_type type,
+			       int component_count, int entry_stride,
+			       int entry_count, void *data)
 {
 	struct limare_attribute_buffer *buffer;
-	int i, size;
+	int i, size, component_size;
 	void *address;
 
 	for (i = 0; i < LIMARE_ATTRIBUTE_BUFFER_COUNT; i++)
@@ -616,6 +655,10 @@ limare_attribute_buffer_upload(struct limare_state *state,
 		return -1;
 	}
 
+	component_size = limare_attrib_type_size(type);
+	if (!component_size)
+		printf("%s: Invalid attribute type %d\n", __func__, type);
+
 	if (!entry_stride)
 		entry_stride = component_size * component_count;
 
@@ -633,7 +676,7 @@ limare_attribute_buffer_upload(struct limare_state *state,
 	buffer->mem_physical = state->aux_mem_physical + state->aux_mem_used;
 	state->aux_mem_used += size;
 
-	buffer->component_size = component_size;
+	buffer->component_type = type;
 	buffer->component_count = component_count;
 	buffer->entry_stride = entry_stride;
 	buffer->entry_count = entry_count;
@@ -692,17 +735,20 @@ limare_attribute_buffer_attach(struct limare_state *state, char *name,
 		return -1;
 	}
 
+#if 0
 	if (symbol->component_size != buffer->component_size) {
 		printf("%s: Error: Attribute %s has different dimensions\n",
 		       __func__, name);
 		return -1;
 	}
+#endif
 
 	if (symbol->data && symbol->data_allocated)
 		free(symbol->data);
 	symbol->data = NULL;
 	symbol->data_allocated = 0;
 
+	symbol->component_type = buffer->component_type;
 	symbol->component_count = buffer->component_count;
 	symbol->entry_count = buffer->entry_count;
 	symbol->entry_stride = buffer->entry_stride;

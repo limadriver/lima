@@ -90,11 +90,11 @@ main(int argc, char *argv[])
 
 	limare_link(state);
 
-	limare_attribute_pointer(state, "in_position", 4,
+	limare_attribute_pointer(state, "in_position", LIMARE_ATTRIB_FLOAT,
 				 3, 0, CUBE_VERTEX_COUNT, cube_vertices);
-	limare_attribute_pointer(state, "in_color", 4,
+	limare_attribute_pointer(state, "in_color", LIMARE_ATTRIB_FLOAT,
 				 3, 0, CUBE_VERTEX_COUNT, cube_colors);
-	limare_attribute_pointer(state, "in_normal", 4,
+	limare_attribute_pointer(state, "in_normal", LIMARE_ATTRIB_FLOAT,
 				 3, 0, CUBE_VERTEX_COUNT, cube_normals);
 
 	ESMatrix modelview;
