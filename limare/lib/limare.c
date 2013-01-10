@@ -33,6 +33,8 @@
 #include <string.h>
 #include <time.h>
 
+#include <GLES2/gl2.h>
+
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
 
@@ -592,6 +594,21 @@ limare_gl_mali_ViewPortTransform(struct limare_state *state,
 	return 0;
 }
 
+static struct limare_texture *
+limare_texture_find(struct limare_state *state, int handle)
+{
+	int i;
+
+	for (i = 0; i < LIMARE_TEXTURE_COUNT; i++) {
+		struct limare_texture *texture = state->textures[i];
+
+		if (texture && (texture->handle == handle))
+			return texture;
+	}
+
+	return NULL;
+}
+
 int
 attribute_upload(struct limare_state *state, struct symbol *symbol)
 {
@@ -647,24 +664,83 @@ limare_texture_upload(struct limare_state *state, const void *pixels,
 }
 
 int
+limare_texture_parameters(struct limare_state *state, int handle,
+			  int filter_mag, int filter_min,
+			  int wrap_s, int wrap_t)
+{
+	struct limare_texture *texture = limare_texture_find(state, handle);
+
+	if (!texture) {
+		printf("%s: texture 0x%08X not found!\n", __func__, handle);
+		return -1;
+	}
+
+	switch (filter_min) {
+	case GL_NEAREST:
+	case GL_LINEAR: /* default */
+		break;
+	default:
+		printf("%s: Unsupported magnification filter value 0x%04X.\n",
+		       __func__, filter_mag);
+		return -1;
+	}
+
+	switch (filter_min) {
+	case GL_NEAREST:
+	case GL_LINEAR:
+	case GL_NEAREST_MIPMAP_NEAREST: /* awkward supposed default */
+	case GL_NEAREST_MIPMAP_LINEAR:
+	case GL_LINEAR_MIPMAP_NEAREST:
+	case GL_LINEAR_MIPMAP_LINEAR:
+		break;
+	default:
+		printf("%s: Unsupported minification filter value 0x%04X.\n",
+		       __func__, filter_min);
+		return -1;
+	}
+
+	switch (wrap_s) {
+	case GL_REPEAT:
+	case GL_CLAMP_TO_EDGE:
+	case GL_MIRRORED_REPEAT:
+		break;
+	default:
+		printf("%s: Unsupported S wrap mode 0x%04X.\n",
+		       __func__, wrap_s);
+		return -1;
+	}
+
+	switch (wrap_t) {
+	case GL_REPEAT:
+	case GL_CLAMP_TO_EDGE:
+	case GL_MIRRORED_REPEAT:
+		break;
+	default:
+		printf("%s: Unsupported T wrap mode 0x%04X.\n",
+		       __func__, wrap_t);
+		return -1;
+	}
+
+	texture->filter_mag = filter_mag;
+	texture->filter_min = filter_min;
+	texture->wrap_s = wrap_s;
+	texture->wrap_t = wrap_t;
+
+	return limare_texture_parameters_set(texture);
+}
+
+int
 limare_texture_attach(struct limare_state *state, char *uniform_name,
 		      int handle)
 {
+	struct limare_texture *texture = limare_texture_find(state, handle);
 	struct limare_program *program =
 		state->programs[state->program_current];
 	struct symbol *symbol = NULL;
 	int i;
 
-	for (i = 0; i < LIMARE_TEXTURE_COUNT; i++) {
-		if (!state->textures[i])
-			continue;
-
-		if (state->textures[i]->handle == handle)
-			break;
-	}
-
-	if (i == LIMARE_TEXTURE_COUNT) {
-		printf("%s: texture %d not found!\n", __func__, handle);
+	if (!texture) {
+		printf("%s: texture 0x%08X not found!\n", __func__, handle);
 		return -1;
 	}
 

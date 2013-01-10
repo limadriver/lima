@@ -44,6 +44,11 @@ struct limare_texture {
 	int height;
 	int format;
 
+	int filter_mag;
+	int filter_min;
+	int wrap_s;
+	int wrap_t;
+
 	/* in AUX space */
 	unsigned int *descriptor;
 	unsigned int descriptor_physical;
@@ -55,5 +60,6 @@ struct limare_texture {
 struct limare_texture *
 limare_texture_create(struct limare_state *state, const void *src,
 		      int width, int height, int format, int mipmap);
+int limare_texture_parameters_set(struct limare_texture *texture);
 
 #endif /* LIMARE_TEXTURE_H */

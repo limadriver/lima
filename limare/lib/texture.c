@@ -34,6 +34,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <GLES2/gl2.h>
+
 #include "limare.h"
 #include "texture.h"
 #include "formats.h"
@@ -837,17 +839,76 @@ limare_texture_create(struct limare_state *state, const void *src,
 		return NULL;
 	}
 
-	/* fill out our descriptor */
+	texture->filter_mag = GL_LINEAR;
+	/* this is not fully gl standard conform, but a lot more sane */
+	if (texture->levels == 1)
+		texture->filter_min = GL_LINEAR;
+	else /* this is the actual opengles default */
+		texture->filter_min = GL_NEAREST_MIPMAP_LINEAR;
+	texture->wrap_s = GL_REPEAT;
+	texture->wrap_t = GL_REPEAT;
 
+	/*
+	 * fill out our descriptor
+	 */
 	texture->descriptor[0] = (flag0 << 7) | (flag1 << 6) | format;
-	/* assume both min and mag filter are linear */
 	/* assume that we are not a cubemap */
 	texture->descriptor[1] = 0x00000400;
-	texture->descriptor[2] = width << 22;
+	texture->descriptor[2] = (width << 22);
 	texture->descriptor[3] = 0x10000 | (height << 3) | (width >> 10);
 	texture->descriptor[6] = layout << 13;
 
 	texture_descriptor_levels_attach(texture);
+	limare_texture_parameters_set(texture);
 
 	return texture;
+}
+
+int
+limare_texture_parameters_set(struct limare_texture *texture)
+{
+	if (texture->filter_mag == GL_NEAREST)
+		texture->descriptor[2] |= 0x1000;
+	else /* default */
+		texture->descriptor[2] &= ~0x1000;
+
+	if ((texture->filter_min == GL_NEAREST) ||
+	    (texture->filter_min == GL_NEAREST_MIPMAP_NEAREST) ||
+	    (texture->filter_min == GL_NEAREST_MIPMAP_LINEAR))
+		texture->descriptor[2] |= 0x0800;
+	else
+		texture->descriptor[2] &= ~0x0800;
+
+	/* this is not fully gl standard conform, but a lot more sane */
+	if (texture->levels > 1) {
+		if ((texture->filter_min == GL_NEAREST) ||
+		    (texture->filter_min == GL_NEAREST_MIPMAP_NEAREST) ||
+		    (texture->filter_min == GL_LINEAR_MIPMAP_NEAREST))
+			texture->descriptor[2] |= 0x0600;
+		else
+			texture->descriptor[2] &= ~0x0600;
+	}
+
+	texture->descriptor[1] &= ~0xFF000000;
+	if ((texture->levels == 1) && (texture->filter_mag == GL_LINEAR) &&
+	    ((texture->filter_min == GL_NEAREST) ||
+	     (texture->filter_min == GL_NEAREST_MIPMAP_NEAREST) ||
+	     (texture->filter_min == GL_NEAREST_MIPMAP_LINEAR)))
+		texture->descriptor[1] |= 0x80000000;
+	else if (texture->levels > 1)
+		texture->descriptor[1] |= (texture->levels - 1) << 24;
+
+	texture->descriptor[2] &= ~0xE000;
+	if (texture->wrap_s == GL_CLAMP_TO_EDGE)
+		texture->descriptor[2] |= 0x2000;
+	else if (texture->wrap_s == GL_MIRRORED_REPEAT)
+		texture->descriptor[2] |= 0x8000;
+
+	texture->descriptor[2] &= ~0x070000;
+	if (texture->wrap_t == GL_CLAMP_TO_EDGE)
+		texture->descriptor[2] |= 0x010000;
+	else if (texture->wrap_t == GL_MIRRORED_REPEAT)
+		texture->descriptor[2] |= 0x040000;
+
+	return 0;
 }
