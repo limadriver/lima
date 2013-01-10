@@ -299,7 +299,8 @@ vs_info_attach_varyings(struct limare_program *program,
 {
 	struct vs_info *info = draw->vs;
 
-	info->varying_size = ALIGN(program->varying_map_size * draw->vertex_count, 0x40);
+	info->varying_size = ALIGN(program->varying_map_size *
+				   draw->attributes_vertex_count, 0x40);
 	if (info->varying_size > (frame->mem_size - frame->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
@@ -308,7 +309,8 @@ vs_info_attach_varyings(struct limare_program *program,
 	info->varying_offset = frame->mem_used;
 	frame->mem_used += info->varying_size;
 
-	info->gl_Position_size = ALIGN(16 * draw->vertex_count, 0x40);
+	info->gl_Position_size =
+		ALIGN(16 * draw->attributes_vertex_count, 0x40);
 	if (info->gl_Position_size > (frame->mem_size - frame->mem_used)) {
 		printf("%s: No more space\n", __func__);
 		return -2;
@@ -351,7 +353,8 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 	cmds[i].cmd = LIMA_VS_CMD_SHADER_INFO;
 	i++;
 
-	cmds[i].val = (program->varying_map_count << 8) | ((vs->attribute_count - 1) << 24);
+	cmds[i].val = (program->varying_map_count << 8) |
+		((vs->attribute_count - 1) << 24);
 	cmds[i].cmd = LIMA_VS_CMD_VARYING_ATTRIBUTE_COUNT;
 	i++;
 
@@ -381,10 +384,10 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 	cmds[i].cmd = 0x10000041;
 	i++;
 
-	cmds[i].val = draw->vertex_count << 24;
+	cmds[i].val = draw->attributes_vertex_count << 24;
 	if (plbu->indices_mem_physical)
 		cmds[i].val |= 0x01;
-	cmds[i].cmd = LIMA_VS_CMD_DRAW | draw->vertex_count >> 8;
+	cmds[i].cmd = LIMA_VS_CMD_DRAW | draw->attributes_vertex_count >> 8;
 	i++;
 
 	cmds[i].val = 0x00000000;
@@ -870,7 +873,8 @@ plbu_info_render_state_create(struct limare_program *program,
 
 struct draw_info *
 draw_create_new(struct limare_state *state, struct limare_frame *frame,
-		int draw_mode, int vertex_start, int vertex_count)
+		int draw_mode, int attributes_vertex_count, int vertex_start,
+		int vertex_count)
 {
 	struct draw_info *draw = calloc(1, sizeof(struct draw_info));
 
@@ -878,6 +882,9 @@ draw_create_new(struct limare_state *state, struct limare_frame *frame,
 		return NULL;
 
 	draw->draw_mode = draw_mode;
+
+	draw->attributes_vertex_count = attributes_vertex_count;
+
 	draw->vertex_start = vertex_start;
 	draw->vertex_count = vertex_count;
 

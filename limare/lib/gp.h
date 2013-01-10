@@ -124,7 +124,12 @@ int plbu_info_render_state_create(struct limare_program *program,
 
 struct draw_info {
 	int draw_mode;
+
+	/* the number of vertices in the attributes. */
+	int attributes_vertex_count;
+
 	int vertex_start;
+	/* will be different from attribute when doing indexed draws */
 	int vertex_count;
 
 	struct vs_info vs[1];
@@ -138,7 +143,8 @@ struct draw_info {
 };
 
 struct draw_info *draw_create_new(struct limare_state *state,
-				  struct limare_frame *frame, int draw_mode,
+				  struct limare_frame *frame,
+				  int draw_mode, int attribute_vertex_count,
 				  int vertex_start, int vertex_count);
 
 void draw_info_destroy(struct draw_info *draw);

@@ -972,6 +972,7 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 	struct limare_frame *frame =
 		state->frames[state->frame_current];
 	struct draw_info *draw;
+	int attributes_vertex_count = 0;
 	int i;
 
 	if (!frame) {
@@ -985,7 +986,24 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 		return -1;
 	}
 
-	/* Todo, check whether attributes all have data attached! */
+	for (i = 0; i < program->vertex_attribute_count; i++) {
+		struct symbol *symbol = program->vertex_attributes[i];
+
+		if (!symbol->data && !symbol->data_handle) {
+			printf("%s: Error: attribute %s is empty.\n",
+			       __func__, symbol->name);
+			return -1;
+		}
+
+		if (!i)
+			attributes_vertex_count = symbol->entry_count;
+		else if (attributes_vertex_count != symbol->entry_count) {
+			printf("%s: Error: attribute %s has wrong vertex count"
+			       " %d.\n", __func__, symbol->name,
+			       symbol->entry_count);
+			return -1;
+		}
+	}
 
 	for (i = 0; i < program->vertex_uniform_count; i++) {
 		struct symbol *symbol = program->vertex_uniforms[i];
@@ -1020,7 +1038,8 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 		return -1;
 	}
 
-	draw = draw_create_new(state, frame, mode, start, count);
+	draw = draw_create_new(state, frame, mode, attributes_vertex_count,
+			       start, count);
 	frame->draws[frame->draw_count] = draw;
 	frame->draw_count++;
 
@@ -1070,6 +1089,12 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 	return limare_draw(state, mode, start, count, NULL);
 }
 
+/*
+ * TODO: have a quick scan through the elements, and find the lowest and
+ * highest indices. Then, only upload these, and limit the vertex count to
+ * this. This might significantly reduce the amount of data the vs has to
+ * churn through.
+ */
 int
 limare_draw_elements(struct limare_state *state, int mode, int count,
 		     void *indices, int indices_type)
@@ -1424,7 +1449,7 @@ limare_depth_clear(struct limare_state *state)
 		return -1;
 	}
 
-	draw = draw_create_new(state, frame, LIMA_DRAW_QUAD_DIRECT, 0, 3);
+	draw = draw_create_new(state, frame, LIMA_DRAW_QUAD_DIRECT, 3, 0, 3);
 	frame->draws[frame->draw_count] = draw;
 	frame->draw_count++;
 
