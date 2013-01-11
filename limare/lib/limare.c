@@ -302,6 +302,8 @@ limare_init(void)
 	limare_framerate_init(state);
 
 	limare_jobs_init(state);
+	state->depth_near = 0.0;
+	state->depth_far = 1.0;
 
 	return state;
  error:
@@ -376,6 +378,8 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 		return NULL;
 	}
 
+	state->depth_dirty = 1;
+
 	return frame;
 }
 
@@ -383,6 +387,10 @@ static void
 limare_state_init(struct limare_state *state, unsigned int clear_color)
 {
 	state->clear_color = clear_color;
+
+	state->depth_func = GL_LESS;
+	state->depth_near = 0.0;
+	state->depth_far = 1.0;
 }
 
 /* here we still hardcode our memory addresses. */
@@ -1089,7 +1097,7 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 
 	draw_render_state_create(frame, program, draw,
 				 state->render_state_template);
-	plbu_commands_draw_add(frame, draw);
+	plbu_commands_draw_add(state, frame, draw);
 
 	return 0;
 }
@@ -1476,7 +1484,7 @@ limare_depth_clear(struct limare_state *state)
 
 	draw_render_state_create(frame, state->depth_clear_program, draw,
 				 &template);
-	plbu_commands_depth_clear_draw_add(frame, draw,
+	plbu_commands_depth_clear_draw_add(state, frame, draw,
 					   state->depth_clear_vertices_physical);
 
 	return 0;
@@ -1516,3 +1524,72 @@ limare_buffer_swap(struct limare_state *state)
 {
 	limare_fb_flip(state, state->frames[state->frame_current]);
 }
+
+int
+limare_enable(struct limare_state *state, int parameter)
+{
+	if (parameter == GL_DEPTH_TEST) {
+		state->depth_test = 1;
+		return limare_render_state_depth_func(state->
+						      render_state_template,
+						      state->depth_func);
+	} else
+		return limare_render_state_set(state->render_state_template,
+					       parameter, 1);
+}
+
+int
+limare_disable(struct limare_state *state, int parameter)
+{
+	if (parameter == GL_DEPTH_TEST) {
+		state->depth_test = 0;
+		return limare_render_state_depth_func(state->
+						      render_state_template,
+						      GL_ALWAYS);
+	} else
+		return limare_render_state_set(state->render_state_template,
+					       parameter, 0);
+}
+
+int
+limare_depth_func(struct limare_state *state, int value)
+{
+	int ret = 0;
+
+	state->depth_func = value;
+
+	if (state->depth_test)
+		ret = limare_render_state_depth_func(state->
+						     render_state_template,
+						     value);
+	return ret;
+}
+
+int
+limare_depth_mask(struct limare_state *state, int value)
+{
+	return limare_render_state_depth_mask(state->render_state_template,
+					      value);
+}
+
+int
+limare_depth(struct limare_state *state, float near, float far)
+{
+	if (near < 0.0)
+		near = 0.0;
+	else if (near > 1.0)
+		near = 1.0;
+
+	if (far < 0.0)
+		far = 0.0;
+	else if (far > 1.0)
+		far = 1.0;
+
+	state->depth_near = near;
+	state->depth_far = far;
+	state->depth_dirty = 1;
+
+	return limare_render_state_depth(state->render_state_template,
+					 near, far);
+}
+

@@ -50,4 +50,11 @@ int draw_render_state_create(struct limare_frame *frame,
 			     struct draw_info *draw,
 			     struct render_state *template);
 
+int limare_render_state_set(struct render_state *render_state,
+			    int parameter, int value);
+int limare_render_state_depth_func(struct render_state *render, int gl_value);
+int limare_render_state_depth_mask(struct render_state *render, int value);
+int limare_render_state_depth(struct render_state *render,
+			      float near, float far);
+
 #endif /* LIMARE_RENDER_STATE */

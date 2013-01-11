@@ -26,6 +26,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include <GLES2/gl2.h>
+
 #include "limare.h"
 #include "gp.h"
 #include "compiler.h"
@@ -97,7 +99,6 @@ draw_render_state_create(struct limare_frame *frame,
 	plbu->render_state_size = size;
 	frame->mem_used += size;
 
-	/* this bit still needs some figuring out :) */
 	render = plbu->render_state;
 
 	render->unknown00 = template->unknown00;
@@ -171,6 +172,96 @@ draw_render_state_create(struct limare_frame *frame,
 
 		render->unknown34 |= 0x20;
 	}
+
+	return 0;
+}
+
+int
+limare_render_state_set(struct render_state *render,
+			int parameter, int value)
+{
+	switch (parameter) {
+	default:
+		printf("%s: Error: unknown parameter: 0x%04X\n", __func__,
+		       parameter);
+		return -1;
+	}
+}
+
+struct limare_translate {
+	int gl_value;
+	int lima_value;
+};
+
+static struct limare_translate compare_funcs[] = {
+	{GL_NEVER,    0x0},
+	{GL_LESS,     0x01},
+	{GL_EQUAL,    0x02},
+	{GL_LEQUAL,   0x03},
+	{GL_GREATER,  0x04},
+	{GL_NOTEQUAL, 0x05},
+	{GL_GEQUAL,   0x06},
+	{GL_ALWAYS,   0x07},
+	{-1, -1},
+};
+
+int
+limare_translate(struct limare_translate *table, int gl_value)
+{
+	int i;
+
+	for (i = 0; table[i].gl_value != -1; i++)
+		if (table[i].gl_value == gl_value)
+			return table[i].lima_value;
+
+	return -1;
+}
+
+int
+limare_render_state_depth_func(struct render_state *render, int gl_value)
+{
+	int lima_value = limare_translate(compare_funcs, gl_value);
+
+	if (lima_value == -1) {
+	       printf("%s: Error: unknown value: 0x%04X\n", __func__,
+		      gl_value);
+	       return -1;
+	}
+
+	render->unknown0C &= ~0x0E;
+	render->unknown0C |= lima_value << 1;
+
+	return 0;
+}
+
+int
+limare_render_state_depth_mask(struct render_state *render, int value)
+{
+	if ((render->unknown0C & 0x0E) == 0x0E)
+		value = 0;
+
+	if (value)
+		render->unknown0C |= 0x01;
+	else
+		render->unknown0C &= ~0x01;
+
+	return 0;
+}
+
+int
+limare_render_state_depth(struct render_state *render, float near, float far)
+{
+	unsigned short tmp;
+
+	render->depth_range = 0;
+
+	tmp = near * 0xFFFF;
+	render->depth_range |= tmp;
+
+	tmp = far * 0xFFFF;
+	if (tmp != 0xFFFF)
+		tmp += 1;
+	render->depth_range |= tmp << 16;
 
 	return 0;
 }

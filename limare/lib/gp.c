@@ -167,18 +167,6 @@ plbu_command_queue_create(struct limare_state *state,
 	cmds[i].cmd = LIMA_PLBU_CMD_TILE_HEAP_END;
 	i++;
 
-	cmds[i].val = 0x00000000;
-	cmds[i].cmd = 0x1000010a;
-	i++;
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_NEAR;
-	i++;
-
-	cmds[i].val = from_float(1.0);
-	cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_FAR;
-	i++;
-
 	frame->plbu_commands_count = i;
 
 	return 0;
@@ -479,7 +467,8 @@ vs_info_finalize(struct limare_state *state, struct limare_frame *frame,
 }
 
 void
-plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
+plbu_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
+		       struct draw_info *draw)
 {
 	struct plbu_info *plbu = draw->plbu;
 	struct vs_info *vs = draw->vs;
@@ -509,6 +498,20 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 	cmds[i].cmd = LIMA_PLBU_CMD_RSW_VERTEX_ARRAY;
 	cmds[i].cmd |= (frame->mem_physical + vs->gl_Position_offset) >> 4;
 	i++;
+
+	if (state->depth_dirty) {
+		cmds[i].val = 0x00000000;
+		cmds[i].cmd = 0x1000010a;
+		i++;
+
+		cmds[i].val = from_float(state->depth_near);
+		cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_NEAR;
+		i++;
+
+		cmds[i].val = from_float(state->depth_far);
+		cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_FAR;
+		i++;
+	}
 
 	if (plbu->indices_mem_physical) {
 		cmds[i].val = frame->mem_physical + vs->gl_Position_offset;
@@ -542,7 +545,8 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 }
 
 void
-plbu_commands_depth_clear_draw_add(struct limare_frame *frame,
+plbu_commands_depth_clear_draw_add(struct limare_state *state,
+				   struct limare_frame *frame,
 				   struct draw_info *draw,
 				   unsigned int varying_vertices_physical)
 {
@@ -550,21 +554,28 @@ plbu_commands_depth_clear_draw_add(struct limare_frame *frame,
 	struct lima_cmd *cmds = frame->plbu_commands;
 	int i = frame->plbu_commands_count;
 
-	/*
-	 *
-	 */
-	cmds[i].val = 0x00002200 /* | LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW */;
-	if (plbu->indices_type == GL_UNSIGNED_SHORT)
-		cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_SHORT;
-	else
-		cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_BYTE;
-	cmds[i].cmd = LIMA_PLBU_CMD_PRIMITIVE_SETUP;
-	i++;
-
 	cmds[i].val = frame->mem_physical + plbu->render_state_offset;
 	cmds[i].cmd = LIMA_PLBU_CMD_RSW_VERTEX_ARRAY;
 	cmds[i].cmd |= varying_vertices_physical >> 4;
 	i++;
+
+	cmds[i].val = 0x00000200;
+	cmds[i].cmd = LIMA_PLBU_CMD_PRIMITIVE_SETUP;
+	i++;
+
+	cmds[i].val = from_float(state->depth_near);
+	cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_NEAR;
+	i++;
+
+	cmds[i].val = from_float(state->depth_far);
+	cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_FAR;
+	i++;
+
+	cmds[i].val = 0x00000000;
+	cmds[i].cmd = 0x1000010a;
+	i++;
+
+	state->depth_dirty = 1;
 
 	cmds[i].val = plbu->indices_mem_physical;
 	cmds[i].cmd = LIMA_PLBU_CMD_INDICES;

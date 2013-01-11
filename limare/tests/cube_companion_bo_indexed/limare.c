@@ -86,6 +86,9 @@ main(int argc, char *argv[])
 	limare_buffer_size(state, &width, &height);
 	float aspect = (float) height / width;
 
+	limare_enable(state, GL_DEPTH_TEST);
+	limare_depth_mask(state, 1);
+
 	int program = limare_program_new(state);
 	vertex_shader_attach(state, program, vertex_shader_source);
 	fragment_shader_attach(state, program, fragment_shader_source);

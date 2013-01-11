@@ -122,6 +122,13 @@ struct limare_state {
 	struct plb_info *plb;
 	struct render_state *render_state_template;
 
+	float depth_near;
+	float depth_far;
+	int depth_dirty;
+
+	int depth_test;
+	int depth_func;
+
 	unsigned int clear_color;
 
 	int frame_count;
@@ -230,5 +237,11 @@ void limare_buffer_swap(struct limare_state *state);
 void limare_buffer_size(struct limare_state *state, int *width, int *height);
 
 void limare_finish(struct limare_state *state);
+
+int limare_enable(struct limare_state *state, int parameter);
+int limare_disable(struct limare_state *state, int parameter);
+int limare_depth_func(struct limare_state *state, int value);
+int limare_depth_mask(struct limare_state *state, int value);
+int limare_depth(struct limare_state *state, float near, float far);
 
 #endif /* LIMARE_LIMARE_H */

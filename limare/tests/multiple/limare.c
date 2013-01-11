@@ -54,6 +54,9 @@ main(int argc, char *argv[])
 	limare_buffer_size(state, &width, &height);
 	float aspect = (float) height / width;
 
+	limare_enable(state, GL_DEPTH_TEST);
+	limare_depth_mask(state, 1);
+
 	limare_frame_new(state);
 
 	/*
