@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2012-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -42,5 +42,12 @@ struct render_state { /* 0x40 */
 	unsigned int unknown38; /* 0x38 */
 	unsigned int varyings_address; /* 0x3C */
 };
+
+struct render_state *limare_render_state_template(void);
+
+int draw_render_state_create(struct limare_frame *frame,
+			     struct limare_program *program,
+			     struct draw_info *draw,
+			     struct render_state *template);
 
 #endif /* LIMARE_RENDER_STATE */

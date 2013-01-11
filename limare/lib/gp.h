@@ -118,10 +118,6 @@ int plbu_info_attach_textures(struct limare_state *state,
 			      struct limare_frame *frame,
 			      struct draw_info *draw);
 
-int plbu_info_render_state_create(struct limare_program *program,
-				  struct limare_frame *frame,
-				  struct draw_info *draw);
-
 struct draw_info {
 	int draw_mode;
 

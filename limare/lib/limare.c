@@ -50,6 +50,7 @@
 #include "texture.h"
 #include "hfloat.h"
 #include "program.h"
+#include "render_state.h"
 
 #define FRAME_MEMORY_SIZE 0x180000
 #define AUX_MEMORY_SIZE 0x01000000
@@ -292,7 +293,12 @@ limare_init(void)
 	if (ret)
 		goto error;
 
+	state->render_state_template = limare_render_state_template();
+	if (!state->render_state_template)
+		goto error;
+
 	fb_open(state);
+
 	limare_framerate_init(state);
 
 	limare_jobs_init(state);
@@ -1081,7 +1087,8 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 	vs_commands_draw_add(state, frame, program, draw);
 	vs_info_finalize(state, frame, program, draw, draw->vs);
 
-	plbu_info_render_state_create(program, frame, draw);
+	draw_render_state_create(frame, program, draw,
+				 state->render_state_template);
 	plbu_commands_draw_add(frame, draw);
 
 	return 0;
@@ -1437,8 +1444,13 @@ limare_depth_clear_init(struct limare_state *state)
 int
 limare_depth_clear(struct limare_state *state)
 {
-	struct limare_frame *frame =
-		state->frames[state->frame_current];
+	struct limare_frame *frame = state->frames[state->frame_current];
+	struct render_state template = {
+		0x00000000, 0x00000000, 0x0C321892, 0x0000003F,
+		0xFFFF0000, 0x00000007, 0x00000007, 0x00000000,
+		0x0000F007, 0x00000000, 0x00000000, 0x00000000,
+		0x00000000, 0x00000000, 0x00000000, 0x00000000
+	};
 	struct draw_info *draw;
 	int ret;
 
@@ -1462,7 +1474,8 @@ limare_depth_clear(struct limare_state *state)
 	plbu_info_attach_indices(draw, GL_UNSIGNED_BYTE,
 				 state->depth_clear_indices_physical);
 
-	plbu_info_render_state_create(state->depth_clear_program, frame, draw);
+	draw_render_state_create(frame, state->depth_clear_program, draw,
+				 &template);
 	plbu_commands_depth_clear_draw_add(frame, draw,
 					   state->depth_clear_vertices_physical);
 

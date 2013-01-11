@@ -120,6 +120,7 @@ struct limare_state {
 	int height;
 
 	struct plb_info *plb;
+	struct render_state *render_state_template;
 
 	unsigned int clear_color;
 
