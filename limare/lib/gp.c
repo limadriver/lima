@@ -620,30 +620,18 @@ plbu_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
 
 	for (i = 0; i < count; i++) {
 		struct symbol *symbol = uniforms[i];
-		int j;
 
-		if (symbol->value_type != SYMBOL_SAMPLER) {
-			memcpy(address +
-			       symbol->component_size * symbol->offset,
-			       symbol->data, symbol->size);
+		/*
+		 * For samplers, there is place reserved, but the actual
+		 * uniform never is written, and the value is actually plainly
+		 * ignored.
+		 */
+		if (symbol->value_type == SYMBOL_SAMPLER)
 			continue;
-		}
 
-		for (j = 0; j < draw->texture_descriptor_count; j++)
-			if (draw->texture_handles[j] == symbol->data_handle)
-				break;
-
-		if (symbol->size == 4) {
-			unsigned int *data = address +
-				symbol->component_size * symbol->offset;
-			*data = j;
-		} else if (symbol->size == 2) {
-			unsigned short *data = address +
-				symbol->component_size * symbol->offset;
-			*data = j;
-		} else
-			printf("%s: Error: unhandled size for %s is.\n",
-			       __func__, symbol->name);
+		memcpy(address +
+		       symbol->component_size * symbol->offset,
+		       symbol->data, symbol->size);
 	}
 
 	return 0;
@@ -721,20 +709,10 @@ plbu_info_attach_textures(struct limare_state *state,
 
 		handle = symbol->data_handle;
 
-		/* first, check whether the texture is in the list already */
-		for (j = 0; j < LIMARE_DRAW_TEXTURE_COUNT; j++) {
-			if (j == draw->texture_descriptor_count)
-				break;
-
-			if (handle == draw->texture_handles[j])
-				break;
-		}
-
-		if (handle == draw->texture_handles[j])
-			continue; /* found, next symbol! */
-		if (j == LIMARE_DRAW_TEXTURE_COUNT) {
-			printf("%s: Error: more than %d textures attached!\n",
-			       __func__, LIMARE_DRAW_TEXTURE_COUNT);
+		/* first, check sanity of the offset */
+		if (symbol->offset >= LIMARE_DRAW_TEXTURE_COUNT) {
+			printf("%s: Error: sampler %s has wrong offset %d.\n",
+			       __func__, symbol->name, symbol->offset);
 			return -1;
 		}
 
@@ -755,11 +733,11 @@ plbu_info_attach_textures(struct limare_state *state,
 			return -1;
 		}
 
-		j = draw->texture_descriptor_count;
-		draw->texture_handles[j] = handle;
-		list[j] = texture->descriptor_physical;
+		draw->texture_handles[symbol->offset] = handle;
+		list[symbol->offset] = texture->descriptor_physical;
 
-		draw->texture_descriptor_count++;
+		if ((symbol->offset + 1) > draw->texture_descriptor_count)
+			draw->texture_descriptor_count = symbol->offset + 1;
 	}
 
 	return 0;
