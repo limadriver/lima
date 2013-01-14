@@ -400,6 +400,11 @@ limare_state_init(struct limare_state *state, unsigned int clear_color)
 	state->depth_func = GL_LESS;
 	state->depth_near = 0.0;
 	state->depth_far = 1.0;
+
+	state->culling = 0;
+	state->cull_front = 0;
+	state->cull_back = 1;
+	state->cull_front_cw = 0;
 }
 
 /* here we still hardcode our memory addresses. */
@@ -1511,7 +1516,10 @@ limare_buffer_swap(struct limare_state *state)
 int
 limare_enable(struct limare_state *state, int parameter)
 {
-	if (parameter == GL_DEPTH_TEST) {
+	if (parameter == GL_CULL_FACE) {
+		state->culling = 1;
+		return 0;
+	} else if (parameter == GL_DEPTH_TEST) {
 		state->depth_test = 1;
 		return limare_render_state_depth_func(state->
 						      render_state_template,
@@ -1535,7 +1543,10 @@ limare_enable(struct limare_state *state, int parameter)
 int
 limare_disable(struct limare_state *state, int parameter)
 {
-	if (parameter == GL_DEPTH_TEST) {
+	if (parameter == GL_CULL_FACE) {
+		state->culling = 0;
+		return 0;
+	} else if (parameter == GL_DEPTH_TEST) {
 		state->depth_test = 0;
 		return limare_render_state_depth_func(state->
 						      render_state_template,
@@ -1746,6 +1757,41 @@ limare_scissor(struct limare_state *state, int x, int y,
 		if (state->scissor)
 			state->scissor_dirty = 1;
 	}
+
+	return 0;
+}
+
+int
+limare_cullface(struct limare_state *state, int face)
+{
+	switch (face) {
+	case GL_FRONT:
+		state->cull_front = 1;
+		state->cull_back = 0;
+		break;
+	case GL_BACK:
+		state->cull_front = 0;
+		state->cull_back = 1;
+		break;
+	case GL_FRONT_AND_BACK:
+		state->cull_front = 1;
+		state->cull_back = 1;
+		break;
+	default:
+		printf("%s: invalid value: 0x%04X\n", __func__, face);
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+limare_frontface(struct limare_state *state, int face)
+{
+	if (face == GL_CW)
+		state->cull_front_cw = 1;
+	else
+		state->cull_front_cw = 0;
 
 	return 0;
 }

@@ -144,6 +144,11 @@ struct limare_state {
 	int depth_test;
 	int depth_func;
 
+	int culling;
+	int cull_front;
+	int cull_back;
+	int cull_front_cw;
+
 	unsigned int clear_color;
 
 	int frame_count;
@@ -261,5 +266,7 @@ int limare_viewport(struct limare_state *state, int x, int y,
 		    int width, int height);
 int limare_scissor(struct limare_state *state, int x, int y,
 		   int width, int height);
+int limare_cullface(struct limare_state *state, int face);
+int limare_frontface(struct limare_state *state, int face);
 
 #endif /* LIMARE_LIMARE_H */

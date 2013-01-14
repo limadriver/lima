@@ -93,6 +93,7 @@ main(int argc, char *argv[])
 	float aspect = (float) height / width;
 
 	limare_enable(state, GL_DEPTH_TEST);
+	limare_enable(state, GL_CULL_FACE);
 	limare_depth_mask(state, 1);
 
 	int program = limare_program_new(state);

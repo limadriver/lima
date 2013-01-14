@@ -510,13 +510,27 @@ plbu_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 		i++;
 	}
 
-	cmds[i].val = LIMA_PLBU_CMD_PRIMITIVE_GLES2 | 0x0000200 /* | LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW */;
+	cmds[i].val = LIMA_PLBU_CMD_PRIMITIVE_GLES2 | 0x0000200;
 	if (plbu->indices_mem_physical) {
 		if (plbu->indices_type == GL_UNSIGNED_SHORT)
 			cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_SHORT;
 		else
 			cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_BYTE;
 	}
+	if (state->culling) {
+		if (state->cull_front_cw) {
+			if (state->cull_front)
+				cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_CULL_CW;
+			if (state->cull_back)
+				cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW;
+		} else {
+			if (state->cull_front)
+				cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW;
+			if (state->cull_back)
+				cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_CULL_CW;
+		}
+	}
+
 	cmds[i].cmd = LIMA_PLBU_CMD_PRIMITIVE_SETUP;
 	i++;
 
