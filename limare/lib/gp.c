@@ -98,6 +98,10 @@ plbu_command_queue_create(struct limare_state *state,
 
 	cmds = frame->plbu_commands;
 
+	cmds[i].val = 0x0000200;
+	cmds[i].cmd = LIMA_PLBU_CMD_PRIMITIVE_SETUP;
+	i++;
+
 	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
 	if (state->type == LIMARE_TYPE_M400) {
 		int block_max;
