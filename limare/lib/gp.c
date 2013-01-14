@@ -81,7 +81,7 @@ plbu_viewport_set(struct limare_frame *frame,
 	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_X;
 	i++;
 
-	cmds[i].val = from_float(w);
+	cmds[i].val = from_float(x + w);
 	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_W;
 	i++;
 
@@ -89,7 +89,7 @@ plbu_viewport_set(struct limare_frame *frame,
 	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_Y;
 	i++;
 
-	cmds[i].val = from_float(h);
+	cmds[i].val = from_float(y + h);
 	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_H;
 	i++;
 
@@ -499,6 +499,14 @@ plbu_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 	cmds[i].cmd |= (frame->mem_physical + vs->gl_Position_offset) >> 4;
 	i++;
 
+	frame->plbu_commands_count = i;
+	if (state->viewport_dirty) {
+		plbu_viewport_set(frame, state->viewport_x, state->viewport_y,
+				  state->viewport_w, state->viewport_h);
+		state->viewport_dirty = 0;
+	}
+
+	i = frame->plbu_commands_count;
 	if (state->depth_dirty) {
 		cmds[i].val = 0x00000000;
 		cmds[i].cmd = 0x1000010a;
@@ -511,6 +519,8 @@ plbu_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 		cmds[i].val = from_float(state->depth_far);
 		cmds[i].cmd = LIMA_PLBU_CMD_DEPTH_RANGE_FAR;
 		i++;
+
+		state->depth_dirty = 0;
 	}
 
 	if (plbu->indices_mem_physical) {
@@ -552,8 +562,12 @@ plbu_commands_depth_clear_draw_add(struct limare_state *state,
 {
 	struct plbu_info *plbu = draw->plbu;
 	struct lima_cmd *cmds = frame->plbu_commands;
-	int i = frame->plbu_commands_count;
+	int i;
 
+	plbu_viewport_set(frame, 0.0, 0.0, 4096.0, 4096.0);
+	state->viewport_dirty = 1;
+
+	i = frame->plbu_commands_count;
 	cmds[i].val = frame->mem_physical + plbu->render_state_offset;
 	cmds[i].cmd = LIMA_PLBU_CMD_RSW_VERTEX_ARRAY;
 	cmds[i].cmd |= varying_vertices_physical >> 4;

@@ -302,8 +302,6 @@ limare_init(void)
 	limare_framerate_init(state);
 
 	limare_jobs_init(state);
-	state->depth_near = 0.0;
-	state->depth_far = 1.0;
 
 	return state;
  error:
@@ -378,6 +376,7 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 		return NULL;
 	}
 
+	state->viewport_dirty = 1;
 	state->depth_dirty = 1;
 
 	return frame;
@@ -387,6 +386,11 @@ static void
 limare_state_init(struct limare_state *state, unsigned int clear_color)
 {
 	state->clear_color = clear_color;
+
+	state->viewport_x = 0.0;
+	state->viewport_y = 0.0;
+	state->viewport_w = state->width;
+	state->viewport_h = state->height;
 
 	state->depth_func = GL_LESS;
 	state->depth_near = 0.0;
@@ -774,41 +778,21 @@ limare_attribute_buffer_attach(struct limare_state *state, char *name,
 	return 0;
 }
 
-int
-limare_gl_mali_ViewPortTransform(struct limare_state *state,
-				  struct symbol *symbol)
+void
+limare_viewport_transform(struct limare_state *state)
 {
-	float x0 = 0, y0 = 0, x1 = state->width, y1 = state->height;
-	float depth_near = 0, depth_far = 1.0;
-	float *viewport;
+	float w = state->viewport_w / 2;
+	float h = state->viewport_h / 2;
+	float d = (state->depth_far - state->depth_near) / 2;
 
-	if (symbol->data && symbol->data_allocated) {
-		free(symbol->data);
-		symbol->data = NULL;
-		symbol->data_allocated = 0;
-	}
-
-	symbol->data = calloc(8, sizeof(float));
-	if (!symbol->data) {
-		printf("%s: Error: Failed to allocate data: %s\n",
-		       __func__, strerror(errno));
-		return -1;
-	}
-
-	symbol->data_allocated = 1;
-
-	viewport = symbol->data;
-
-	viewport[0] = x1 / 2;
-	viewport[1] = - (y1 / 2);
-	viewport[2] = (depth_far - depth_near) / 2;
-	viewport[3] = depth_far;
-	viewport[4] = (x0 + x1) / 2;
-	viewport[5] = (y0 + y1) / 2;
-	viewport[6] = (depth_near + depth_far) / 2;
-	viewport[7] = depth_near;
-
-	return 0;
+	state->viewport_transform[0] = w;
+	state->viewport_transform[1] = -h;
+	state->viewport_transform[2] = d;
+	state->viewport_transform[3] = 1.0;
+	state->viewport_transform[4] = state->viewport_x + w;
+	state->viewport_transform[5] = state->viewport_y + h;
+	state->viewport_transform[6] = state->depth_near + d;
+	state->viewport_transform[7] = 0.0;
 }
 
 static struct limare_texture *
@@ -1019,6 +1003,12 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 		}
 	}
 
+	/* do we need to update our viewport transform? */
+	if (state->viewport_dirty || state->depth_dirty) {
+		limare_viewport_transform(state);
+		/* the dirty flags will be removed in the plbu */
+	}
+
 	for (i = 0; i < program->vertex_uniform_count; i++) {
 		struct symbol *symbol = program->vertex_uniforms[i];
 
@@ -1026,8 +1016,8 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 			continue;
 
 		if (!strcmp(symbol->name, "gl_mali_ViewportTransform")) {
-			if (limare_gl_mali_ViewPortTransform(state, symbol))
-				return -1;
+			symbol->data = state->viewport_transform;
+			symbol->data_allocated = 0;
 		} else {
 			printf("%s: Error: vertex uniform %s is empty.\n",
 			       __func__, symbol->name);
@@ -1477,8 +1467,6 @@ limare_depth_clear(struct limare_state *state)
 	frame->draws[frame->draw_count] = draw;
 	frame->draw_count++;
 
-	plbu_viewport_set(frame, 0.0, 0.0, 4096.0, 4096.0);
-
 	plbu_info_attach_indices(draw, GL_UNSIGNED_BYTE,
 				 state->depth_clear_indices_physical);
 
@@ -1593,3 +1581,31 @@ limare_depth(struct limare_state *state, float near, float far)
 					 near, far);
 }
 
+int
+limare_viewport(struct limare_state *state, int x, int y,
+		int width, int height)
+{
+	/*
+	 * TODO: fix some of this with scissoring.
+	 */
+	if ((x < 0) || (y < 0) || (width < 0) || (height < 0) ||
+	    ((x + width) > state->width) || ((y + height) > state->height)) {
+		printf("%s: Error: dimensions outside window not supported.\n",
+		       __func__);
+		return -1;
+	}
+
+	if ((x + width) > state->width)
+		width = state->width - x;
+	if ((y + height) > state->height)
+		height = state->height - y;
+
+	state->viewport_x = x;
+	state->viewport_y = state->height - (y + height);
+	state->viewport_w = width;
+	state->viewport_h = height;
+
+	state->viewport_dirty = 1;
+
+	return 0;
+}
