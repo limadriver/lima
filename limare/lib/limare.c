@@ -1904,3 +1904,11 @@ limare_depth_clear_depth(struct limare_state *state, float depth)
 
 	return 0;
 }
+
+int
+limare_color_mask(struct limare_state *state,
+		  int red, int green, int blue, int alpha)
+{
+	return limare_render_state_color_mask(state->render_state_template,
+					      red, green, blue, alpha);
+}

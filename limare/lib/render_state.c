@@ -377,3 +377,21 @@ limare_render_state_alpha_func(struct render_state *render,
 
 	return 0;
 }
+
+int
+limare_render_state_color_mask(struct render_state *render,
+			       int red, int green, int blue, int alpha)
+{
+	render->unknown08 &= ~0xF0000000;
+
+	if (red)
+		render->unknown08 |= 0x10000000;
+	if (green)
+		render->unknown08 |= 0x20000000;
+	if (blue)
+		render->unknown08 |= 0x40000000;
+	if (alpha)
+		render->unknown08 |= 0x80000000;
+
+	return 0;
+}

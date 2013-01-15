@@ -281,5 +281,7 @@ int limare_polygon_offset(struct limare_state *state,
 			  float factor, float units);
 int limare_alpha_func(struct limare_state *state, int func, float alpha);
 int limare_depth_clear_depth(struct limare_state *state, float depth);
+int limare_color_mask(struct limare_state *state,
+		      int red, int green, int blue, int alpha);
 
 #endif /* LIMARE_LIMARE_H */

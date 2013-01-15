@@ -61,5 +61,7 @@ int limare_render_state_depth(struct render_state *render,
 int limare_render_state_polygon_offset(struct render_state *render, int value);
 int limare_render_state_alpha_func(struct render_state *render,
 				   int func, float alpha);
+int limare_render_state_color_mask(struct render_state *render,
+				   int red, int green, int blue, int alpha);
 
 #endif /* LIMARE_RENDER_STATE */
