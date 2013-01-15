@@ -153,6 +153,10 @@ struct limare_state {
 	int polygon_offset_factor;
 	int polygon_offset_units;
 
+	int alpha_func;
+	int alpha_func_func;
+	float alpha_func_alpha;
+
 	unsigned int clear_color;
 	float depth_clear_depth;
 
@@ -275,6 +279,7 @@ int limare_cullface(struct limare_state *state, int face);
 int limare_frontface(struct limare_state *state, int face);
 int limare_polygon_offset(struct limare_state *state,
 			  float factor, float units);
+int limare_alpha_func(struct limare_state *state, int func, float alpha);
 int limare_depth_clear_depth(struct limare_state *state, float depth);
 
 #endif /* LIMARE_LIMARE_H */

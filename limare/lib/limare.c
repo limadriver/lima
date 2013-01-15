@@ -34,6 +34,7 @@
 #include <time.h>
 
 #include <GLES2/gl2.h>
+#define GL_ALPHA_TEST 0x0BC0
 
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
@@ -401,6 +402,8 @@ limare_state_init(struct limare_state *state, unsigned int clear_color)
 	state->depth_func = GL_LESS;
 	state->depth_near = 0.0;
 	state->depth_far = 1.0;
+
+	state->alpha_func_func = GL_ALWAYS;
 
 	state->culling = 0;
 	state->cull_front = 0;
@@ -1559,6 +1562,12 @@ limare_enable(struct limare_state *state, int parameter)
 				state->scissor_dirty = 1;
 		}
 		return 0;
+	} else if (parameter == GL_ALPHA_TEST) {
+		state->alpha_func = 1;
+		return limare_render_state_alpha_func(state->
+						      render_state_template,
+						      state->alpha_func_func,
+						      state->alpha_func_alpha);
 	} else
 		return limare_render_state_set(state->render_state_template,
 					       parameter, 1);
@@ -1594,6 +1603,12 @@ limare_disable(struct limare_state *state, int parameter)
 				state->scissor_dirty = 1;
 		}
 		return 0;
+	} else if (parameter == GL_ALPHA_TEST) {
+		state->alpha_func = 0;
+		return limare_render_state_alpha_func(state->
+						      render_state_template,
+						      GL_ALWAYS,
+						      state->alpha_func_alpha);
 	} else
 		return limare_render_state_set(state->render_state_template,
 					       parameter, 0);
@@ -1857,6 +1872,24 @@ limare_polygon_offset(struct limare_state *state, float factor, float units)
 
 	return limare_render_state_polygon_offset(state->render_state_template,
 						  state->polygon_offset_factor);
+}
+
+int
+limare_alpha_func(struct limare_state *state, int func, float alpha)
+{
+	if (alpha < 0.0)
+		alpha = 0.0;
+	else if (alpha > 1.0)
+		alpha = 1.0;
+
+	state->alpha_func_alpha = alpha;
+	state->alpha_func_func = func;
+
+	if (!state->alpha_func)
+		func = GL_ALWAYS;
+
+	return limare_render_state_alpha_func(state->render_state_template,
+					      func, alpha);
 }
 
 int

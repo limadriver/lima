@@ -347,3 +347,28 @@ limare_render_state_polygon_offset(struct render_state *render, int value)
 
 	return 0;
 }
+
+int
+limare_render_state_alpha_func(struct render_state *render,
+			       int func, float alpha)
+{
+	int lima_func = limare_translate(compare_funcs, func);
+	int lima_alpha = alpha * 0x100;
+
+	if (lima_func == -1) {
+	       printf("%s: Error: unknown value: 0x%04X\n", __func__,
+		      func);
+	       return -1;
+	}
+
+	render->unknown1C &= ~0x00FF0000;
+	if (lima_alpha >= 0x100)
+		render->unknown1C |= 0x00FF0000;
+	else if (lima_alpha > 0)
+		render->unknown1C |= lima_alpha << 16;
+
+	render->unknown20 &= ~0x07;
+	render->unknown20 |= lima_func;
+
+	return 0;
+}
