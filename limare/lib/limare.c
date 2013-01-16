@@ -1272,6 +1272,9 @@ limare_frame_flush(struct limare_state *state)
 	if (ret)
 		return ret;
 
+	if (frame->mem_used > state->frame_memory_max)
+		state->frame_memory_max = frame->mem_used;
+
 	return 0;
 }
 
@@ -1281,6 +1284,12 @@ limare_frame_flush(struct limare_state *state)
 void
 limare_finish(struct limare_state *state)
 {
+	printf("Last frame memory used: %d/%dkB\n",
+	       state->frame_memory_max / 1024, FRAME_MEMORY_SIZE / 1024);
+
+	printf("Auxiliary memory used: %d/%dkB\n",
+		       state->aux_mem_used / 1024, state->aux_mem_size / 1024);
+
 	fflush(stdout);
 	sleep(1);
 }

@@ -162,6 +162,7 @@ struct limare_state {
 
 	int frame_count;
 	int frame_current;
+	int frame_memory_max;
 	struct limare_frame *frames[2];
 
 #define LIMARE_PROGRAM_COUNT 16
