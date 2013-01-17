@@ -54,9 +54,10 @@
 #include "program.h"
 #include "render_state.h"
 
-#define FRAME_MEMORY_SIZE 0x180000
+#define FRAME_MEMORY_SIZE 0x300000
 #define AUX_MEMORY_SIZE 0x01000000
 #define FB_MEMORY_OFFSET 0x08000000
+#define COMMAND_BUFFER_SIZE 0x8000
 
 static int
 limare_fd_open(struct limare_state *state)
@@ -372,8 +373,9 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 	}
 
 	/* now the two command queues */
-	if (vs_command_queue_create(frame, 0x4000) ||
-	    plbu_command_queue_create(state, frame, 0x4000, 0x50000)) {
+	if (vs_command_queue_create(frame, COMMAND_BUFFER_SIZE) ||
+	    plbu_command_queue_create(state, frame, COMMAND_BUFFER_SIZE,
+				      0x50000)) {
 		limare_frame_destroy(frame);
 		return NULL;
 	}
