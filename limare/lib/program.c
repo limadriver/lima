@@ -887,10 +887,9 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 			goto error;
 		}
 
-
 		symbol->offset = varying->data->offset;
 
-		symbols[symbol->offset / 4] = symbol;
+		symbols[i] = symbol;
 	}
 
 	return symbols;
