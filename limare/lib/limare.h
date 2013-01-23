@@ -170,6 +170,10 @@ struct limare_state {
 	int frame_memory_max;
 	struct limare_frame *frames[2];
 
+	void *frame_mem_address;
+	unsigned int frame_mem_physical;
+	int frame_mem_size;
+
 #define LIMARE_PROGRAM_COUNT 16
 #define LIMARE_PROGRAM_SIZE 0x1000
 	void *program_mem_address;

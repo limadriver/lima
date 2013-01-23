@@ -330,9 +330,6 @@ limare_frame_destroy(struct limare_frame *frame)
 	if (!frame)
 		return;
 
-	if (frame->mem_address)
-		munmap(frame->mem_address, frame->mem_size);
-
 	for (i = 0; i < frame->draw_count; i++)
 		draw_info_destroy(frame->draws[i]);
 
@@ -374,17 +371,7 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 	frame->mem_size = size;
 	frame->mem_used = 0;
 	frame->mem_physical = state->mem_base + offset;
-	frame->mem_address = mmap(NULL, frame->mem_size,
-				  PROT_READ | PROT_WRITE,
-				  MAP_SHARED, state->fd,
-				  frame->mem_physical);
-	if (frame->mem_address == MAP_FAILED) {
-		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
-		       frame->mem_physical, frame->mem_size,
-		       strerror(errno));
-		limare_frame_destroy(frame);
-		return NULL;
-	}
+	frame->mem_address = state->frame_mem_address + offset;
 
 	if (frame_plb_create(state, frame)) {
 		limare_frame_destroy(frame);
@@ -449,9 +436,19 @@ limare_state_setup(struct limare_state *state, int width, int height,
 		return -1;
 
 	/*
-	 * we have two frames, FRAME_MEMORY_SIZE large, so available memory
-	 * starts at 0x300000.
+	 * we have two frames, FRAME_MEMORY_SIZE large.
 	 */
+	state->frame_mem_physical = state->mem_base;
+	state->frame_mem_size = 2 * FRAME_MEMORY_SIZE;
+	state->frame_mem_address =
+		mmap(NULL, state->frame_mem_size, PROT_READ | PROT_WRITE,
+		     MAP_SHARED, state->fd, state->frame_mem_physical);
+	if (state->frame_mem_address == MAP_FAILED) {
+		printf("Error: failed to mmap offset 0x%x (0x%x): %s\n",
+		       state->frame_mem_physical, state->frame_mem_size,
+		       strerror(errno));
+		return -1;
+	}
 
 	/*
 	 * Statically assign a given number of blocks for a fixed number of
