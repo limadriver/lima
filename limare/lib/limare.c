@@ -1028,12 +1028,6 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 		return -1;
 	}
 
-	if (start && indices_buffer) {
-		printf("%s: Error: start provided when drawing elements.\n",
-		       __func__);
-		return -1;
-	}
-
 	for (i = 0; i < program->vertex_attribute_count; i++) {
 		struct symbol *symbol = program->vertex_attributes[i];
 
@@ -1148,6 +1142,40 @@ limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 	return limare_draw(state, mode, start, count, NULL);
 }
 
+static void
+elements_count_byte(unsigned char *indices, int indices_count,
+		    int *start, int *end)
+{
+	int i;
+
+	*start = indices_count;
+	*end = 0;
+
+	for (i = 0; i < indices_count; i++) {
+		if (indices[i] < *start)
+			*start = indices[i];
+		if (indices[i] > *end)
+			*end = indices[i];
+	}
+}
+
+static void
+elements_count_word(unsigned short *indices, int indices_count,
+		    int *start, int *end)
+{
+	int i;
+
+	*start = 0x7FFFFFFF;
+	*end = 0;
+
+	for (i = 0; i < indices_count; i++) {
+		if (indices[i] < *start)
+			*start = indices[i];
+		if (indices[i] > *end)
+			*end = indices[i];
+	}
+}
+
 /*
  * TODO: have a quick scan through the elements, and find the lowest and
  * highest indices. Then, only upload these, and limit the vertex count to
@@ -1160,22 +1188,24 @@ limare_draw_elements(struct limare_state *state, int mode, int count,
 {
 	struct limare_frame *frame = state->frames[state->frame_current];
 	struct limare_indices_buffer buffer;
-	int size;
+	int size, start, end;
 	void *address;
+
+	if (indices_type == GL_UNSIGNED_BYTE) {
+		size = count;
+		elements_count_byte(indices, count, &start, &end);
+	} else if (indices_type == GL_UNSIGNED_SHORT) {
+		size = count * 2;
+		elements_count_word(indices, count, &start, &end);
+	} else {
+		printf("%s: only bytes and shorts supported.\n", __func__);
+		return -1;
+	}
 
 	buffer.handle = 0;
 	buffer.drawing_mode = mode;
 	buffer.indices_type = indices_type;
 	buffer.count = count;
-
-	if (indices_type == GL_UNSIGNED_BYTE)
-		size = count;
-	else if (indices_type == GL_UNSIGNED_SHORT)
-		size = count * 2;
-	else {
-		printf("%s: only bytes and shorts supported.\n", __func__);
-		return -1;
-	}
 
 	if ((frame->mem_size - frame->mem_used) < (0x40 + ALIGN(size, 0x40))) {
 		printf("%s: no space for indices\n", __func__);
@@ -1188,7 +1218,7 @@ limare_draw_elements(struct limare_state *state, int mode, int count,
 
 	memcpy(address, indices, size);
 
-	return limare_draw(state, mode, 0, count, &buffer);
+	return limare_draw(state, mode, start, count, &buffer);
 }
 
 int
@@ -1196,7 +1226,7 @@ limare_elements_buffer_upload(struct limare_state *state, int mode, int type,
 			      int count, void *data)
 {
 	struct limare_indices_buffer *buffer;
-	int i, size;
+	int i, size, start, end;
 	void *address;
 
 	for (i = 0; i < LIMARE_INDICES_BUFFER_COUNT; i++)
@@ -1220,15 +1250,18 @@ limare_elements_buffer_upload(struct limare_state *state, int mode, int type,
 	buffer->indices_type = type;
 	buffer->count = count;
 
-	if (type == GL_UNSIGNED_BYTE)
+	if (type == GL_UNSIGNED_BYTE) {
 		size = count;
-	else if (type == GL_UNSIGNED_SHORT)
+		elements_count_byte(data, count, &start, &end);
+	} else if (type == GL_UNSIGNED_SHORT) {
 		size = count * 2;
-	else {
+		elements_count_word(data, count, &start, &end);
+	} else {
 		printf("%s: only bytes and shorts supported.\n", __func__);
-		free(buffer);
 		return -1;
 	}
+
+	buffer->start = start;
 
 	if ((state->aux_mem_size - state->aux_mem_used) <
 	    (0x40 + ALIGN(size, 0x40))) {
@@ -1272,8 +1305,8 @@ limare_draw_elements_buffer(struct limare_state *state, int buffer_handle)
 		return -1;
 	}
 
-	return limare_draw(state, buffer->drawing_mode, 0, buffer->count,
-			   buffer);
+	return limare_draw(state, buffer->drawing_mode, buffer->start,
+			   buffer->count, buffer);
 }
 
 int

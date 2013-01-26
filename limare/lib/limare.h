@@ -107,6 +107,7 @@ struct limare_indices_buffer {
 	int drawing_mode;
 	int indices_type;
 	int count;
+	int start;
 
 	unsigned int mem_physical;
 };
