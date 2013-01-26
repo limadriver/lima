@@ -842,7 +842,7 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 {
 	struct stream_varying *varying;
 	struct symbol **symbols;
-	int i;
+	int i, j;
 
 	if (!table || !count)
 		return NULL;
@@ -859,7 +859,7 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 		goto error;
 	}
 
-	for (i = 0, varying = table->varyings;
+	for (i = 0, j = 0, varying = table->varyings;
 	     (i < table->start->count) && varying;
 	     i++, varying = varying->next) {
 		struct symbol *symbol;
@@ -889,7 +889,8 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 
 		symbol->offset = varying->data->offset;
 
-		symbols[i] = symbol;
+		symbols[j] = symbol;
+		j++;
 	}
 
 	return symbols;
