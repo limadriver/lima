@@ -439,7 +439,7 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	 * we have two frames, FRAME_MEMORY_SIZE large.
 	 */
 	state->frame_mem_physical = state->mem_base;
-	state->frame_mem_size = 2 * FRAME_MEMORY_SIZE;
+	state->frame_mem_size = FRAME_COUNT * FRAME_MEMORY_SIZE;
 	state->frame_mem_address =
 		mmap(NULL, state->frame_mem_size, PROT_READ | PROT_WRITE,
 		     MAP_SHARED, state->fd, state->frame_mem_physical);
@@ -454,7 +454,8 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	 * Statically assign a given number of blocks for a fixed number of
 	 * programs. Later on diverge them one by one.
 	 */
-	state->program_mem_physical = state->mem_base + 2 * FRAME_MEMORY_SIZE;
+	state->program_mem_physical = state->frame_mem_physical +
+		state->frame_mem_size;
 	state->program_mem_size = LIMARE_PROGRAM_COUNT * LIMARE_PROGRAM_SIZE;
 	state->program_mem_address =
 		mmap(NULL, state->program_mem_size, PROT_READ | PROT_WRITE,
@@ -1570,7 +1571,7 @@ limare_frame_new(struct limare_state *state)
 {
 	struct limare_frame *frame;
 
-	state->frame_current = state->frame_count & 0x01;
+	state->frame_current = state->frame_count % FRAME_COUNT;
 
 	frame = state->frames[state->frame_current];
 	if (frame) {

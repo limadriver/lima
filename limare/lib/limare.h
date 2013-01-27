@@ -112,6 +112,8 @@ struct limare_indices_buffer {
 	unsigned int mem_physical;
 };
 
+#define FRAME_COUNT 3
+
 struct limare_state {
 	int fd;
 	int kernel_version;
@@ -169,7 +171,7 @@ struct limare_state {
 	int frame_count;
 	int frame_current;
 	int frame_memory_max;
-	struct limare_frame *frames[2];
+	struct limare_frame *frames[FRAME_COUNT];
 
 	void *frame_mem_address;
 	unsigned int frame_mem_physical;
