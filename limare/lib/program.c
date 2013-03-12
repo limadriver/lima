@@ -30,6 +30,12 @@
 #include <errno.h>
 #include <stdlib.h>
 
+/* for mbs reading */
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+
 #include "version.h"
 #include "limare.h"
 #include "plb.h"
@@ -76,6 +82,9 @@
  * defined in the uniform link stream.
  *
  */
+#define STREAM_TAG_MBS1 0x3153424d
+#define STREAM_TAG_CVER 0x52455643
+#define STREAM_TAG_FINS 0x534e4946
 
 #define STREAM_TAG_STRI 0x49525453
 
@@ -90,6 +99,8 @@
 #define STREAM_TAG_ITDR 0x52445449
 #define STREAM_TAG_IYUV 0x56555949
 #define STREAM_TAG_IGRD 0x44524749
+
+#define STREAM_TAG_DBIN 0x4E494244
 
 struct stream_string {
 	unsigned int tag; /* STRI */
@@ -156,6 +167,19 @@ stream_uniform_table_start_read(const void *stream,
 		return 0;
 
 	table->start = start;
+	return sizeof(struct stream_uniform_table_start);
+}
+
+static int
+stream_uniform_table_size_read(const void *stream, int *size)
+{
+	const struct stream_uniform_table_start *start = stream;
+
+	if (start->tag != STREAM_TAG_SUNI)
+		return 0;
+
+	*size = start->size + 8;
+
 	return sizeof(struct stream_uniform_table_start);
 }
 
@@ -473,6 +497,19 @@ stream_attribute_table_start_read(const void *stream,
 	return sizeof(struct stream_attribute_table_start);
 }
 
+
+static int
+stream_attribute_table_size_read(const void *stream, int *size)
+{
+	const struct stream_attribute_table_start *start = stream;
+
+	if (start->tag != STREAM_TAG_SATT)
+		return 0;
+
+	*size = start->size + 8;
+	return sizeof(struct stream_attribute_table_start);
+}
+
 static int
 stream_attribute_start_read(const void *stream,
 			    struct stream_attribute *attribute)
@@ -715,6 +752,18 @@ stream_varying_table_start_read(const void *stream,
 		return 0;
 
 	table->start = start;
+	return sizeof(struct stream_varying_table_start);
+}
+
+static int
+stream_varying_table_size_read(const void *stream, int *size)
+{
+	const struct stream_varying_table_start *start = stream;
+
+	if (start->tag != STREAM_TAG_SVAR)
+		return 0;
+
+	*size = start->size + 8;
 	return sizeof(struct stream_varying_table_start);
 }
 
@@ -1207,6 +1256,272 @@ limare_program_fragment_shader_attach(struct limare_state *state,
 	limare_shader_binary_free(binary);
 
 	return 0;
+}
+
+struct stream_mbs_start
+{
+	unsigned int tag; /* MBS1 */
+	int size;
+};
+
+struct stream_mbs_cver
+{
+	unsigned int tag; /* CVER */
+	int size;
+	int version;
+};
+
+struct stream_mbs_fins
+{
+	unsigned int tag; /* FINS */
+	int size;
+	int unknown0;
+	int code_size;
+	int attribute_prefetch;
+};
+
+struct stream_mbs_dbin
+{
+	unsigned int tag; /* DBIN */
+	int size;
+};
+
+static int
+stream_mbs_start_read(const void *stream, int *size)
+{
+	const struct stream_mbs_start *start = stream;
+
+	if (start->tag != STREAM_TAG_MBS1)
+		return 0;
+
+	*size = start->size;
+	return sizeof(struct stream_mbs_start);
+}
+
+static int
+stream_mbs_cver_read(const void *stream, int *version)
+{
+	const struct stream_mbs_cver *cver = stream;
+
+	if (cver->tag != STREAM_TAG_CVER)
+		return 0;
+
+	*version = cver->version;
+
+	return sizeof(struct stream_mbs_cver);
+}
+
+static int
+stream_mbs_fins_read(const void *stream, int *code_size,
+		     int *attribute_prefetch)
+{
+	const struct stream_mbs_fins *fins = stream;
+
+	if (fins->tag != STREAM_TAG_FINS)
+		return 0;
+
+	*code_size = fins->code_size;
+	*attribute_prefetch = fins->attribute_prefetch;
+
+	return sizeof(struct stream_mbs_fins);
+}
+
+static int
+stream_mbs_dbin_read(const void *stream, int *size)
+{
+	const struct stream_mbs_dbin *dbin = stream;
+
+	if (dbin->tag != STREAM_TAG_DBIN)
+		return 0;
+
+	*size = dbin->size;
+	return sizeof(struct stream_mbs_dbin);
+}
+
+int
+limare_program_vertex_shader_attach_mbs_stream(struct limare_state *state,
+					       struct limare_program *program,
+					       const void *stream, int size)
+{
+	struct lima_shader_binary *binary = NULL;
+	int ret = 0, offset = 0;
+	int stream_size = 0, version = 0, code_size = 0;
+	int attribute_prefetch = 0;
+
+	offset += stream_mbs_start_read(stream + offset, &stream_size);
+	if (stream_size <= 0) {
+		printf("%s: Error: missing or invalid MBS start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+
+	if ((offset + stream_size) != size) {
+		printf("%s: Error: MBS size mismatch.\n", __func__);
+		goto end;
+	}
+
+	offset += stream_mbs_cver_read(stream + offset, &version);
+	if (version <= 0) {
+		printf("%s: Error: missing or invalid MBS start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+
+	switch (version) {
+	case 2:
+	case 6:
+		/* vertex shader */
+
+		break;
+	case 5:
+	case 7:
+		/* fragment shader */
+		printf("%s: Error: this mbs is a fragment shader\n", __func__);
+		return -1;
+	default:
+		printf("%s: Error: unknown mbs version %d\n",
+		       __func__, version);
+		return -1;
+	}
+
+	ret = stream_mbs_fins_read(stream + offset,
+				   &code_size, &attribute_prefetch);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid FINS start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+	offset += ret;
+
+	binary = calloc(1, sizeof(struct lima_shader_binary));
+	if (!binary) {
+		printf("%s: Error: allocation failed: %s\n",
+		       __func__, strerror(errno));
+		goto end;
+	}
+
+	binary->uniform_stream = stream + offset;
+
+	ret = stream_uniform_table_size_read(stream + offset,
+					     &binary->uniform_stream_size);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid uniform table start at"
+		       " 0x%x\n", __func__, offset);
+		goto end;
+	}
+	offset += binary->uniform_stream_size;
+
+	binary->attribute_stream = stream + offset;
+
+	ret = stream_attribute_table_size_read(stream + offset,
+					       &binary->attribute_stream_size);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid attribute table start "
+		       "at 0x%x\n", __func__, offset);
+		goto end;
+	}
+	offset += binary->attribute_stream_size;
+
+	binary->varying_stream = stream + offset;
+	ret = stream_varying_table_size_read(stream + offset,
+					     &binary->varying_stream_size);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid varying table start "
+		       "at 0x%x\n", __func__, offset);
+		goto end;
+	}
+	offset += binary->varying_stream_size;
+
+	ret = stream_mbs_dbin_read(stream + offset,
+				   &binary->shader_size);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid DBIN at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+
+	if (binary->shader_size > program->vertex_mem_size) {
+		printf("%s: Vertex shader is too large: %d\n",
+		       __func__, binary->shader_size);
+		goto end;
+	}
+
+	program->vertex_shader = malloc(binary->shader_size);
+	if (!program->vertex_shader) {
+		printf("%s: Error: shader memory allocation failed: %s\n",
+		       __func__, strerror(errno));
+		goto end;
+	}
+	memcpy(program->vertex_shader, stream + offset + 8,
+	       binary->shader_size);
+	program->vertex_shader_size = binary->shader_size;
+	program->vertex_attribute_prefetch = attribute_prefetch;
+
+	program_vertex_shader_symbols_attach(program, binary);
+
+	ret = 0;
+ end:
+	free(binary);
+	return ret;
+}
+
+
+int
+limare_program_vertex_shader_attach_mbs_file(struct limare_state *state,
+					     struct limare_program *program,
+					     const char *filename)
+{
+	int fd, size, ret;
+	const void *stream;
+
+	fd = open(filename, O_RDONLY);
+        if (fd < 0) {
+                printf("Error: failed to open %s: %s\n",
+		       filename, strerror(errno));
+                return errno;
+        }
+
+	{
+                struct stat buf;
+
+                if (stat(filename, &buf)) {
+                        printf("Error: failed to fstat %s: %s\n",
+                               filename, strerror(errno));
+			close(fd);
+                        return errno;
+                }
+
+                size = buf.st_size;
+                if (!size) {
+                        fprintf(stderr, "Error: %s is empty.\n", filename);
+			close(fd);
+                        return 0;
+                }
+        }
+
+	stream = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+        if (stream == MAP_FAILED) {
+                printf("Error: failed to mmap %s: %s\n",
+                       filename, strerror(errno));
+		close(fd);
+                return errno;
+        }
+
+	ret = limare_program_vertex_shader_attach_mbs_stream(state, program,
+							     stream, size);
+
+	munmap((void *) stream, size);
+	close(fd);
+
+	return ret;
+}
+
+int
+limare_program_fragment_shader_attach_mbs_file(struct limare_state *state,
+					       struct limare_program *program,
+					       const char *filename)
+{
+	return -1;
 }
 
 #if 0
