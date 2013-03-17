@@ -238,8 +238,10 @@ int vertex_shader_attach_mbs_file(struct limare_state *state, int handle,
 				  const char *filename);
 int vertex_shader_attach_mbs_stream(struct limare_state *state, int handle,
 				    const void *stream, int size);
-int fragment_shader_attach_mbs(struct limare_state *state, int handle,
-			       const char *filename);
+int fragment_shader_attach_mbs_file(struct limare_state *state, int handle,
+				    const char *filename);
+int fragment_shader_attach_mbs_stream(struct limare_state *state, int handle,
+				      const void *stream, int size);
 int limare_link(struct limare_state *state);
 
 int limare_texture_upload(struct limare_state *state, const void *pixels,

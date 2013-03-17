@@ -1502,6 +1502,23 @@ fragment_shader_attach_mbs_file(struct limare_state *state, int handle,
 }
 
 int
+fragment_shader_attach_mbs_stream(struct limare_state *state, int handle,
+				const void *stream, int size)
+{
+	struct limare_program *program = limare_program_find(state, handle);
+
+	if (!program) {
+		printf("%s: unable to find program with handle 0x%08X\n",
+		       __func__, handle);
+
+		return -1;
+	}
+
+	return limare_program_fragment_shader_attach_mbs_stream(state, program,
+							      stream, size);
+}
+
+int
 limare_link(struct limare_state *state)
 {
 	struct limare_program *program = state->program_current;
