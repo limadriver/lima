@@ -679,9 +679,9 @@ struct stream_varying_data { /* 0x14 */
 	unsigned short stride0; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
 	unsigned short stride1; /* 0x08 */
-	unsigned char ranking; /* 0x0A */
+	unsigned char flags; /* 0x0A */
 	unsigned char precision; /* 0x0B */
-	unsigned short flag; /* 0x0C */
+	unsigned short invariant; /* 0x0C */
 	unsigned short unknown0E; /* 0x0E */
 	unsigned short offset; /* 0x10 */
 	unsigned short index; /* 0x12 */
@@ -866,7 +866,7 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 		struct symbol *symbol;
 		int flag;
 
-		if (varying->data->ranking == 0x18)
+		if (varying->data->flags & 0x08)
 			flag = SYMBOL_USE_VERTEX_SIZE;
 		else
 			flag = 0;
