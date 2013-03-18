@@ -127,7 +127,7 @@ fragment_parameters_dump(struct lima_shader_binary_fragment_parameters *paramete
 {
 	printf("\t.parameters (fragment) = {\n");
 	printf("\t\t.unknown00 = 0x%x,\n", parameters->unknown00);
-	printf("\t\t.unknown04 = 0x%x,\n", parameters->unknown04);
+	printf("\t\t.first_instruction_size = 0x%x,\n", parameters->first_instruction_size);
 	printf("\t\t.unknown08 = 0x%x,\n", parameters->unknown08);
 	printf("\t\t.unknown0C = 0x%x,\n", parameters->unknown0C);
 	printf("\t\t.unknown10 = 0x%x,\n", parameters->unknown10);

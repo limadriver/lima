@@ -45,7 +45,7 @@ struct lima_shader_binary_vertex_parameters { /* 0x24 */
 
 struct lima_shader_binary_fragment_parameters { /* 0x30 */
 	int unknown00; /* 0x00 */
-	int unknown04; /* 0x04 */
+	int first_instruction_size; /* 0x04 */
 	int unknown08; /* 0x08 */
 	int unknown0C; /* 0x0C */
 	int unknown10; /* 0x10 */

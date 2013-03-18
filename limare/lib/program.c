@@ -1194,7 +1194,8 @@ limare_program_fragment_shader_attach(struct limare_state *state,
 	program->fragment_shader = binary->shader;
 	binary->shader = NULL;
 	program->fragment_shader_size = binary->shader_size;
-	program->fragment_shader_param = binary->parameters.fragment.unknown04;
+	program->fragment_first_instruction_size =
+		binary->parameters.fragment.first_instruction_size;
 
 	program_fragment_shader_symbols_attach(program, binary);
 

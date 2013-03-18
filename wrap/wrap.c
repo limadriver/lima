@@ -1706,7 +1706,8 @@ __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 	} else {
 		wrap_log("\t\t.fragment = {\n");
 		wrap_log("\t\t\t.unknown00 = 0x%x,\n", binary->parameters.fragment.unknown00);
-		wrap_log("\t\t\t.unknown04 = 0x%x,\n", binary->parameters.fragment.unknown04);
+		wrap_log("\t\t\t.first_instruction_size = 0x%x,\n",
+			 binary->parameters.fragment.first_instruction_size);
 		wrap_log("\t\t\t.unknown08 = 0x%x,\n", binary->parameters.fragment.unknown08);
 		wrap_log("\t\t\t.unknown0C = 0x%x,\n", binary->parameters.fragment.unknown0C);
 		wrap_log("\t\t\t.unknown10 = 0x%x,\n", binary->parameters.fragment.unknown10);

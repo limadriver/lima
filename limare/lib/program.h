@@ -59,7 +59,7 @@ struct limare_program {
 
 	void *fragment_shader;
 	int fragment_shader_size;
-	int fragment_shader_param; /* name me! */
+	int fragment_first_instruction_size;
 
 	int fragment_mem_offset;
 	int fragment_mem_size;
