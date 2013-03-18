@@ -1578,6 +1578,14 @@ limare_depth_mask(struct limare_state *state, int value)
 }
 
 int
+limare_blend_func(struct limare_state *state, int sfactor, int dfactor)
+{
+	return limare_render_state_blend_func(state->render_state_template,
+					      sfactor, dfactor);
+}
+
+
+int
 limare_depth(struct limare_state *state, float near, float far)
 {
 	if (near < 0.0)

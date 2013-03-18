@@ -34,6 +34,8 @@
 #include "program.h"
 #include "render_state.h"
 
+static unsigned int blend_func;
+
 struct render_state *
 limare_render_state_template(void)
 {
@@ -67,6 +69,8 @@ limare_render_state_template(void)
 
 	/* no idea what this is yet. */
 	render->unknown38 |= 0x1000;
+
+	blend_func = (render->unknown08 & 0x00FFFFC0) >> 6;
 
 	return render;
 }
@@ -181,6 +185,13 @@ limare_render_state_set(struct render_state *render,
 			int parameter, int value)
 {
 	switch (parameter) {
+	case GL_BLEND:
+		render->unknown08 &= ~0x00FFFFC0;
+		if (value)
+			render->unknown08 |= blend_func << 6;
+		else
+			render->unknown08 |= 0x0000EC6B << 6;
+		return 0;
 	default:
 		printf("%s: Error: unknown parameter: 0x%04X\n", __func__,
 		       parameter);
@@ -191,18 +202,6 @@ limare_render_state_set(struct render_state *render,
 struct limare_translate {
 	int gl_value;
 	int lima_value;
-};
-
-static struct limare_translate compare_funcs[] = {
-	{GL_NEVER,    0x0},
-	{GL_LESS,     0x01},
-	{GL_EQUAL,    0x02},
-	{GL_LEQUAL,   0x03},
-	{GL_GREATER,  0x04},
-	{GL_NOTEQUAL, 0x05},
-	{GL_GEQUAL,   0x06},
-	{GL_ALWAYS,   0x07},
-	{-1, -1},
 };
 
 int
@@ -216,6 +215,18 @@ limare_translate(struct limare_translate *table, int gl_value)
 
 	return -1;
 }
+
+static struct limare_translate compare_funcs[] = {
+	{GL_NEVER,	0x00},
+	{GL_LESS,	0x01},
+	{GL_EQUAL,	0x02},
+	{GL_LEQUAL,	0x03},
+	{GL_GREATER,	0x04},
+	{GL_NOTEQUAL,	0x05},
+	{GL_GEQUAL,	0x06},
+	{GL_ALWAYS,	0x07},
+	{-1, -1},
+};
 
 int
 limare_render_state_depth_func(struct render_state *render, int gl_value)
@@ -244,6 +255,59 @@ limare_render_state_depth_mask(struct render_state *render, int value)
 		render->unknown0C |= 0x01;
 	else
 		render->unknown0C &= ~0x01;
+
+	return 0;
+}
+
+static struct limare_translate blend_funcs[] = {
+	{GL_SRC_COLOR,			0x00},
+	{GL_DST_COLOR,			0x01},
+	{GL_CONSTANT_COLOR,		0x02},
+	{GL_ZERO,			0x03},
+	{GL_SRC_ALPHA_SATURATE,		0x07},
+	{GL_ONE_MINUS_SRC_COLOR,	0x08},
+	{GL_ONE_MINUS_DST_COLOR,	0x09},
+	{GL_ONE_MINUS_CONSTANT_COLOR,	0x0A},
+	{GL_ONE,			0x0B},
+	{GL_SRC_ALPHA,			0x10},
+	{GL_DST_ALPHA,			0x11},
+	{GL_CONSTANT_ALPHA,		0x12},
+	{GL_ONE_MINUS_SRC_ALPHA,	0x18},
+	{GL_ONE_MINUS_DST_ALPHA,	0x19},
+	{GL_ONE_MINUS_CONSTANT_ALPHA,	0x1A},
+	{-1, -1},
+};
+
+int
+limare_render_state_blend_func(struct render_state *render,
+			       int sfactor, int dfactor)
+{
+	int rgb_src = limare_translate(blend_funcs, sfactor);
+	int rgb_dst = limare_translate(blend_funcs, dfactor);
+	int alpha_src, alpha_dst;
+
+	if (rgb_src == -1) {
+	       printf("%s: Error: unknown source: 0x%04X\n", __func__,
+		      sfactor);
+	       return -1;
+	}
+
+	if (rgb_dst == -1) {
+		printf("%s: Error: unknown destination: 0x%04X\n", __func__,
+		       dfactor);
+	       return -1;
+	}
+
+	alpha_src = rgb_src & 0x0F;
+	alpha_dst = rgb_dst & 0x0F;
+
+	render->unknown08 &= ~0x00FFFFC0;
+	render->unknown08 |= rgb_src << 6;
+	render->unknown08 |= rgb_dst << 11;
+	render->unknown08 |= alpha_src << 16;
+	render->unknown08 |= alpha_dst << 20;
+
+	blend_func = render->unknown08 >> 6;
 
 	return 0;
 }

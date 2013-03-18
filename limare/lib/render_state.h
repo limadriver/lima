@@ -54,6 +54,8 @@ int limare_render_state_set(struct render_state *render_state,
 			    int parameter, int value);
 int limare_render_state_depth_func(struct render_state *render, int gl_value);
 int limare_render_state_depth_mask(struct render_state *render, int value);
+int limare_render_state_blend_func(struct render_state *render,
+				   int sfactor, int dfactor);
 int limare_render_state_depth(struct render_state *render,
 			      float near, float far);
 

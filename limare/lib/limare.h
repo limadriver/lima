@@ -255,6 +255,7 @@ int limare_enable(struct limare_state *state, int parameter);
 int limare_disable(struct limare_state *state, int parameter);
 int limare_depth_func(struct limare_state *state, int value);
 int limare_depth_mask(struct limare_state *state, int value);
+int limare_blend_func(struct limare_state *state, int sfactor, int dfactor);
 int limare_depth(struct limare_state *state, float near, float far);
 int limare_viewport(struct limare_state *state, int x, int y,
 		    int width, int height);
