@@ -1526,17 +1526,14 @@ limare_link(struct limare_state *state)
 	return limare_program_link(program);
 }
 
+#include "shader_clear.c"
+
 static int
 limare_depth_buffer_clear_init(struct limare_state *state)
 {
 	struct limare_program *program;
-	const char *source =
-		"precision mediump float;\n"
-		"\n"
-		"void main()\n"
-		"{\n"
-		"	gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
-		"}\n";
+	unsigned int *shader = mbs_fragment_clear;
+	int shader_size = sizeof(mbs_fragment_clear);
 	int ret;
 
 	if ((state->aux_mem_size - state->aux_mem_used) < 0x80) {
@@ -1551,7 +1548,9 @@ limare_depth_buffer_clear_init(struct limare_state *state)
 	if (!program)
 		return -ENOMEM;
 
-	ret = limare_program_fragment_shader_attach(state, program, source);
+	ret = limare_program_fragment_shader_attach_mbs_stream(state, program,
+							       shader,
+							       shader_size);
 	if (ret) {
 		free(program);
 		return ret;

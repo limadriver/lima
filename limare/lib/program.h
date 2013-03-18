@@ -103,6 +103,11 @@ limare_program_vertex_shader_attach_mbs_stream(struct limare_state *state,
 					       const void *stream, int size);
 
 int
+limare_program_fragment_shader_attach_mbs_stream(struct limare_state *state,
+						 struct limare_program *program,
+						 const void *stream, int size);
+
+int
 limare_program_fragment_shader_attach_mbs_file(struct limare_state *state,
 					       struct limare_program *program,
 					       const char *filename);
