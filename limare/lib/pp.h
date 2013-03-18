@@ -40,11 +40,11 @@ struct pp_info
 
 	unsigned int clear_color;
 
-	unsigned int *quad_address;
-	unsigned int quad_physical;
-	int quad_size;
+	void *shader_address;
+	unsigned int shader_physical;
+	int shader_size;
 
-	unsigned int *render_address;
+	void *render_address;
 	unsigned int render_physical;
 	int render_size;
 };
