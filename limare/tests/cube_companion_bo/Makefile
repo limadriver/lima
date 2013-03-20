@@ -1,6 +1,6 @@
 NAME = cube_companion_bo
 
-targets = egl
+targets = egl limare
 
 objs = ../common/esTransform.o ../common/companion_mesh.o \
 	../common/companion_texture.o ../common/companion_array.o
