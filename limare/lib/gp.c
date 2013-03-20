@@ -630,7 +630,7 @@ plbu_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
 		}
 
 		for (j = 0; j < draw->texture_descriptor_count; j++)
-			if (draw->texture_handles[j] == *((int *) symbol->data))
+			if (draw->texture_handles[j] == symbol->data_handle)
 				break;
 
 		if (symbol->size == 4) {
@@ -719,7 +719,7 @@ plbu_info_attach_textures(struct limare_state *state,
 		if (symbol->value_type != SYMBOL_SAMPLER)
 			continue;
 
-		handle = *((int *) symbol->data);
+		handle = symbol->data_handle;
 
 		/* first, check whether the texture is in the list already */
 		for (j = 0; j < LIMARE_DRAW_TEXTURE_COUNT; j++) {

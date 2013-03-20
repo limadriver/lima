@@ -66,8 +66,11 @@ struct symbol {
 	void *mem_address;
 	int mem_physical; /* empty for uniforms */
 
+	/* data can either be directly attached */
 	void *data;
 	int data_allocated;
+	/* Or can be a handle */
+	int data_handle;
 };
 
 struct symbol *symbol_create(const char *name, enum symbol_type type,

@@ -539,17 +539,19 @@ limare_attribute_pointer(struct limare_state *state, char *name,
 		return -1;
 	}
 
-	if (symbol->data && symbol->data_allocated) {
+	if (symbol->data && symbol->data_allocated)
 		free(symbol->data);
-		symbol->data = NULL;
-		symbol->data_allocated = 0;
-	}
+	symbol->data = NULL;
+	symbol->data_allocated = 0;
+	symbol->data_handle = 0;
 
 	symbol->component_count = component_count;
 	symbol->entry_count = entry_count;
 	symbol->size = symbol->component_size * symbol->component_count *
 		symbol->entry_count;
+
 	symbol->data = data;
+
 	return 0;
 }
 
@@ -679,15 +681,12 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 		return -1;
 	}
 
-	symbol->data_allocated = 1;
-	symbol->data = calloc(1, 4);
-
-	*((int *) symbol->data) = handle;
-
 	if (symbol->value_type != SYMBOL_SAMPLER) {
 		printf("symbol %s is not a sampler!\n", symbol->name);
 		return -1;
 	}
+
+	symbol->data_handle = handle;
 
 	return 0;
 }
@@ -741,7 +740,7 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 	for (i = 0; i < program->fragment_uniform_count; i++) {
 		struct symbol *symbol = program->fragment_uniforms[i];
 
-		if (!symbol->data) {
+		if (!symbol->data && !symbol->data_handle) {
 			printf("%s: Error: fragment uniform %s is empty.\n",
 			       __func__, symbol->name);
 

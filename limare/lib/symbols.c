@@ -161,6 +161,7 @@ symbol_print(struct symbol *symbol)
 	printf("\t.flag = 0x%x,\n", symbol->flag);
 	printf("\t.data = %p,\n", symbol->data);
 	printf("\t.data_allocated = %d,\n", symbol->data_allocated);
+	printf("\t.data_handle = 0x%X,\n", symbol->data_handle);
 
 	if (symbol->data) {
 		float *data = symbol->data;
