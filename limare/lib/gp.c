@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -799,6 +799,8 @@ plbu_info_render_state_create(struct limare_program *program,
 
 		render->unknown34 |= 0x20;
 	}
+
+	render->unknown38 |= 0x1000;
 
 	return 0;
 }
