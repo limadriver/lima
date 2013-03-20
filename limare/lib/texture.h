@@ -24,7 +24,7 @@
 #ifndef LIMARE_TEXTURE_H
 #define LIMARE_TEXTURE_H 1
 
-struct texture_level {
+struct limare_texture_level {
 	int level;
 
 	int width;
@@ -37,7 +37,7 @@ struct texture_level {
 	int mem_physical;
 };
 
-struct texture {
+struct limare_texture {
 	int width;
 	int height;
 	int format;
@@ -47,10 +47,11 @@ struct texture {
 	unsigned int descriptor_offset;
 
 	int levels;
-	struct texture_level level[13];
+	struct limare_texture_level level[13];
 };
 
-struct texture *texture_create(struct limare_state *state, const void *src,
-			       int width, int height, int format, int mipmap);
+struct limare_texture *
+limare_texture_create(struct limare_state *state, const void *src,
+		      int width, int height, int format, int mipmap);
 
 #endif /* LIMARE_TEXTURE_H */

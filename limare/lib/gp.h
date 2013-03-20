@@ -109,7 +109,8 @@ int plbu_info_attach_uniforms(struct limare_frame *frame,
 int plbu_info_attach_indices(struct limare_frame *frame, struct draw_info *draw,
 			     void *indices, int indices_type, int count);
 int plbu_info_attach_textures(struct limare_frame *frame,
-			      struct draw_info *draw, struct texture **textures,
+			      struct draw_info *draw,
+			      struct limare_texture **textures,
 			      int count);
 
 int plbu_info_render_state_create(struct limare_program *program,

@@ -40,12 +40,12 @@
 #include "limare.h"
 #include "fb.h"
 #include "plb.h"
+#include "texture.h"
 #include "gp.h"
 #include "pp.h"
 #include "jobs.h"
 #include "symbols.h"
 #include "compiler.h"
-#include "texture.h"
 #include "hfloat.h"
 #include "program.h"
 
@@ -643,8 +643,8 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 		return -1;
 	}
 
-	state->texture = texture_create(state, pixels,
-					width, height, format, mipmap);
+	state->texture = limare_texture_create(state, pixels, width, height,
+					       format, mipmap);
 	if (!state->texture)
 		return -1;
 

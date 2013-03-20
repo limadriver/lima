@@ -90,7 +90,8 @@ space_filler_index(int x, int y)
  * seem to be some positioning issues with the binary code as well.
  */
 static void
-texture_rgb565_swizzle(struct texture *texture, const unsigned char *pixels)
+texture_rgb565_swizzle(struct limare_texture *texture,
+		       const unsigned char *pixels)
 {
 	int block_x, block_y, block_pitch;
 	int x, y, rem_x, rem_y, index, source_pitch;;
@@ -122,7 +123,8 @@ texture_rgb565_swizzle(struct texture *texture, const unsigned char *pixels)
 }
 
 static void
-texture_rgb565_mipmap(struct texture_level *dst, struct texture_level *src)
+texture_rgb565_mipmap(struct limare_texture_level *dst,
+		      struct limare_texture_level *src)
 {
 	int x, y, dx, dy, offset;
 	int block_x, block_y, block_pitch;
@@ -227,10 +229,10 @@ texture_rgb565_mipmap(struct texture_level *dst, struct texture_level *src)
 }
 
 static int
-texture_rgb565_create(struct limare_state *state, struct texture *texture,
-		  const void *src)
+texture_rgb565_create(struct limare_state *state,
+		      struct limare_texture *texture, const void *src)
 {
-	struct texture_level *level;
+	struct limare_texture_level *level;
 	int i, size = 0;
 
 	for (i = 0; i < texture->levels; i++) {
@@ -272,7 +274,8 @@ texture_rgb565_create(struct limare_state *state, struct texture *texture,
 	texture_rgb565_swizzle(texture, src);
 
 	for (i = 1; i < texture->levels; i++)
-		texture_rgb565_mipmap(&texture->level[i], &texture->level[i - 1]);
+		texture_rgb565_mipmap(&texture->level[i],
+				      &texture->level[i - 1]);
 
 	return 0;
 }
@@ -283,7 +286,7 @@ texture_rgb565_create(struct limare_state *state, struct texture *texture,
  *
  */
 static void
-texture_24_swizzle(struct texture *texture, const unsigned char *pixels)
+texture_24_swizzle(struct limare_texture *texture, const unsigned char *pixels)
 {
 	int block_x, block_y, block_pitch;
 	int x, y, rem_x, rem_y, index, source_pitch;;
@@ -331,7 +334,8 @@ texture_24_swizzle(struct texture *texture, const unsigned char *pixels)
  * Our code averages the 2x2 upper level pixels at edges.
  */
 static void
-texture_24_mipmap(struct texture_level *dst, struct texture_level *src)
+texture_24_mipmap(struct limare_texture_level *dst,
+		  struct limare_texture_level *src)
 {
 	int x, y, dx, dy, offset;
 	int block_x, block_y, block_pitch;
@@ -417,10 +421,10 @@ texture_24_mipmap(struct texture_level *dst, struct texture_level *src)
 }
 
 static int
-texture_24_create(struct limare_state *state, struct texture *texture,
+texture_24_create(struct limare_state *state, struct limare_texture *texture,
 		  const void *src)
 {
-	struct texture_level *level;
+	struct limare_texture_level *level;
 	int i, size = 0;
 
 	for (i = 0; i < texture->levels; i++) {
@@ -468,7 +472,7 @@ texture_24_create(struct limare_state *state, struct texture *texture,
 }
 
 static void
-texture_32_swizzle(struct texture *texture, const unsigned char *pixels)
+texture_32_swizzle(struct limare_texture *texture, const unsigned char *pixels)
 {
 	int block_x, block_y, block_pitch;
 	int x, y, rem_x, rem_y, index, source_pitch;;
@@ -508,7 +512,8 @@ texture_32_swizzle(struct texture *texture, const unsigned char *pixels)
  * binary predivides the values and then adds them.
  */
 static void
-texture_32_mipmap(struct texture_level *dst, struct texture_level *src)
+texture_32_mipmap(struct limare_texture_level *dst,
+		  struct limare_texture_level *src)
 {
 	int x, y, dx, dy, offset;
 	int block_x, block_y, block_pitch;
@@ -598,10 +603,10 @@ texture_32_mipmap(struct texture_level *dst, struct texture_level *src)
 }
 
 static int
-texture_32_create(struct limare_state *state, struct texture *texture,
+texture_32_create(struct limare_state *state, struct limare_texture *texture,
 		  const void *src)
 {
-	struct texture_level *level;
+	struct limare_texture_level *level;
 	int i, size = 0;
 
 	for (i = 0; i < texture->levels; i++) {
@@ -649,9 +654,9 @@ texture_32_create(struct limare_state *state, struct texture *texture,
 }
 
 static void
-texture_descriptor_level_attach(struct texture *texture, int i)
+texture_descriptor_level_attach(struct limare_texture *texture, int i)
 {
-	struct texture_level *level = &texture->level[i];
+	struct limare_texture_level *level = &texture->level[i];
 
 	switch (i) {
 	case 0:
@@ -728,7 +733,7 @@ texture_descriptor_level_attach(struct texture *texture, int i)
 }
 
 static void
-texture_descriptor_levels_attach(struct texture *texture)
+texture_descriptor_levels_attach(struct limare_texture *texture)
 {
 	int i;
 
@@ -736,11 +741,12 @@ texture_descriptor_levels_attach(struct texture *texture)
 		texture_descriptor_level_attach(texture, i);
 }
 
-struct texture *
-texture_create(struct limare_state *state, const void *src,
-	       int width, int height, int format, int mipmap)
+struct limare_texture *
+limare_texture_create(struct limare_state *state, const void *src,
+		      int width, int height, int format, int mipmap)
 {
-	struct texture *texture = calloc(1, sizeof(struct texture));
+	struct limare_texture *texture =
+		calloc(1, sizeof(struct limare_texture));
 	int flag0 = 0, flag1 = 1;
 	int layout = 0; /* no swizzling */
 

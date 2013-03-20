@@ -87,7 +87,7 @@ struct limare_state {
 	int aux_mem_size;
 	int aux_mem_used;
 
-	struct texture *texture;
+	struct limare_texture *texture;
 
 	int program_count;
 	struct limare_program **programs;

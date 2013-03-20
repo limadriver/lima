@@ -33,6 +33,7 @@
 #include "version.h"
 #include "limare.h"
 #include "plb.h"
+#include "texture.h"
 #include "gp.h"
 #include "program.h"
 #include "compiler.h"

@@ -40,6 +40,7 @@
 #include "compiler.h"
 #include "plb.h"
 #include "symbols.h"
+#include "texture.h"
 #include "gp.h"
 #include "jobs.h"
 #include "vs.h"
@@ -47,7 +48,6 @@
 #include "render_state.h"
 #include "hfloat.h"
 #include "from_float.h"
-#include "texture.h"
 #include "program.h"
 
 int
@@ -666,7 +666,7 @@ plbu_info_attach_indices(struct limare_frame *frame, struct draw_info *draw,
 
 int
 plbu_info_attach_textures(struct limare_frame *frame, struct draw_info *draw,
-			  struct texture **textures, int count)
+			  struct limare_texture **textures, int count)
 {
 	unsigned int *list;
 	int i;
@@ -693,7 +693,7 @@ plbu_info_attach_textures(struct limare_frame *frame, struct draw_info *draw,
 	list = frame->mem_address + draw->texture_descriptor_list_offset;
 
 	for (i = 0; i < count; i++) {
-		struct texture *texture = textures[i];
+		struct limare_texture *texture = textures[i];
 
 		texture->descriptor_offset = frame->mem_used;
 		frame->mem_used += 0x40;
