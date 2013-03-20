@@ -584,7 +584,7 @@ attribute_upload(struct limare_state *state, struct symbol *symbol)
 	int size;
 
 	/* already uploaded? */
-	if (symbol->physical)
+	if (symbol->mem_physical)
 		return 0;
 
 	size = ALIGN(symbol->size, 0x40);
@@ -594,11 +594,11 @@ attribute_upload(struct limare_state *state, struct symbol *symbol)
 		return -1;
 	}
 
-	symbol->address = state->aux_mem_address + state->aux_mem_used;
-	symbol->physical = state->aux_mem_physical + state->aux_mem_used;
+	symbol->mem_address = state->aux_mem_address + state->aux_mem_used;
+	symbol->mem_physical = state->aux_mem_physical + state->aux_mem_used;
 	state->aux_mem_used += size;
 
-	memcpy(symbol->address, symbol->data, symbol->size);
+	memcpy(symbol->mem_address, symbol->data, symbol->size);
 
 	return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -64,8 +64,8 @@ struct symbol {
 #define SYMBOL_USE_VERTEX_SIZE 0x01
 	int flag;
 
-	void *address;
-	int physical; /* empty for uniforms */
+	void *mem_address;
+	int mem_physical; /* empty for uniforms */
 
 	void *data;
 	int data_allocated;

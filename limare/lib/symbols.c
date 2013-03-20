@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -159,8 +159,8 @@ symbol_print(struct symbol *symbol)
 	printf("\t.dst_stride = %d,\n", symbol->dst_stride);
 	printf("\t.size = %d,\n", symbol->size);
 	printf("\t.offset = %d,\n", symbol->offset);
-	printf("\t.address = %p,\n", symbol->address);
-	printf("\t.physical = 0x%x,\n", symbol->physical);
+	printf("\t.mem_address = %p,\n", symbol->mem_address);
+	printf("\t.mem_physical = 0x%x,\n", symbol->mem_physical);
 	printf("\t.flag = 0x%x,\n", symbol->flag);
 	printf("\t.data = %p,\n", symbol->data);
 	printf("\t.data_allocated = %d,\n", symbol->data_allocated);
