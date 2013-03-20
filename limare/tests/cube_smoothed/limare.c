@@ -126,7 +126,7 @@ main(int argc, char *argv[])
 	limare_uniform_attach(state, "modelviewprojectionMatrix", 16, &modelviewprojection.m[0][0]);
 	limare_uniform_attach(state, "normalMatrix", 9, normal);
 
-	limare_new(state);
+	limare_frame_new(state);
 
 	ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP,  0, 4);
 	if (ret)
@@ -147,7 +147,7 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	ret = limare_flush(state);
+	ret = limare_frame_flush(state);
 	if (ret)
 		return ret;
 

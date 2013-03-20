@@ -89,7 +89,7 @@ main(int argc, char *argv[])
 
 	limare_uniform_attach(state, "uColor", 4, triangle_color);
 
-	limare_new(state);
+	limare_frame_new(state);
 
 	ret = limare_draw_arrays(state, GL_TRIANGLES, 0, 3);
 	if (ret)
@@ -101,7 +101,7 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	ret = limare_flush(state);
+	ret = limare_frame_flush(state);
 	if (ret)
 		return ret;
 

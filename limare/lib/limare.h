@@ -125,11 +125,11 @@ int limare_draw_arrays(struct limare_state *state, int mode,
 			int vertex_start, int vertex_count);
 int limare_draw_elements(struct limare_state *state, int mode, int count,
 			 void *indices, int indices_type);
-int limare_flush(struct limare_state *state);
 
 void limare_finish(struct limare_state *state);
 
-int limare_new(struct limare_state *state);
+int limare_frame_new(struct limare_state *state);
+int limare_frame_flush(struct limare_state *state);
 
 void limare_buffer_clear(struct limare_state *state);
 void limare_buffer_swap(struct limare_state *state);

@@ -140,7 +140,7 @@ main(int argc, char *argv[])
                               COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
 			      COMPANION_TEXTURE_FORMAT);
 
-	limare_new(state);
+	limare_frame_new(state);
 
 	ret = limare_draw_elements(state, GL_TRIANGLES,
 				   CUBE_INDEX_COUNT, &cube_indices,
@@ -148,7 +148,7 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	limare_flush(state);
+	limare_frame_flush(state);
 
 	limare_buffer_swap(state);
 

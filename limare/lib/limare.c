@@ -772,7 +772,7 @@ limare_draw_elements(struct limare_state *state, int mode, int count,
 }
 
 int
-limare_flush(struct limare_state *state)
+limare_frame_flush(struct limare_state *state)
 {
 	struct limare_frame *frame = state->frames[state->frame_current];
 	int ret;
@@ -833,7 +833,7 @@ limare_link(struct limare_state *state)
 }
 
 int
-limare_new(struct limare_state *state)
+limare_frame_new(struct limare_state *state)
 {
 	state->frame_current = state->frame_count & 0x01;
 

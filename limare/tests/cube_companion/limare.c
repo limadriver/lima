@@ -144,13 +144,13 @@ main(int argc, char *argv[])
 			      COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
 			      COMPANION_TEXTURE_FORMAT);
 
-	limare_new(state);
+	limare_frame_new(state);
 
 	ret = limare_draw_arrays(state, GL_TRIANGLES, 0, COMPANION_ARRAY_COUNT);
 	if (ret)
 		return ret;
 
-	limare_flush(state);
+	limare_frame_flush(state);
 
 	limare_buffer_swap(state);
 
