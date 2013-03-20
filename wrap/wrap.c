@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -591,6 +591,9 @@ dev_mali_pp_core_version_post(void *data)
 	wrap_log("};\n\n");
 
 	wrap_log("#endif /* PP Core Version */\n\n");
+
+	if (mali_type == 400)
+		wrap_log("#define LIMA_M400 1\n\n");
 }
 
 static void
@@ -734,7 +737,7 @@ dev_mali_gp_job_start_r3p0_pre(void *data)
 {
 	struct lima_gp_job_start_r3p0 *job = data;
 
-	wrap_log("IOCTL MALI_IOC_GP2_START_JOB IN;\n");
+	wrap_log("/* IOCTL MALI_IOC_GP2_START_JOB IN; */\n");
 
 	wrap_log("struct lima_gp_job_start_r3p0 gp_job = {\n");
 
@@ -921,9 +924,9 @@ dev_mali400_pp_job_start_r3p0_pre(void *data)
 	struct lima_m400_pp_job_start_r3p0 *job = data;
 	int i;
 
-	wrap_log("IOCTL MALI_IOC_PP_START_JOB IN;\n");
+	wrap_log("/* IOCTL MALI_IOC_PP_START_JOB IN; */\n");
 
-	wrap_log("struct lima_m400_pp_job_start_r2p1 pp_job = {\n");
+	wrap_log("struct lima_m400_pp_job_start_r3p0 pp_job = {\n");
 
 	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
 	wrap_log("\t.priority = 0x%x,\n", job->priority);
@@ -1442,8 +1445,8 @@ __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 		orig__mali_compile_essl_shader = libmali_dlsym(__func__);
 
 	if (mali_version >= MALI_DRIVER_VERSION_R3P0)
-		wrap_log("WARNING: the binary structure of the shader compiler "
-			 "has changed and will not be valid as is!\n");
+		wrap_log("/* WARNING: the binary structure of the shader compiler "
+			 "has changed and will not be valid as is! */\n");
 
 	wrap_log("#if 0 /* Shader */\n\n");
 
