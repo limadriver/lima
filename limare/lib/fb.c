@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -130,6 +130,8 @@ fb_open(struct limare_state *state)
 		free(fb);
 		return errno;
 	}
+
+	fb_var->activate = FB_ACTIVATE_VBL;
 
 	fb->fb_var = fb_var;
 	state->fb = fb;
