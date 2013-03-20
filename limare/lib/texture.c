@@ -21,6 +21,16 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+/*
+ * Interesting fact... The allwinner A10 r3p0 armhf binary driver overrides
+ * a whole bunch of texture settings for 1024x768 RGBA.
+ * - swizzling is disabled (layout variable down below)
+ * - some cubemap flags are altered.
+ * - a whole load of texture filter and repeat modes are different.
+ * Once cubemapping, texture filter settings and repeat modes have been
+ * handled, these settings need to be compared with this special mode.
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -351,7 +361,8 @@ texture_create(struct limare_state *state, const void *src,
 	       int width, int height, int format, int mipmap)
 {
 	struct texture *texture = calloc(1, sizeof(struct texture));
-	int flag0 = 0, flag1 = 1, layout = 0;
+	int flag0 = 0, flag1 = 1;
+	int layout = 0; /* no swizzling */
 
 	if ((width > 4096) || (height > 4096)) {
 		free(texture);
