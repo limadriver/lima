@@ -774,6 +774,24 @@ limare_texture_create(struct limare_state *state, const void *src,
 	} else
 		texture->levels = 1;
 
+	/*
+	 * grab space for descriptor first, so that we can catch space issues
+	 * in a nicer way.
+	 */
+	if ((state->aux_mem_size - state->aux_mem_used) < 0x40) {
+		free(texture);
+		printf("%s: No more space for texture descriptor.\n", __func__);
+		return NULL;
+	}
+
+	texture->descriptor = state->aux_mem_address + state->aux_mem_used;
+	texture->descriptor_physical = state->aux_mem_physical +
+		state->aux_mem_used;
+	state->aux_mem_used += 0x40;
+
+	/*
+	 * now do the actual work.
+	 */
 	switch (texture->format) {
 	case LIMA_TEXEL_FORMAT_BGR_565:
 		if (texture_rgb565_create(state, texture, src)) {
@@ -813,10 +831,13 @@ limare_texture_create(struct limare_state *state, const void *src,
 	// case LIMA_TEXEL_FORMAT_RGBA64:
 	// case LIMA_TEXEL_FORMAT_DEPTH_STENCIL_32:
 	default:
-		free(texture);
 		printf("%s: unsupported format %x\n", __func__, format);
+		state->aux_mem_used -= 0x40;
+		free(texture);
 		return NULL;
 	}
+
+	/* fill out our descriptor */
 
 	texture->descriptor[0] = (flag0 << 7) | (flag1 << 6) | format;
 	/* assume both min and mag filter are linear */

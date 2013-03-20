@@ -695,13 +695,7 @@ plbu_info_attach_textures(struct limare_frame *frame, struct draw_info *draw,
 	for (i = 0; i < count; i++) {
 		struct limare_texture *texture = textures[i];
 
-		texture->descriptor_offset = frame->mem_used;
-		frame->mem_used += 0x40;
-
-		memcpy(frame->mem_address + texture->descriptor_offset,
-		       texture->descriptor, 0x40);
-
-		list[i] = frame->mem_physical + textures[i]->descriptor_offset;
+		list[i] = texture->descriptor_physical;
 	}
 
 	return 0;

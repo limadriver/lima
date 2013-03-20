@@ -43,8 +43,8 @@ struct limare_texture {
 	int format;
 
 	/* in AUX space */
-	unsigned int descriptor[0x10];
-	unsigned int descriptor_offset;
+	unsigned int *descriptor;
+	unsigned int descriptor_physical;
 
 	int levels;
 	struct limare_texture_level level[13];

@@ -81,17 +81,17 @@ struct limare_state {
 	int frame_current;
 	struct limare_frame *frames[2];
 
-	/* space used for programs and textures */
+	int program_count;
+	struct limare_program **programs;
+	int program_current;
+
+	/* space used for vertex buffers and textures */
 	void *aux_mem_address;
 	unsigned int aux_mem_physical;
 	int aux_mem_size;
 	int aux_mem_used;
 
 	struct limare_texture *texture;
-
-	int program_count;
-	struct limare_program **programs;
-	int program_current;
 
 	struct limare_fb *fb;
 };
