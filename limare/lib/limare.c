@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -567,7 +567,7 @@ limare_gl_mali_ViewPortTransform(struct limare_state *state,
 	viewport = symbol->data;
 
 	viewport[0] = x1 / 2;
-	viewport[1] = y1 / 2;
+	viewport[1] = - (y1 / 2);
 	viewport[2] = (depth_far - depth_near) / 2;
 	viewport[3] = depth_far;
 	viewport[4] = (x0 + x1) / 2;

@@ -483,7 +483,7 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 		i++;
 	}
 
-	cmds[i].val = 0x00002200 | LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW;
+	cmds[i].val = 0x00002200 /* | LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW */;
 	if (plbu->indices_offset) {
 		if (plbu->indices_type == GL_UNSIGNED_SHORT)
 			cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_SHORT;
