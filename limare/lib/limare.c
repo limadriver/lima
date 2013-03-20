@@ -568,6 +568,31 @@ limare_attribute_pointer(struct limare_state *state, char *name,
 }
 
 int
+attribute_upload(struct limare_state *state, struct symbol *symbol)
+{
+	int size;
+
+	/* already uploaded? */
+	if (symbol->mem_physical)
+		return 0;
+
+	size = ALIGN(symbol->size, 0x40);
+
+	if ((state->aux_mem_size - state->aux_mem_used) < size) {
+		printf("%s: Not enough space for %s\n", __func__, symbol->name);
+		return -1;
+	}
+
+	symbol->mem_address = state->aux_mem_address + state->aux_mem_used;
+	symbol->mem_physical = state->aux_mem_physical + state->aux_mem_used;
+	state->aux_mem_used += size;
+
+	memcpy(symbol->mem_address, symbol->data, symbol->size);
+
+	return 0;
+}
+
+int
 limare_gl_mali_ViewPortTransform(struct limare_state *state,
 				  struct symbol *symbol)
 {
@@ -617,31 +642,6 @@ limare_texture_find(struct limare_state *state, int handle)
 	}
 
 	return NULL;
-}
-
-int
-attribute_upload(struct limare_state *state, struct symbol *symbol)
-{
-	int size;
-
-	/* already uploaded? */
-	if (symbol->mem_physical)
-		return 0;
-
-	size = ALIGN(symbol->size, 0x40);
-
-	if ((state->aux_mem_size - state->aux_mem_used) < size) {
-		printf("%s: Not enough space for %s\n", __func__, symbol->name);
-		return -1;
-	}
-
-	symbol->mem_address = state->aux_mem_address + state->aux_mem_used;
-	symbol->mem_physical = state->aux_mem_physical + state->aux_mem_used;
-	state->aux_mem_used += size;
-
-	memcpy(symbol->mem_address, symbol->data, symbol->size);
-
-	return 0;
 }
 
 int
