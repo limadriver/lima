@@ -570,6 +570,7 @@ plbu_commands_finish(struct limare_frame *frame)
 	i++;
 #endif
 
+#if 0
 	cmds[i].val = 0x00000000;
 	cmds[i].cmd = 0xd0000000;
 	i++;
@@ -577,6 +578,7 @@ plbu_commands_finish(struct limare_frame *frame)
 	cmds[i].val = 0x00000000;
 	cmds[i].cmd = 0xd0000000;
 	i++;
+#endif
 
 	cmds[i].val = 0;
 	cmds[i].cmd = LIMA_PLBU_CMD_END;
