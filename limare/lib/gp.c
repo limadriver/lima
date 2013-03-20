@@ -734,8 +734,8 @@ plbu_info_render_state_create(struct limare_program *program,
 	render->unknown08 = 0xfc3b1ad2;
 	render->unknown0C = 0x33;
 	render->depth_range = 0xFFFF0000;
-	render->unknown14 = 7;
-	render->unknown18 = 7;
+	render->unknown14 = 0xFF000007;
+	render->unknown18 = 0xFF000007;
 	render->unknown1C = 0;
 	render->unknown20 = 0xF807;
 	/* enable 4x MSAA */
