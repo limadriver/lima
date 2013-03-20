@@ -170,7 +170,7 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	struct lima_m400_pp_frame_registers frame_regs = { 0 };
 	struct lima_pp_wb_registers wb_regs = { 0 };
 	struct pp_info *info = frame->pp;
-	int supersampling = 0;
+	int supersampling = 1;
 	int max_blocking = 0;
 
 	/* frame registers */
@@ -202,7 +202,7 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 
 	frame_regs.one = 1;
 	if (supersampling)
-		frame_regs.supersampled_height = info->height - 1;
+		frame_regs.supersampled_height = (2 * info->height) - 1;
 	else
 		frame_regs.supersampled_height = 1;
 	frame_regs.dubya = 0x77;
