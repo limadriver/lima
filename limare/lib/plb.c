@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -90,7 +90,7 @@ plb_create(struct limare_state *state, struct limare_frame *frame)
 	 * 512 is the hard limit for mali400.
 	 */
 	if (state->type == LIMARE_TYPE_M400)
-		limit = 400;
+		limit = 500;
 	else
 		limit = 250;
 
