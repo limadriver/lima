@@ -91,7 +91,7 @@ struct plbu_info {
 	int uniform_offset;
 	int uniform_size;
 
-	int indices_offset;
+	int indices_mem_physical;
 	int indices_type;
 };
 

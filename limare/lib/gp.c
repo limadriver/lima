@@ -324,7 +324,7 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 	struct lima_cmd *cmds = frame->vs_commands;
 	int i = frame->vs_commands_count;
 
-	if (!plbu->indices_offset) {
+	if (!plbu->indices_mem_physical) {
 		cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1;
 		cmds[i].cmd = LIMA_VS_CMD_ARRAYS_SEMAPHORE;
 		i++;
@@ -377,7 +377,7 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 	i++;
 
 	cmds[i].val = draw->vertex_count << 24;
-	if (plbu->indices_offset)
+	if (plbu->indices_mem_physical)
 		cmds[i].val |= 0x01;
 	cmds[i].cmd = LIMA_VS_CMD_DRAW | draw->vertex_count >> 8;
 	i++;
@@ -386,7 +386,7 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 	cmds[i].cmd = 0x60000000;
 	i++;
 
-	if (plbu->indices_offset)
+	if (plbu->indices_mem_physical)
 		cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_NEXT;
 	else
 		cmds[i].val = LIMA_VS_CMD_ARRAYS_SEMAPHORE_END;
@@ -483,14 +483,14 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 	/*
 	 *
 	 */
-	if (!plbu->indices_offset) {
+	if (!plbu->indices_mem_physical) {
 		cmds[i].val = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN;
 		cmds[i].cmd = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE;
 		i++;
 	}
 
 	cmds[i].val = LIMA_PLBU_CMD_PRIMITIVE_GLES2 | 0x0000200 /* | LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW */;
-	if (plbu->indices_offset) {
+	if (plbu->indices_mem_physical) {
 		if (plbu->indices_type == GL_UNSIGNED_SHORT)
 			cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_SHORT;
 		else
@@ -504,12 +504,12 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 	cmds[i].cmd |= (frame->mem_physical + vs->gl_Position_offset) >> 4;
 	i++;
 
-	if (plbu->indices_offset) {
+	if (plbu->indices_mem_physical) {
 		cmds[i].val = frame->mem_physical + vs->gl_Position_offset;
 		cmds[i].cmd = LIMA_PLBU_CMD_INDEXED_DEST;
 		i++;
 
-		cmds[i].val = frame->mem_physical + plbu->indices_offset;
+		cmds[i].val = plbu->indices_mem_physical;
 		cmds[i].cmd = LIMA_PLBU_CMD_INDICES;
 		i++;
 	} else {
@@ -524,7 +524,7 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 	cmds[i].cmd = LIMA_PLBU_CMD_ARRAYS_SEMAPHORE;
 	i++;
 
-	if (plbu->indices_offset) {
+	if (plbu->indices_mem_physical) {
 		cmds[i].val = (draw->vertex_count << 24) | draw->vertex_start;
 		cmds[i].cmd = LIMA_PLBU_CMD_DRAW | LIMA_PLBU_CMD_DRAW_ELEMENTS |
 			((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
@@ -655,10 +655,9 @@ plbu_info_attach_indices(struct limare_frame *frame, struct draw_info *draw,
 
 	plbu->indices_type = indices_type;
 
-	plbu->indices_offset = frame->mem_used;
+	plbu->indices_mem_physical = frame->mem_physical + frame->mem_used;
+	address = frame->mem_address + frame->mem_used;
 	frame->mem_used += ALIGN(size, 0x40);
-
-	address = frame->mem_address + plbu->indices_offset;
 
 	memcpy(address, indices, size);
 
