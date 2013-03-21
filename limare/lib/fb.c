@@ -278,3 +278,31 @@ fb_dump(struct limare_state *state)
 	else if (!fb->direct)
 		fb_dump_memcpy(state);
 }
+
+void
+fb_dump_direct(struct limare_state *state, unsigned char *buffer,
+	       int width, int height)
+{
+	struct limare_fb *fb = state->fb;
+	int i;
+
+	if (fb->fd == -1)
+		return;
+
+	if ((fb->width == width) && (fb->height == height)) {
+		memcpy(fb->map, buffer, fb->size);
+	} else if ((fb->width >= width) &&
+		   (fb->height >= height)) {
+		int fb_offset, buf_offset;
+
+		for (i = 0, fb_offset = 0, buf_offset = 0;
+		     i < height;
+		     i++, fb_offset += 4 * fb->width,
+			     buf_offset += 4 * width) {
+			memcpy(fb->map + fb_offset,
+			       buffer + buf_offset,
+			       4 * width);
+		}
+	} else
+		printf("%s: dimensions not implemented\n", __func__);
+}
