@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -1360,8 +1360,9 @@ varying_map_create(struct limare_program *program)
 		struct symbol *symbol = program->fragment_varyings[i];
 		int size;
 
-		if (program->fragment_varyings[i]->flag &
-		    SYMBOL_USE_VERTEX_SIZE)
+		if (program->vertex_varyings &&
+		    (program->fragment_varyings[i]->flag &
+		     SYMBOL_USE_VERTEX_SIZE))
 			size = program->vertex_varyings[i]->component_size;
 		else
 			size = symbol->component_size;
