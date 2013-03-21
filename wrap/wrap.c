@@ -36,6 +36,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <linux/fb.h>
+
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
 
@@ -49,6 +51,9 @@ static int mali_ioctl(int request, void *data);
 static int mali_address_add(void *address, unsigned int size,
 			    unsigned int physical);
 static int mali_address_remove(void *address, int size);
+static int mali_external_add(unsigned int address, unsigned int physical,
+			     unsigned int size, unsigned int cookie);
+static int mali_external_remove(unsigned int cookie);
 static void mali_memory_dump(void);
 static void mali_wrap_bmp_dump(void);
 
@@ -593,6 +598,28 @@ dev_mali_memory_init_mem_post(void *data)
 }
 
 static void
+dev_mali_memory_map_ext_mem_post(void *data)
+{
+	_mali_uk_map_external_mem_s *ext = data;
+
+	printf("map_ext_mem: ctx %p, phys_addr 0x%08X, size 0x%08X, address 0x%08X, rights 0x%08X, flags 0x%08X, cookie 0x%08X\n",
+	       ext->ctx, ext->phys_addr, ext->size, ext->mali_address, ext->rights, ext->flags, ext->cookie);
+
+	mali_external_add(ext->mali_address, ext->phys_addr, ext->size, ext->cookie);
+}
+
+static void
+dev_mali_memory_unmap_ext_mem_post(void *data)
+{
+	_mali_uk_map_external_mem_s *ext = data;
+
+	printf("unmap_ext_mem: ctx %p, cookie 0x%08X\n",
+	       ext->ctx, ext->cookie);
+
+	mali_external_remove(ext->cookie);
+}
+
+static void
 dev_mali_pp_core_version_post(void *data)
 {
 	_mali_uk_get_pp_core_version_s *version = data;
@@ -1098,6 +1125,10 @@ static struct dev_mali_ioctl_table {
 	 dev_mali_get_api_version_pre, dev_mali_get_api_version_post},
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM",
 	 NULL, dev_mali_memory_init_mem_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_MAP_EXT_MEM, "MEMORY, MAP_EXT_MEM",
+	 NULL, dev_mali_memory_map_ext_mem_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_UNMAP_EXT_MEM, "MEMORY, UNMAP_EXT_MEM",
+	 NULL, dev_mali_memory_unmap_ext_mem_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB",
 	 dev_mali_pp_job_start_pre, dev_mali_pp_job_start_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R2P1, "PP, GET_CORE_VERSION_R2P1",
@@ -1214,10 +1245,147 @@ mali_address_remove(void *address, int size)
 	return -1;
 }
 
+#define MALI_EXTERNALS 0x10
+static struct mali_external {
+	unsigned int address;
+	unsigned int physical; /* actual address */
+	unsigned int size;
+	unsigned int cookie;
+} mali_externals[MALI_EXTERNALS];
+
+static int fb_fd = -1;
+static char *fbdev_name = "/dev/fb0";
+static unsigned int fb_physical;
+static void *fb_map = ((void *) -1);
+static int fb_map_size;
+
+static int
+mali_map_fb(void)
+{
+	struct fb_fix_screeninfo fb_fix;
+
+	if (!orig_open)
+		orig_open = libc_dlsym(__func__);
+
+	fb_fd = orig_open(fbdev_name, O_RDONLY);
+	if (fb_fd == -1) {
+		printf("Error: Failed to open %s: %s\n", fbdev_name, strerror(errno));
+		return errno;
+	}
+
+	if (!orig_ioctl)
+		orig_ioctl = libc_dlsym(__func__);
+
+	if (orig_ioctl(fb_fd, FBIOGET_FSCREENINFO, &fb_fix)) {
+		printf("Error: failed to run ioctl on %s: %s\n",
+			fbdev_name, strerror(errno));
+		close(fb_fd);
+		fb_fd = -1;
+		return errno;
+	}
+
+	fb_physical = fb_fix.smem_start;
+	fb_map_size = fb_fix.smem_len;
+
+	if (!orig_mmap)
+		orig_mmap = libc_dlsym("mmap");
+
+	fb_map = orig_mmap(0, fb_map_size, PROT_READ, MAP_PRIVATE, fb_fd, 0);
+	if (fb_map == ((void *) -1)) {
+		printf("Error: Failed to mmap %s: %s\n", fbdev_name, strerror(errno));
+		return -1;
+	}
+
+	printf("Mapped %dbytes from %s (0x%08X) at %p\n",
+	       fb_map_size, fbdev_name, fb_physical, fb_map);
+
+	return 0;
+}
+
+static int
+mali_external_add(unsigned int address, unsigned int physical, unsigned int size, unsigned int cookie)
+{
+	int i;
+
+	if (fb_map == ((void *) -1)) {
+		if (mali_map_fb())
+			exit(1);
+	}
+
+	if ((physical < fb_physical) &&
+	    ((physical + size) > (fb_physical + size))) {
+		printf("Error: external address 0x%08X (0x%08X) is not the framebuffer\n",
+		       physical, size);
+		exit(1);
+	}
+
+	for (i = 0; i < MALI_EXTERNALS; i++) {
+		if ((mali_externals[i].address >= address) &&
+		    (mali_externals[i].address < (address + size)) &&
+		    ((mali_externals[i].address + size) > address) &&
+		    ((mali_externals[i].address + size) <= (address + size))) {
+			printf("Error: Address 0x%08X (0x%x) is already taken!\n",
+			       address, size);
+			return -1;
+		}
+	}
+
+	for (i = 0; i < MALI_EXTERNALS; i++)
+		if (!mali_externals[i].address)
+			break;
+
+	if (i == MALI_EXTERNALS) {
+		printf("Error: No more free memory slots for 0x%08X (0x%x)!\n",
+		       address, size);
+		return -1;
+	}
+
+	/* map memory here */
+	mali_externals[i].address = address;
+	mali_externals[i].physical = physical;
+	mali_externals[i].size = size;
+	mali_externals[i].cookie = cookie;
+
+	return 0;
+}
+
+static int
+mali_external_remove(unsigned int cookie)
+{
+	int i;
+
+	for (i = 0; i < MALI_EXTERNALS; i++)
+		if (mali_externals[i].cookie == cookie) {
+			/* deref mapping here */
+
+			mali_externals[i].address = 0;
+			mali_externals[i].physical = 0;
+			mali_externals[i].size = 0;
+			mali_externals[i].cookie = 0;
+
+			return 0;
+		}
+
+	return -1;
+}
+
 static void *
 mali_address_retrieve(unsigned int physical)
 {
 	int i;
+
+	for (i = 0; i < MALI_EXTERNALS; i++)
+		if ((mali_externals[i].address <= physical) &&
+		    ((mali_externals[i].address + mali_externals[i].size)
+		     >= physical)) {
+#if 0
+			printf("fb_map (%p) + (physical (0x%08X)- mali_externals[i].address (0x%08X)) + (mali_externals[i].physical (0x%08X) - fb_physical(0x%08X))\n",
+			       fb_map, physical, mali_externals[i].address, mali_externals[i].physical, fb_physical);
+#endif
+			return fb_map +
+				(physical - mali_externals[i].address) +
+				(mali_externals[i].physical - fb_physical);
+		}
 
 	for (i = 0; i < MALI_ADDRESSES; i++)
 		if ((mali_addresses[i].physical <= physical) &&
