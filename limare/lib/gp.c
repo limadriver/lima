@@ -552,6 +552,49 @@ plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw)
 }
 
 void
+plbu_commands_depth_clear_draw_add(struct limare_frame *frame,
+				   struct draw_info *draw,
+				   unsigned int varying_vertices_physical)
+{
+	struct plbu_info *plbu = draw->plbu;
+	struct lima_cmd *cmds = frame->plbu_commands;
+	int i = frame->plbu_commands_count;
+
+	/*
+	 *
+	 */
+	cmds[i].val = 0x00002200 /* | LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW */;
+	if (plbu->indices_type == GL_UNSIGNED_SHORT)
+		cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_SHORT;
+	else
+		cmds[i].val |= LIMA_PLBU_CMD_PRIMITIVE_INDEX_BYTE;
+	cmds[i].cmd = LIMA_PLBU_CMD_PRIMITIVE_SETUP;
+	i++;
+
+	cmds[i].val = frame->mem_physical + plbu->render_state_offset;
+	cmds[i].cmd = LIMA_PLBU_CMD_RSW_VERTEX_ARRAY;
+	cmds[i].cmd |= varying_vertices_physical >> 4;
+	i++;
+
+	cmds[i].val = plbu->indices_mem_physical;
+	cmds[i].cmd = LIMA_PLBU_CMD_INDICES;
+	i++;
+
+	cmds[i].val = varying_vertices_physical;
+	cmds[i].cmd = LIMA_PLBU_CMD_INDEXED_DEST;
+	i++;
+
+	cmds[i].val = (draw->vertex_count << 24) | draw->vertex_start;
+	cmds[i].cmd = LIMA_PLBU_CMD_DRAW | LIMA_PLBU_CMD_DRAW_ELEMENTS |
+		((draw->draw_mode & 0x1F) << 16) | (draw->vertex_count >> 8);
+	i++;
+
+	/* update our size so we can set the gp job properly */
+	frame->plbu_commands_count = i;
+}
+
+
+void
 plbu_commands_finish(struct limare_frame *frame)
 {
 	struct lima_cmd *cmds = frame->plbu_commands;

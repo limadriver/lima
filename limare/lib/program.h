@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -88,5 +88,9 @@ limare_program_fragment_shader_attach(struct limare_state *state,
 				      const char *source);
 
 int limare_program_link(struct limare_program *program);
+
+/* special case */
+int limare_depth_clear_link(struct limare_state *state,
+			    struct limare_program *program);
 
 #endif /* LIMARE_PROGRAM_H */

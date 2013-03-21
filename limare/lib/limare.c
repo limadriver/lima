@@ -1284,6 +1284,116 @@ limare_link(struct limare_state *state)
 	return limare_program_link(program);
 }
 
+static int
+limare_depth_clear_init(struct limare_state *state)
+{
+	struct limare_program *program;
+	const char *source =
+		"precision mediump float;\n"
+		"\n"
+		"void main()\n"
+		"{\n"
+		"	gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
+		"}\n";
+	float vertices[12] = {
+		   0.0,    0.0, 1.0, 1.0,
+		4096.0,    0.0, 1.0, 1.0,
+		   0.0, 4096.0, 1.0, 1.0,
+	};
+	unsigned char *indices;
+	int ret;
+
+	/*
+	 * We need three blocks:
+	 * 0: vertices (in a varying).
+	 * 1: fragment shader.
+	 * 2: indices.
+	 */
+	if ((state->aux_mem_size - state->aux_mem_used) < 0xC0) {
+		printf("%s: no space left!\n", __func__);
+		return -ENOMEM;
+	}
+
+	/*
+	 * let this waste space for the vertex shader, we re-use it
+	 * for our verticesaryings later on.
+	 */
+	program = limare_program_create(state->aux_mem_address,
+					state->aux_mem_physical,
+					state->aux_mem_used, 0x80);
+	if (!program)
+		return -ENOMEM;
+
+	ret = limare_program_fragment_shader_attach(state, program, source);
+	if (ret) {
+		free(program);
+		return ret;
+	}
+
+	ret = limare_depth_clear_link(state, program);
+	if (ret) {
+		/* TODO: clean up properly here. */
+		return ret;
+	}
+
+	state->depth_clear_program = program;
+
+	/* now get our vertices uploaded */
+	state->depth_clear_vertices_physical =
+		state->aux_mem_physical + state->aux_mem_used;
+
+	memcpy(state->aux_mem_address + state->aux_mem_used,
+	       vertices, 12 * sizeof(float));
+
+	state->aux_mem_used += 0x80;
+
+	/* now upload the indices */
+	state->depth_clear_indices_physical =
+		state->aux_mem_physical + state->aux_mem_used;
+	indices = state->aux_mem_address + state->aux_mem_used;
+	indices[0] = 0;
+	indices[1] = 1;
+	indices[2] = 2;
+	state->aux_mem_used += 0x40;
+
+	return 0;
+}
+
+int
+limare_depth_clear(struct limare_state *state)
+{
+	struct limare_frame *frame =
+		state->frames[state->frame_current];
+	struct draw_info *draw;
+	int ret;
+
+	if (!state->depth_clear_program) {
+		ret = limare_depth_clear_init(state);
+		if (ret)
+			return ret;
+	}
+
+	if (frame->draw_count >= LIMARE_DRAW_COUNT) {
+		printf("%s: Error: too many draws already!\n", __func__);
+		return -1;
+	}
+
+	draw = draw_create_new(state, frame, LIMA_DRAW_QUAD_DIRECT, 0, 3);
+	frame->draws[frame->draw_count] = draw;
+	frame->draw_count++;
+
+	plbu_viewport_set(frame, 0.0, 0.0, 4096.0, 4096.0);
+
+	plbu_info_attach_indices(draw, GL_UNSIGNED_BYTE,
+				 state->depth_clear_indices_physical);
+
+	plbu_info_render_state_create(state->depth_clear_program, frame, draw);
+	plbu_commands_depth_clear_draw_add(frame, draw,
+					   state->depth_clear_vertices_physical);
+
+	return 0;
+}
+
 int
 limare_frame_new(struct limare_state *state)
 {

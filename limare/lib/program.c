@@ -1507,3 +1507,40 @@ limare_program_create(void *address, unsigned int physical,
 
 	return program;
 }
+
+/*
+ * Do half the linking work ourselves instead of using standard
+ * infrastructure.
+ */
+int
+limare_depth_clear_link(struct limare_state *state,
+			struct limare_program *program)
+{
+	int ret, i;
+
+	/* temporary safeguard */
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		if (program->fragment_varyings[i]->value_type != 1) {
+			printf("%s: Fragment Varying %s has unhandled type %d\n",
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->value_type);
+			return -1;
+		} else if (program->fragment_varyings[i]->entry_count != 1) {
+			printf("%s: Fragment Varying %s has unhandled count %d\n",
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->entry_count);
+			return -1;
+		}
+	}
+
+	ret = varying_map_create(program);
+	if (ret)
+		return ret;
+
+	/* now throw the shader into mali mem. */
+	memcpy(program->mem_address + program->fragment_offset,
+	       program->fragment_binary->shader,
+	       program->fragment_binary->shader_size);
+
+	return ret;
+}
