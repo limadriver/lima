@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -37,6 +37,8 @@
 #include <sys/stat.h>
 
 #include "compiler.h"
+
+#define STREAM_TAG_MBS1 0x3153424d
 
 void
 usage(char *name)
@@ -102,6 +104,72 @@ dump_shader(unsigned int *shader, int size)
 		       shader[i + 3], 4 * i);
 }
 
+static void
+vertex_parameters_dump(struct lima_shader_binary_vertex_parameters *parameters)
+{
+	printf("\t.parameters (vertex) = {\n");
+	printf("\t\t.unknown00 = 0x%x,\n", parameters->unknown00);
+	printf("\t\t.unknown04 = 0x%x,\n", parameters->unknown04);
+	printf("\t\t.unknown08 = 0x%x,\n", parameters->unknown08);
+	printf("\t\t.unknown0C = 0x%x,\n", parameters->unknown0C);
+	printf("\t\t.attribute_count = 0x%x,\n", parameters->attribute_count);
+	printf("\t\t.varying_count = 0x%x,\n", parameters->varying_count);
+	printf("\t\t.unknown18 = 0x%x,\n", parameters->unknown18);
+	printf("\t\t.size = 0x%x,\n", parameters->size);
+	printf("\t\t.varying_something = 0x%x,\n", parameters->varying_something);
+	printf("\t},\n");
+}
+
+static void
+fragment_parameters_dump(struct lima_shader_binary_fragment_parameters *parameters)
+{
+	printf("\t.parameters (fragment) = {\n");
+	printf("\t\t.unknown00 = 0x%x,\n", parameters->unknown00);
+	printf("\t\t.unknown04 = 0x%x,\n", parameters->unknown04);
+	printf("\t\t.unknown08 = 0x%x,\n", parameters->unknown08);
+	printf("\t\t.unknown0C = 0x%x,\n", parameters->unknown0C);
+	printf("\t\t.unknown10 = 0x%x,\n", parameters->unknown10);
+	printf("\t\t.unknown14 = 0x%x,\n", parameters->unknown14);
+	printf("\t\t.unknown18 = 0x%x,\n", parameters->unknown18);
+	printf("\t\t.unknown1C = 0x%x,\n", parameters->unknown1C);
+	printf("\t\t.unknown20 = 0x%x,\n", parameters->unknown20);
+	printf("\t\t.unknown24 = 0x%x,\n", parameters->unknown24);
+	printf("\t\t.unknown28 = 0x%x,\n", parameters->unknown28);
+	printf("\t\t.unknown2C = 0x%x,\n", parameters->unknown2C);
+	printf("\t}\n");
+}
+
+void
+dump_shader_binary_mbs(struct lima_shader_binary_mbs *binary, int type)
+{
+	printf("struct lima_shader_binary %p = {\n", binary);
+	printf("\t.compile_status = %d,\n", binary->compile_status);
+	printf("\t.error_log = \"%s\",\n", binary->error_log);
+	printf("\t.shader = {\n");
+	dump_shader(binary->shader, binary->shader_size / 4);
+	printf("\t},\n");
+	printf("\t.shader_size = 0x%x,\n", binary->shader_size);
+	printf("\t.varying_stream = {\n");
+	hexdump(binary->varying_stream, binary->varying_stream_size);
+	printf("\t},\n");
+	printf("\t.varying_stream_size = 0x%x,\n", binary->varying_stream_size);
+	printf("\t.uniform_stream = {\n");
+	hexdump(binary->uniform_stream, binary->uniform_stream_size);
+	printf("\t},\n");
+	printf("\t.uniform_stream_size = 0x%x,\n", binary->uniform_stream_size);
+	printf("\t.attribute_stream = {\n");
+	hexdump(binary->attribute_stream, binary->attribute_stream_size);
+	printf("\t},\n");
+	printf("\t.attribute_stream_size = 0x%x,\n", binary->attribute_stream_size);
+
+	if (type == LIMA_SHADER_VERTEX)
+		vertex_parameters_dump(&binary->parameters.vertex);
+	else
+		fragment_parameters_dump(&binary->parameters.fragment);
+
+	printf("}\n");
+}
+
 void
 dump_shader_binary(struct lima_shader_binary *binary, int type)
 {
@@ -125,44 +193,19 @@ dump_shader_binary(struct lima_shader_binary *binary, int type)
 	printf("\t},\n");
 	printf("\t.attribute_stream_size = 0x%x,\n", binary->attribute_stream_size);
 
-	if (type == LIMA_SHADER_VERTEX) {
-		printf("\t.parameters (vertex) = {\n");
-		printf("\t\t.unknown00 = 0x%x,\n", binary->parameters.vertex.unknown00);
-		printf("\t\t.unknown04 = 0x%x,\n", binary->parameters.vertex.unknown04);
-		printf("\t\t.unknown08 = 0x%x,\n", binary->parameters.vertex.unknown08);
-		printf("\t\t.unknown0C = 0x%x,\n", binary->parameters.vertex.unknown0C);
-		printf("\t\t.attribute_count = 0x%x,\n", binary->parameters.vertex.attribute_count);
-		printf("\t\t.varying_count = 0x%x,\n", binary->parameters.vertex.varying_count);
-		printf("\t\t.unknown18 = 0x%x,\n", binary->parameters.vertex.unknown18);
-		printf("\t\t.size = 0x%x,\n", binary->parameters.vertex.size);
-		printf("\t\t.varying_something = 0x%x,\n", binary->parameters.vertex.varying_something);
-		printf("\t},\n");
-	} else {
-		printf("\t.parameters (fragment) = {\n");
-		printf("\t\t.unknown00 = 0x%x,\n", binary->parameters.fragment.unknown00);
-		printf("\t\t.unknown04 = 0x%x,\n", binary->parameters.fragment.unknown04);
-		printf("\t\t.unknown08 = 0x%x,\n", binary->parameters.fragment.unknown08);
-		printf("\t\t.unknown0C = 0x%x,\n", binary->parameters.fragment.unknown0C);
-		printf("\t\t.unknown10 = 0x%x,\n", binary->parameters.fragment.unknown10);
-		printf("\t\t.unknown14 = 0x%x,\n", binary->parameters.fragment.unknown14);
-		printf("\t\t.unknown18 = 0x%x,\n", binary->parameters.fragment.unknown18);
-		printf("\t\t.unknown1C = 0x%x,\n", binary->parameters.fragment.unknown1C);
-		printf("\t\t.unknown20 = 0x%x,\n", binary->parameters.fragment.unknown20);
-		printf("\t\t.unknown24 = 0x%x,\n", binary->parameters.fragment.unknown24);
-		printf("\t\t.unknown28 = 0x%x,\n", binary->parameters.fragment.unknown28);
-		printf("\t\t.unknown2C = 0x%x,\n", binary->parameters.fragment.unknown2C);
-		printf("\t}\n");
-	}
+	if (type == LIMA_SHADER_VERTEX)
+		vertex_parameters_dump(&binary->parameters.vertex);
+	else
+		fragment_parameters_dump(&binary->parameters.fragment);
+
 	printf("}\n");
 }
-
-
 
 
 int
 main(int argc, char *argv[])
 {
-	struct lima_shader_binary binary = { 0 };
+	struct lima_shader_binary_mbs binary = { 0 };
 	char *filename, *source;
 	int type, fd, size, length, ret;
 
@@ -216,7 +259,8 @@ main(int argc, char *argv[])
 
 	length = strlen(source);
 
-	ret = __mali_compile_essl_shader(&binary, type, source, &length, 1);
+	ret = __mali_compile_essl_shader((struct lima_shader_binary *) &binary,
+					 type, source, &length, 1);
 	if (ret) {
 		if (binary.error_log)
 			printf("%s: compilation failed: %s\n",
@@ -228,7 +272,10 @@ main(int argc, char *argv[])
 		return ret;
 	}
 
-	dump_shader_binary(&binary, type);
+	if ((((unsigned int *)binary.mbs_stream)[0]) == STREAM_TAG_MBS1)
+		dump_shader_binary_mbs(&binary, type);
+	else
+		dump_shader_binary((struct lima_shader_binary *) &binary, type);
 
 	return 0;
 }
