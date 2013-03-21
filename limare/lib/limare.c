@@ -915,7 +915,7 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 
 static int
 limare_draw(struct limare_state *state, int mode, int start, int count,
-	    void *indices, int indices_type)
+	    struct limare_indices_buffer *indices_buffer)
 {
 	struct limare_program *program = state->program_current;
 	struct limare_frame *frame =
@@ -933,7 +933,7 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 		return -1;
 	}
 
-	if (start && indices) {
+	if (start && indices_buffer) {
 		printf("%s: Error: start provided when drawing elements.\n",
 		       __func__);
 		return -1;
@@ -1005,9 +1005,9 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 				      program->fragment_uniform_size))
 		return -1;
 
-	if (indices && plbu_info_attach_indices(frame, draw,
-						indices, indices_type, count))
-		return -1;
+	if (indices_buffer)
+		plbu_info_attach_indices(draw, indices_buffer->indices_type,
+					 indices_buffer->mem_physical);
 
 	vs_commands_draw_add(state, frame, program, draw);
 	vs_info_finalize(state, frame, program, draw, draw->vs);
@@ -1021,14 +1021,129 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 int
 limare_draw_arrays(struct limare_state *state, int mode, int start, int count)
 {
-	return limare_draw(state, mode, start, count, NULL, 0);
+	return limare_draw(state, mode, start, count, NULL);
 }
 
 int
 limare_draw_elements(struct limare_state *state, int mode, int count,
 		     void *indices, int indices_type)
 {
-	return limare_draw(state, mode, 0, count, indices, indices_type);
+	struct limare_frame *frame = state->frames[state->frame_current];
+	struct limare_indices_buffer buffer;
+	int size;
+	void *address;
+
+	buffer.handle = 0;
+	buffer.drawing_mode = mode;
+	buffer.indices_type = indices_type;
+	buffer.count = count;
+
+	if (indices_type == GL_UNSIGNED_BYTE)
+		size = count;
+	else if (indices_type == GL_UNSIGNED_SHORT)
+		size = count * 2;
+	else {
+		printf("%s: only bytes and shorts supported.\n", __func__);
+		return -1;
+	}
+
+	if ((frame->mem_size - frame->mem_used) < (0x40 + ALIGN(size, 0x40))) {
+		printf("%s: no space for indices\n", __func__);
+		return -1;
+	}
+
+	address = frame->mem_address + frame->mem_used;
+	buffer.mem_physical = frame->mem_physical + frame->mem_used;
+	frame->mem_used += ALIGN(size, 0x40);
+
+	memcpy(address, indices, size);
+
+	return limare_draw(state, mode, 0, count, &buffer);
+}
+
+int
+limare_elements_buffer_upload(struct limare_state *state, int mode, int type,
+			      int count, void *data)
+{
+	struct limare_indices_buffer *buffer;
+	int i, size;
+	void *address;
+
+	for (i = 0; i < LIMARE_INDICES_BUFFER_COUNT; i++)
+		if (!state->indices_buffers[i])
+			break;
+
+	if (i == LIMARE_INDICES_BUFFER_COUNT) {
+		printf("%s: all indices buffer slots have been taken!\n",
+		       __func__);
+		return -1;
+	}
+
+	buffer = calloc(1, sizeof(struct limare_indices_buffer));
+	if (!buffer) {
+		printf("%s: Error: failed to allocate indices buffer: %s\n",
+		       __func__, strerror(errno));
+		return -1;
+	}
+
+	buffer->drawing_mode = mode;
+	buffer->indices_type = type;
+	buffer->count = count;
+
+	if (type == GL_UNSIGNED_BYTE)
+		size = count;
+	else if (type == GL_UNSIGNED_SHORT)
+		size = count * 2;
+	else {
+		printf("%s: only bytes and shorts supported.\n", __func__);
+		free(buffer);
+		return -1;
+	}
+
+	if ((state->aux_mem_size - state->aux_mem_used) <
+	    (0x40 + ALIGN(size, 0x40))) {
+		printf("%s: no space for indices\n", __func__);
+		free(buffer);
+		return -1;
+	}
+
+	address = state->aux_mem_address + state->aux_mem_used;
+	buffer->mem_physical = state->aux_mem_physical + state->aux_mem_used;
+	state->aux_mem_used += ALIGN(size, 0x40);
+
+	memcpy(address, data, size);
+
+	buffer->handle = 0x40000000 + state->indices_buffer_handles;
+	state->indices_buffer_handles++;
+
+	state->indices_buffers[i] = buffer;
+
+	return buffer->handle;
+}
+
+int
+limare_draw_elements_buffer(struct limare_state *state, int buffer_handle)
+{
+	struct limare_indices_buffer *buffer;
+	int i;
+
+	for (i = 0; i < LIMARE_INDICES_BUFFER_COUNT; i++) {
+		if (!state->indices_buffers[i])
+			continue;
+
+		buffer = state->indices_buffers[i];
+		if (buffer->handle == buffer_handle)
+			break;
+	}
+
+	if (i == LIMARE_INDICES_BUFFER_COUNT) {
+		printf("%s: Error: unable to fine handle 0x%08X\n",
+		       __func__, buffer_handle);
+		return -1;
+	}
+
+	return limare_draw(state, buffer->drawing_mode, 0, buffer->count,
+			   buffer);
 }
 
 int

@@ -637,40 +637,15 @@ plbu_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
 	return 0;
 }
 
-int
-plbu_info_attach_indices(struct limare_frame *frame, struct draw_info *draw,
-			 void *indices, int indices_type, int count)
+void
+plbu_info_attach_indices(struct draw_info *draw, int indices_type,
+			 unsigned int mem_physical)
 {
 	struct plbu_info *plbu = draw->plbu;
-	int size;
-	void *address;
-
-	if (!indices)
-		return 0;
-
-	if (indices_type == GL_UNSIGNED_BYTE)
-		size = count;
-	else if (indices_type == GL_UNSIGNED_SHORT)
-		size = count * 2;
-	else {
-		printf("%s: only bytes and shorts supported.\n", __func__);
-		return -1;
-	}
-
-	if ((frame->mem_size - frame->mem_used) < (0x40 + ALIGN(size, 0x40))) {
-		printf("%s: no space for indices\n", __func__);
-		return -1;
-	}
 
 	plbu->indices_type = indices_type;
 
-	plbu->indices_mem_physical = frame->mem_physical + frame->mem_used;
-	address = frame->mem_address + frame->mem_used;
-	frame->mem_used += ALIGN(size, 0x40);
-
-	memcpy(address, indices, size);
-
-	return 0;
+	plbu->indices_mem_physical = mem_physical;
 }
 
 int

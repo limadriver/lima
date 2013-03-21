@@ -74,6 +74,16 @@ struct limare_attribute_buffer {
 	unsigned int mem_physical;
 };
 
+struct limare_indices_buffer {
+	int handle;
+
+	int drawing_mode;
+	int indices_type;
+	int count;
+
+	unsigned int mem_physical;
+};
+
 struct limare_state {
 	int fd;
 	int kernel_version;
@@ -117,6 +127,11 @@ struct limare_state {
 	struct limare_attribute_buffer *
 		attribute_buffers[LIMARE_ATTRIBUTE_BUFFER_COUNT];
 	int attribute_buffer_handles;
+
+#define LIMARE_INDICES_BUFFER_COUNT 4
+	struct limare_indices_buffer *
+	indices_buffers[LIMARE_INDICES_BUFFER_COUNT];
+	int indices_buffer_handles;
 
 	struct limare_fb *fb;
 };
@@ -166,10 +181,14 @@ int limare_attribute_buffer_upload(struct limare_state *state,
 int limare_attribute_buffer_attach(struct limare_state *state, char *name,
 				   int buffer_handle);
 
+int limare_elements_buffer_upload(struct limare_state *state, int mode,
+				  int type, int count, void *data);
+
 int limare_draw_arrays(struct limare_state *state, int mode,
 		       int vertex_start, int vertex_count);
 int limare_draw_elements(struct limare_state *state, int mode, int count,
 			 void *indices, int indices_type);
+int limare_draw_elements_buffer(struct limare_state *state, int buffer_handle);
 
 int limare_frame_new(struct limare_state *state);
 int limare_frame_flush(struct limare_state *state);

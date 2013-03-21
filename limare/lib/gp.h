@@ -106,8 +106,8 @@ void plbu_commands_finish(struct limare_frame *frame);
 int plbu_info_attach_uniforms(struct limare_frame *frame,
 			      struct draw_info *draw, struct symbol **uniforms,
 			      int count, int size);
-int plbu_info_attach_indices(struct limare_frame *frame, struct draw_info *draw,
-			     void *indices, int indices_type, int count);
+void plbu_info_attach_indices(struct draw_info *draw, int indices_type,
+			      unsigned int mem_physical);
 int plbu_info_attach_textures(struct limare_state *state,
 			      struct limare_frame *frame,
 			      struct draw_info *draw);
