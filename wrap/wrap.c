@@ -125,7 +125,7 @@ lima_wrap_log_open(void)
 
 	filename = getenv("LIMA_WRAP_LOG");
 	if (!filename)
-		filename = "/tmp/lima.wrap.log";
+		filename = "/home/libv/lima/dump/lima.wrap.log";
 
 	snprintf(buffer, sizeof(buffer), "%s.%04d", filename, frame_count);
 
@@ -1332,9 +1332,13 @@ static void
 mali_wrap_bmp_dump(void)
 {
 	void *address = mali_address_retrieve(render_address);
+	char buffer[1024];
 
 	printf("%s: attempting to dump frame %04d from address 0x%08X (%dx%d)\n",
 	       __func__, frame_count, render_address, render_pitch, render_height);
+
+	snprintf(buffer, sizeof(buffer), "/home/libv/lima/dump/lima.wrap.%04d.bmp",
+		 frame_count);
 
 	if (!address) {
 		printf("%s: Failed to dump bmp at 0x%x\n",
@@ -1353,7 +1357,7 @@ mali_wrap_bmp_dump(void)
 		render_height = 480;
 	}
 
-	if (wrap_bmp_dump(address, 0, render_pitch / 4, render_height, "/tmp/lima.wrap.bmp"))
+	if (wrap_bmp_dump(address, 0, render_pitch / 4, render_height, buffer))
 		printf("Failed to dump on frame %04d (0x%08X)\n", frame_count,
 		       (unsigned int) address);
 }
