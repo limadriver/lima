@@ -153,6 +153,22 @@ wrap_log(const char *format, ...)
 }
 
 void
+includes_print(void)
+{
+	wrap_log("#include <stdlib.h>\n");
+	wrap_log("#include <unistd.h>\n");
+	wrap_log("#include <stdio.h>\n");
+
+	wrap_log("#include \"linux/ioctl.h\"\n");
+	wrap_log("#include \"dump.h\"\n");
+	wrap_log("#include \"limare.h\"\n");
+	wrap_log("#include \"compiler.h\"\n");
+	wrap_log("#include \"jobs.h\"\n");
+	wrap_log("#include \"bmp.h\"\n");
+	wrap_log("#include \"fb.h\"\n");
+}
+
+void
 lima_wrap_log_next(void)
 {
 	if (lima_wrap_log) {
@@ -164,11 +180,10 @@ lima_wrap_log_next(void)
 
 	lima_wrap_log_open();
 
+	includes_print();
+
 	if (mali_type == 400)
 		wrap_log("#define LIMA_M400 1\n\n");
-
-	wrap_log("int dump_render_width = %d;\n", render_pitch / 4);
-	wrap_log("int dump_render_height = %d;\n\n", render_height / 2);
 }
 
 /*
@@ -700,6 +715,11 @@ dev_mali_wait_for_notification_post(void *data)
 
 	/* some post-processing */
 	if (notification->code.type == _MALI_NOTIFICATION_PP_FINISHED) {
+		printf("Finished frame %d\n", frame_count);
+
+		wrap_log("int dump_render_width = %d;\n", render_pitch / 4);
+		wrap_log("int dump_render_height = %d;\n\n", render_height);
+
 		/* We finished a frame, we dump the result */
 		mali_wrap_bmp_dump();
 
@@ -1296,7 +1316,7 @@ mali_memory_dump(void)
 			count++;
 		}
 
-	wrap_log("static struct lima_dumped_mem dumped_mem = {\n");
+	wrap_log("struct lima_dumped_mem dumped_mem = {\n");
 	wrap_log("\t0x%08x,\n", count);
 	wrap_log("\t{\n");
 
@@ -1313,27 +1333,27 @@ mali_wrap_bmp_dump(void)
 {
 	void *address = mali_address_retrieve(render_address);
 
+	printf("%s: attempting to dump frame %04d from address 0x%08X (%dx%d)\n",
+	       __func__, frame_count, render_address, render_pitch, render_height);
+
 	if (!address) {
-		wrap_log("/* %s: Failed to dump bmp at 0x%x */\n",
-			 __func__, render_address);
+		printf("%s: Failed to dump bmp at 0x%x\n",
+		       __func__, render_address);
 		return;
 	}
 
 	if (render_format != LIMA_PIXEL_FORMAT_RGBA_8888) {
-		wrap_log("/* %s: Pixel format 0x%x is currently not implemented */\n",
-			 __func__, render_format);
+		printf("%s: Pixel format 0x%x is currently not implemented\n",
+		       __func__, render_format);
 		return;
 	}
 
 	if (render_height < 16) {
-		wrap_log("/* %s: invalid height: %d */\n", __func__, render_height);
+		printf("%s: invalid height: %d\n", __func__, render_height);
 		render_height = 480 * 2;
 	}
 
 	wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/tmp/lima.wrap.bmp");
-
-	wrap_log("int dump_render_width = %d;\n", render_pitch / 4);
-	wrap_log("int dump_render_height = %d;\n\n", render_height / 2);
 }
 
 /*
