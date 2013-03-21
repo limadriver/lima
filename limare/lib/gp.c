@@ -70,6 +70,32 @@ vs_command_queue_create(struct limare_frame *frame, int size)
 	return 0;
 }
 
+void
+plbu_viewport_set(struct limare_frame *frame,
+		  float x, float y, float w, float h)
+{
+	struct lima_cmd *cmds = frame->plbu_commands;
+	int i = frame->plbu_commands_count;
+
+	cmds[i].val = from_float(x);
+	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_X;
+	i++;
+
+	cmds[i].val = from_float(w);
+	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_W;
+	i++;
+
+	cmds[i].val = from_float(y);
+	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_Y;
+	i++;
+
+	cmds[i].val = from_float(h);
+	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_H;
+	i++;
+
+	frame->plbu_commands_count = i;
+}
+
 int
 plbu_command_queue_create(struct limare_state *state,
 			  struct limare_frame *frame, int size, int heap_size)
@@ -136,6 +162,12 @@ plbu_command_queue_create(struct limare_state *state,
 	}
 	i++;
 
+	frame->plbu_commands_count = i;
+
+	plbu_viewport_set(frame, 0.0, 0.0, state->width, state->height);
+
+	i = frame->plbu_commands_count;
+
 	cmds[i].val = frame->mem_physical + frame->tile_heap_offset;
 	cmds[i].cmd = LIMA_PLBU_CMD_TILE_HEAP_START;
 
@@ -144,22 +176,6 @@ plbu_command_queue_create(struct limare_state *state,
 	cmds[i].val = frame->mem_physical + frame->tile_heap_offset +
 		frame->tile_heap_size;
 	cmds[i].cmd = LIMA_PLBU_CMD_TILE_HEAP_END;
-	i++;
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_Y;
-	i++;
-
-	cmds[i].val = from_float(state->height);
-	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_H;
-	i++;
-
-	cmds[i].val = from_float(0.0);
-	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_X;
-	i++;
-
-	cmds[i].val = from_float(state->width);
-	cmds[i].cmd = LIMA_PLBU_CMD_VIEWPORT_W;
 	i++;
 
 	cmds[i].val = 0x00000000;

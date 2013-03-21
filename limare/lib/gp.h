@@ -100,6 +100,9 @@ int plbu_command_queue_create(struct limare_state *state,
 			      struct limare_frame *frame,
 			      int size, int heap_size);
 
+void plbu_viewport_set(struct limare_frame *frame,
+		       float x, float y, float w, float h);
+
 void plbu_commands_draw_add(struct limare_frame *frame, struct draw_info *draw);
 void plbu_commands_finish(struct limare_frame *frame);
 
