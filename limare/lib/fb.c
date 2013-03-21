@@ -136,6 +136,12 @@ fb_open(struct limare_state *state)
 	fb->fb_var = fb_var;
 	state->fb = fb;
 
+	fb->fb_var->yoffset = 0;
+
+	if (ioctl(fb->fd, FBIOPAN_DISPLAY, fb->fb_var))
+		printf("Error: failed to run ioctl on %s: %s\n",
+			FBDEV_DEV, strerror(errno));
+
 	return 0;
 }
 
