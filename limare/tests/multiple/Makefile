@@ -1,6 +1,6 @@
 NAME = multiple
 
-targets = egl
+targets = egl limare
 
 objs =	../common/texture_milkyway.o ../common/esTransform.o \
 	../common/cube_mesh.o ../common/companion_texture_flat.o \
