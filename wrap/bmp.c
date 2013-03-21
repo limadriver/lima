@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011      Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -107,7 +107,7 @@ bmp_header_write(int fd, int width, int height)
 	return 0;
 }
 
-void
+int
 wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename)
 {
 	int ret, fd;
@@ -115,7 +115,7 @@ wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename)
 	fd = open(filename, O_WRONLY| O_TRUNC | O_CREAT, 0644);
 	if (fd == -1) {
 		printf("Failed to open %s: %s\n", filename, strerror(errno));
-		return;
+		return errno;
 	}
 
 	bmp_header_write(fd, width, height);
@@ -124,7 +124,9 @@ wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename)
 	if (ret != (width * height * 4)) {
 		fprintf(stderr, "%s: failed to write bmp data: %s\n",
 			__func__, strerror(errno));
-		return;
+		return errno;
 	}
+
+	return 0;
 }
 

@@ -1353,7 +1353,9 @@ mali_wrap_bmp_dump(void)
 		render_height = 480 * 2;
 	}
 
-	wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/tmp/lima.wrap.bmp");
+	if (wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/tmp/lima.wrap.bmp"))
+		printf("Failed to dump on frame %04d (0x%08X)\n", frame_count,
+		       (unsigned int) address);
 }
 
 /*

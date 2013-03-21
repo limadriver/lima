@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011      Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -24,6 +24,6 @@
 #ifndef BMP_DUMP_H
 #define BMP_DUMP_H 1
 
-void wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename);
+int wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename);
 
 #endif /* BMP_DUMP_H */
