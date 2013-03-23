@@ -188,13 +188,8 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	frame_regs.clear_value_color_2 = info->clear_color;
 	frame_regs.clear_value_color_3 = info->clear_color;
 
-	if ((info->width & 0x0F) || (info->height & 0x0F)) {
-		frame_regs.width = info->width;
-		frame_regs.height = info->height;
-	} else {
-		frame_regs.width = 0;
-		frame_regs.height = 0;
-	}
+	frame_regs.width = info->width - 1;
+	frame_regs.height = info->height - 1;
 
 	/* not needed for drawing a simple triangle */
 	frame_regs.fragment_stack_address = 0;

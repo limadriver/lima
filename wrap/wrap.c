@@ -864,7 +864,7 @@ dev_mali200_pp_job_start_pre(void *data)
 	render_address = job->wb[0].address;
 	render_pitch = job->wb[0].pitch * 8;
 	if (job->frame.height)
-		render_height = job->frame.height;
+		render_height = job->frame.height + 1;
 	else
 		render_height = job->frame.supersampled_height + 1;
 	render_format = LIMA_PIXEL_FORMAT_RGBA_8888;
@@ -930,7 +930,7 @@ dev_mali400_pp_job_start_r2p1_pre(void *data)
 	render_address = job->wb[0].address;
 	render_pitch = job->wb[0].pitch * 8;
 	if (job->frame.height)
-		render_height = job->frame.height;
+		render_height = job->frame.height + 1;
 	else
 		render_height = job->frame.supersampled_height + 1;
 	render_format = LIMA_PIXEL_FORMAT_RGBA_8888;
@@ -1019,7 +1019,7 @@ dev_mali400_pp_job_start_r3p0_pre(void *data)
 	render_address = job->wb0.address;
 	render_pitch = job->wb0.pitch * 8;
 	if (job->frame.height)
-		render_height = job->frame.height;
+		render_height = job->frame.height + 1;
 	else
 		render_height = job->frame.supersampled_height + 1;
 	render_format = LIMA_PIXEL_FORMAT_RGBA_8888;
@@ -1350,10 +1350,10 @@ mali_wrap_bmp_dump(void)
 
 	if (render_height < 16) {
 		printf("%s: invalid height: %d\n", __func__, render_height);
-		render_height = 480 * 2;
+		render_height = 480;
 	}
 
-	if (wrap_bmp_dump(address, 0, render_pitch / 4, render_height / 2, "/tmp/lima.wrap.bmp"))
+	if (wrap_bmp_dump(address, 0, render_pitch / 4, render_height, "/tmp/lima.wrap.bmp"))
 		printf("Failed to dump on frame %04d (0x%08X)\n", frame_count,
 		       (unsigned int) address);
 }
