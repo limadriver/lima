@@ -235,6 +235,7 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	wb_regs.pitch = info->pitch / 8;
 	/* todo: infrastructure to read fbdev and see whether, we need to swap R/B */
 	//wb.mrt_bits = 4; /* set to RGBA instead of BGRA */
+	wb_regs.mrt_bits = 2;
 	wb_regs.mrt_pitch = 0;
 	wb_regs.zero = 0;
 
