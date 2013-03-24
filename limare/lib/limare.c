@@ -35,6 +35,7 @@
 
 #include <GLES2/gl2.h>
 #define GL_ALPHA_TEST 0x0BC0
+#define GL_CLIP_PLANE0 0x3000
 
 #define u32 uint32_t
 #include "linux/mali_ioctl.h"
@@ -1609,6 +1610,10 @@ limare_disable(struct limare_state *state, int parameter)
 						      render_state_template,
 						      GL_ALWAYS,
 						      state->alpha_func_alpha);
+	} else if ((parameter == GL_CLIP_PLANE0) ||
+		   (parameter == GL_STENCIL_TEST)){
+		/* silently ignore -- for now */
+		return 0;
 	} else
 		return limare_render_state_set(state->render_state_template,
 					       parameter, 0);
