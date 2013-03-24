@@ -19,5 +19,6 @@ liblimare.so: $(OBJS)
 
 install: liblimare.so
 	$(INSTALL) liblimare.so $(prefix)/lib/
+	$(INSTALL) limare.h $(prefix)/include/
 
 include $(TOP)Makefile.post
