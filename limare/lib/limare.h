@@ -43,7 +43,8 @@ struct limare_frame {
 	unsigned int tile_heap_offset;
 	int tile_heap_size;
 
-	struct draw_info *draws[32];
+#define LIMARE_DRAW_COUNT 512
+	struct draw_info *draws[LIMARE_DRAW_COUNT];
 	int draw_count;
 
 	struct plb *plb;

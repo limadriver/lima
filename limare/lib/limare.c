@@ -713,7 +713,7 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 		}
 	}
 
-	if (frame->draw_count >= 32) {
+	if (frame->draw_count >= LIMARE_DRAW_COUNT) {
 		printf("%s: Error: too many draws already!\n", __func__);
 		return -1;
 	}
