@@ -1370,7 +1370,7 @@ limare_link(struct limare_state *state)
 }
 
 static int
-limare_depth_clear_init(struct limare_state *state)
+limare_depth_buffer_clear_init(struct limare_state *state)
 {
 	struct limare_program *program;
 	const char *source =
@@ -1380,29 +1380,14 @@ limare_depth_clear_init(struct limare_state *state)
 		"{\n"
 		"	gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
 		"}\n";
-	float vertices[12] = {
-		   0.0,    0.0, 1.0, 1.0,
-		4096.0,    0.0, 1.0, 1.0,
-		   0.0, 4096.0, 1.0, 1.0,
-	};
-	unsigned char *indices;
 	int ret;
 
-	/*
-	 * We need three blocks:
-	 * 0: vertices (in a varying).
-	 * 1: fragment shader.
-	 * 2: indices.
-	 */
-	if ((state->aux_mem_size - state->aux_mem_used) < 0xC0) {
+	if ((state->aux_mem_size - state->aux_mem_used) < 0x80) {
 		printf("%s: no space left!\n", __func__);
 		return -ENOMEM;
 	}
 
-	/*
-	 * let this waste space for the vertex shader, we re-use it
-	 * for our verticesaryings later on.
-	 */
+	/* waste space for the vertex shader... */
 	program = limare_program_create(state->aux_mem_address,
 					state->aux_mem_physical,
 					state->aux_mem_used, 0x80);
@@ -1421,31 +1406,15 @@ limare_depth_clear_init(struct limare_state *state)
 		return ret;
 	}
 
-	state->depth_clear_program = program;
-
-	/* now get our vertices uploaded */
-	state->depth_clear_vertices_physical =
-		state->aux_mem_physical + state->aux_mem_used;
-
-	memcpy(state->aux_mem_address + state->aux_mem_used,
-	       vertices, 12 * sizeof(float));
+	state->depth_buffer_clear_program = program;
 
 	state->aux_mem_used += 0x80;
-
-	/* now upload the indices */
-	state->depth_clear_indices_physical =
-		state->aux_mem_physical + state->aux_mem_used;
-	indices = state->aux_mem_address + state->aux_mem_used;
-	indices[0] = 0;
-	indices[1] = 1;
-	indices[2] = 2;
-	state->aux_mem_used += 0x40;
 
 	return 0;
 }
 
 int
-limare_depth_clear(struct limare_state *state)
+limare_depth_buffer_clear(struct limare_state *state)
 {
 	struct limare_frame *frame = state->frames[state->frame_current];
 	struct render_state template = {
@@ -1455,10 +1424,18 @@ limare_depth_clear(struct limare_state *state)
 		0x00000000, 0x00000000, 0x00000000, 0x00000000
 	};
 	struct draw_info *draw;
+	float vertices[12] = {
+		   0.0,    0.0, 1.0, 1.0,
+		4096.0,    0.0, 1.0, 1.0,
+		   0.0, 4096.0, 1.0, 1.0,
+	};
+	unsigned int vertices_physical;
+	unsigned char indices[3] = {0x00, 0x01, 0x02};
+	unsigned int indices_physical;
 	int ret;
 
-	if (!state->depth_clear_program) {
-		ret = limare_depth_clear_init(state);
+	if (!state->depth_buffer_clear_program) {
+		ret = limare_depth_buffer_clear_init(state);
 		if (ret)
 			return ret;
 	}
@@ -1468,17 +1445,30 @@ limare_depth_clear(struct limare_state *state)
 		return -1;
 	}
 
+	if ((frame->mem_size - frame->mem_used) < 0x80) {
+		printf("%s: no space left!\n", __func__);
+		return -ENOMEM;
+	}
+
+	vertices_physical = frame->mem_physical + frame->mem_used;
+	memcpy(frame->mem_address + frame->mem_used, vertices,
+	       12 * sizeof(float));
+
+	indices_physical = frame->mem_physical + frame->mem_used + 0x40;
+	memcpy(frame->mem_address + frame->mem_used + 0x40, indices, 3);
+
+	frame->mem_used += 0x80;
+
 	draw = draw_create_new(state, frame, LIMA_DRAW_QUAD_DIRECT, 3, 0, 3);
 	frame->draws[frame->draw_count] = draw;
 	frame->draw_count++;
 
-	plbu_info_attach_indices(draw, GL_UNSIGNED_BYTE,
-				 state->depth_clear_indices_physical);
+	plbu_info_attach_indices(draw, GL_UNSIGNED_BYTE, indices_physical);
 
-	draw_render_state_create(frame, state->depth_clear_program, draw,
+	draw_render_state_create(frame, state->depth_buffer_clear_program, draw,
 				 &template);
-	plbu_commands_depth_clear_draw_add(state, frame, draw,
-					   state->depth_clear_vertices_physical);
+	plbu_commands_depth_buffer_clear_draw_add(state, frame, draw,
+						  vertices_physical);
 
 	return 0;
 }

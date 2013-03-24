@@ -105,10 +105,10 @@ void plbu_viewport_set(struct limare_frame *frame,
 
 void plbu_commands_draw_add(struct limare_state *state,
 			    struct limare_frame *frame, struct draw_info *draw);
-void plbu_commands_depth_clear_draw_add(struct limare_state *state,
-					struct limare_frame *frame,
-					struct draw_info *draw,
-					unsigned int varying_vertices_physical);
+void plbu_commands_depth_buffer_clear_draw_add(struct limare_state *state,
+					       struct limare_frame *frame,
+					       struct draw_info *draw, unsigned
+					       int varying_vertices_physical);
 void plbu_commands_finish(struct limare_frame *frame);
 
 int plbu_info_attach_uniforms(struct limare_frame *frame,

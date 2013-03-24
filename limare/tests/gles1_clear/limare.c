@@ -51,7 +51,7 @@ main(int argc, char *argv[])
 
 	limare_frame_new(state);
 
-	ret = limare_depth_clear(state);
+	ret = limare_depth_buffer_clear(state);
 	if (ret)
 		return ret;
 

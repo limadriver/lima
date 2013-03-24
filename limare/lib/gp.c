@@ -591,10 +591,10 @@ plbu_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 }
 
 void
-plbu_commands_depth_clear_draw_add(struct limare_state *state,
-				   struct limare_frame *frame,
-				   struct draw_info *draw,
-				   unsigned int varying_vertices_physical)
+plbu_commands_depth_buffer_clear_draw_add(struct limare_state *state,
+					  struct limare_frame *frame,
+					  struct draw_info *draw, unsigned int
+					  varying_vertices_physical)
 {
 	struct plbu_info *plbu = draw->plbu;
 	struct lima_cmd *cmds = frame->plbu_commands;

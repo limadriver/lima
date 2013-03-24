@@ -160,9 +160,7 @@ struct limare_state {
 	struct limare_program *program_current;
 	int program_handles;
 
-	struct limare_program *depth_clear_program;
-	unsigned int depth_clear_vertices_physical;
-	unsigned int depth_clear_indices_physical;
+	struct limare_program *depth_buffer_clear_program;
 
 	/* space used for vertex buffers and textures */
 	void *aux_mem_address;
@@ -242,7 +240,7 @@ int limare_draw_elements(struct limare_state *state, int mode, int count,
 			 void *indices, int indices_type);
 int limare_draw_elements_buffer(struct limare_state *state, int buffer_handle);
 
-int limare_depth_clear(struct limare_state *state);
+int limare_depth_buffer_clear(struct limare_state *state);
 
 int limare_frame_new(struct limare_state *state);
 int limare_frame_flush(struct limare_state *state);
