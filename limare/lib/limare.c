@@ -386,6 +386,7 @@ static void
 limare_state_init(struct limare_state *state, unsigned int clear_color)
 {
 	state->clear_color = clear_color;
+	state->depth_clear_depth = 1.0;
 
 	state->viewport_x = 0.0;
 	state->viewport_y = 0.0;
@@ -1465,6 +1466,10 @@ limare_depth_buffer_clear(struct limare_state *state)
 		return -ENOMEM;
 	}
 
+	vertices[2] = state->depth_clear_depth;
+	vertices[6] = state->depth_clear_depth;
+	vertices[10] = state->depth_clear_depth;
+
 	vertices_physical = frame->mem_physical + frame->mem_used;
 	memcpy(frame->mem_address + frame->mem_used, vertices,
 	       12 * sizeof(float));
@@ -1852,4 +1857,17 @@ limare_polygon_offset(struct limare_state *state, float factor, float units)
 
 	return limare_render_state_polygon_offset(state->render_state_template,
 						  state->polygon_offset_factor);
+}
+
+int
+limare_depth_clear_depth(struct limare_state *state, float depth)
+{
+	if (depth < 0.0)
+		depth = 0.0;
+	else if (depth > 1.0)
+		depth = 1.0;
+
+	state->depth_clear_depth = depth;
+
+	return 0;
 }
