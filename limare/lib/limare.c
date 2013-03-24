@@ -49,6 +49,10 @@
 #include "hfloat.h"
 #include "program.h"
 
+#define FRAME_MEMORY_SIZE 0x180000
+#define AUX_MEMORY_SIZE 0x01000000
+#define FB_MEMORY_OFFSET 0x08000000
+
 static int
 limare_fd_open(struct limare_state *state)
 {
@@ -387,8 +391,8 @@ limare_state_setup(struct limare_state *state, int width, int height,
 		return -1;
 
 	/* space for our programs and textures. */
-	state->aux_mem_size = 0x200000;
-	state->aux_mem_physical = state->mem_base + 0x300000;
+	state->aux_mem_size = AUX_MEMORY_SIZE;
+	state->aux_mem_physical = state->mem_base + 2 * FRAME_MEMORY_SIZE;
 	state->aux_mem_address = mmap(NULL, state->aux_mem_size,
 				       PROT_READ | PROT_WRITE,
 				       MAP_SHARED, state->fd,
@@ -411,7 +415,7 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	state->aux_mem_used += 0x1000;
 
 	/* try to grab the necessary space for our image */
-	if (fb_init(state, width, height, 0x0500000))
+	if (fb_init(state, width, height, FB_MEMORY_OFFSET))
 		return -1;
 
 	limare_state_init(state, clear_color);
@@ -841,8 +845,9 @@ limare_frame_new(struct limare_state *state)
 		limare_frame_destroy(state->frames[state->frame_current]);
 
 	state->frames[state->frame_current] =
-		limare_frame_create(state, 0x180000 * state->frame_current,
-				    0x180000);
+		limare_frame_create(state,
+				    FRAME_MEMORY_SIZE * state->frame_current,
+				    FRAME_MEMORY_SIZE);
 	if (!state->frames[state->frame_current])
 		return -1;
 
