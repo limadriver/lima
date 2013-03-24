@@ -329,3 +329,21 @@ limare_render_state_depth(struct render_state *render, float near, float far)
 
 	return 0;
 }
+
+int
+limare_render_state_polygon_offset(struct render_state *render, int value)
+{
+	render->unknown0C &= ~0x00FF0000;
+
+	if (value) {
+		unsigned char tmp;
+
+		if (value > 0x80)
+			tmp = 0x80;
+		else /* automatically sets 0x80 */
+			tmp = 0x100 - value;
+		render->unknown0C |= tmp << 16;
+	}
+
+	return 0;
+}

@@ -58,5 +58,6 @@ int limare_render_state_blend_func(struct render_state *render,
 				   int sfactor, int dfactor);
 int limare_render_state_depth(struct render_state *render,
 			      float near, float far);
+int limare_render_state_polygon_offset(struct render_state *render, int value);
 
 #endif /* LIMARE_RENDER_STATE */

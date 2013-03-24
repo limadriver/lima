@@ -803,6 +803,16 @@ limare_viewport_transform(struct limare_state *state)
 	state->viewport_transform[5] = state->viewport_y + h;
 	state->viewport_transform[6] = state->depth_near + d;
 	state->viewport_transform[7] = 0.0;
+
+	if (state->polygon_offset) {
+		unsigned int *tmp =
+			(unsigned int *) &state->viewport_transform[6];
+
+		if (*tmp < state->polygon_offset_units)
+			*tmp = 0x00000000;
+		else
+			*tmp -= state->polygon_offset_units;
+	}
 }
 
 static struct limare_texture *
@@ -1524,6 +1534,15 @@ limare_enable(struct limare_state *state, int parameter)
 		return limare_render_state_depth_func(state->
 						      render_state_template,
 						      state->depth_func);
+	} else if (parameter == GL_POLYGON_OFFSET_FILL) {
+		state->polygon_offset = 1;
+
+		limare_viewport_transform(state);
+
+		return limare_render_state_polygon_offset(state->
+							  render_state_template,
+							  state->
+							  polygon_offset_factor);
 	} else if (parameter == GL_SCISSOR_TEST) {
 		if (!state->scissor) {
 			state->scissor = 1;
@@ -1551,6 +1570,14 @@ limare_disable(struct limare_state *state, int parameter)
 		return limare_render_state_depth_func(state->
 						      render_state_template,
 						      GL_ALWAYS);
+	} else if (parameter == GL_POLYGON_OFFSET_FILL) {
+		state->polygon_offset = 0;
+
+		limare_viewport_transform(state);
+
+		return limare_render_state_polygon_offset(state->
+							  render_state_template,
+							  0);
 	} else if (parameter == GL_SCISSOR_TEST) {
 		if (state->scissor) {
 			state->scissor = 0;
@@ -1794,4 +1821,35 @@ limare_frontface(struct limare_state *state, int face)
 		state->cull_front_cw = 0;
 
 	return 0;
+}
+
+int
+limare_polygon_offset(struct limare_state *state, float factor, float units)
+{
+	if (factor > 0)
+		state->polygon_offset_factor = 0;
+	else if (factor < -32)
+		state->polygon_offset_factor = 0x80;
+	else
+		state->polygon_offset_factor = factor * -4;
+
+	if (units > 0)
+		state->polygon_offset_units = 0;
+	else {
+		state->polygon_offset_units = units * -2;
+		/*
+		 * removing up to half the depth is enough, no?
+		 * otherwise we might mess up the floats :)
+		 */
+		state->polygon_offset_units &= 0x007FFFFFF;
+	}
+
+	if (!state->polygon_offset)
+		return 0;
+
+	if (!state->viewport_dirty && !state->depth_dirty)
+		limare_viewport_transform(state);
+
+	return limare_render_state_polygon_offset(state->render_state_template,
+						  state->polygon_offset_factor);
 }
