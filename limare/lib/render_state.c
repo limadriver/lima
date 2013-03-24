@@ -370,5 +370,10 @@ limare_render_state_alpha_func(struct render_state *render,
 	render->unknown20 &= ~0x07;
 	render->unknown20 |= lima_func;
 
+	if (func == GL_ALWAYS)
+		render->unknown34 |= 0x200;
+	else /* disable early Z */
+		render->unknown34 &= ~0x200;
+
 	return 0;
 }
