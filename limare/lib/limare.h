@@ -73,6 +73,7 @@ struct limare_attribute_buffer {
 
 	int component_size;
 	int component_count;
+	int entry_stride;
 	int entry_count;
 
 	/* in AUX space */
@@ -186,10 +187,11 @@ int limare_uniform_attach(struct limare_state *state, char *name,
 			  int count, float *data);
 int limare_attribute_pointer(struct limare_state *state, char *name,
 			     int component_size, int component_count,
-			     int entry_count, void *data);
+			     int entry_stride, int entry_count, void *data);
 int limare_attribute_buffer_upload(struct limare_state *state,
 				   int component_size, int component_count,
-				   int entry_count, void *data);
+				   int entry_stride, int entry_count,
+				   void *data);
 int limare_attribute_buffer_attach(struct limare_state *state, char *name,
 				   int buffer_handle);
 

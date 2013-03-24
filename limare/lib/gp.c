@@ -416,8 +416,7 @@ vs_info_finalize(struct limare_state *state, struct limare_frame *frame,
 			info->common->attributes[i].physical =
 				symbol->mem_physical;
 			info->common->attributes[i].size =
-				((symbol->component_size *
-				  symbol->component_count) << 11) |
+				(symbol->entry_stride << 11) |
 				(symbol->component_count - 1);
 		}
 
@@ -447,12 +446,9 @@ vs_info_finalize(struct limare_state *state, struct limare_frame *frame,
 
 			info->attribute_area[i].physical =
 				symbol->mem_physical +
-				((symbol->component_size *
-				  symbol->component_count) *
-				 draw->vertex_start);
+				(symbol->entry_stride * draw->vertex_start);
 			info->attribute_area[i].size =
-				((symbol->component_size *
-				  symbol->component_count) << 11) |
+				(symbol->entry_stride << 11) |
 				(symbol->component_count - 1);
 		}
 

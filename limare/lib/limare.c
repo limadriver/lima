@@ -519,7 +519,7 @@ limare_uniform_attach(struct limare_state *state, char *name, int count, float *
 int
 limare_attribute_pointer(struct limare_state *state, char *name,
 			 int component_size, int component_count,
-			 int entry_count, void *data)
+			 int entry_stride, int entry_count, void *data)
 {
 	struct limare_program *program = state->program_current;
 	struct symbol *symbol = NULL;
@@ -556,10 +556,12 @@ limare_attribute_pointer(struct limare_state *state, char *name,
 	symbol->data_allocated = 0;
 	symbol->data_handle = 0;
 
+	if (!entry_stride)
+		entry_stride = component_size * component_count;
 	symbol->component_count = component_count;
 	symbol->entry_count = entry_count;
-	symbol->size = symbol->component_size * symbol->component_count *
-		symbol->entry_count;
+	symbol->entry_stride = entry_stride;
+	symbol->size = symbol->entry_stride * symbol->entry_count;
 
 	symbol->data = data;
 
@@ -591,7 +593,7 @@ attribute_upload(struct limare_frame *frame, struct symbol *symbol)
 int
 limare_attribute_buffer_upload(struct limare_state *state,
 			       int component_size, int component_count,
-			       int entry_count, void *data)
+			       int entry_stride, int entry_count, void *data)
 {
 	struct limare_attribute_buffer *buffer;
 	int i, size;
@@ -614,7 +616,10 @@ limare_attribute_buffer_upload(struct limare_state *state,
 		return -1;
 	}
 
-	size = component_size * component_count * entry_count;
+	if (!entry_stride)
+		entry_stride = component_size * component_count;
+
+	size = entry_stride * entry_count;
 	size = ALIGN(size, 0x40);
 
 	if ((state->aux_mem_size - state->aux_mem_used) < size) {
@@ -630,6 +635,7 @@ limare_attribute_buffer_upload(struct limare_state *state,
 
 	buffer->component_size = component_size;
 	buffer->component_count = component_count;
+	buffer->entry_stride = entry_stride;
 	buffer->entry_count = entry_count;
 
 	buffer->handle = 0x80000000 + state->attribute_buffer_handles;
@@ -699,8 +705,8 @@ limare_attribute_buffer_attach(struct limare_state *state, char *name,
 
 	symbol->component_count = buffer->component_count;
 	symbol->entry_count = buffer->entry_count;
-	symbol->size = symbol->component_size * symbol->component_count *
-		symbol->entry_count;
+	symbol->entry_stride = buffer->entry_stride;
+	symbol->size = symbol->entry_stride * symbol->entry_count;
 
 	symbol->data_handle = buffer_handle;
 	symbol->mem_physical = buffer->mem_physical;

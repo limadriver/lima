@@ -77,7 +77,8 @@ main(int argc, char *argv[])
 
 	limare_link(state);
 
-	limare_attribute_pointer(state, "aPosition", 4, 3, 3, vertices);
+	limare_attribute_pointer(state, "aPosition", 4,
+				 3, 0, 3, vertices);
 
 	limare_frame_new(state);
 

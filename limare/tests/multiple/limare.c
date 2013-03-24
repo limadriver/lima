@@ -102,9 +102,11 @@ main(int argc, char *argv[])
 	 * TODO: create vertex buffer example, and a limare equivalent. We can
 	 * then move small attributes to per-frame storage.
 	 */
-	limare_attribute_pointer(state, "in_vertex", 4, 3, 4, back_vertices);
+	limare_attribute_pointer(state, "in_vertex", 4,
+				 3, 0, 4, back_vertices);
 
-	limare_attribute_pointer(state, "in_coord", 4, 2, 4, back_coords);
+	limare_attribute_pointer(state, "in_coord", 4,
+				 2, 0, 4, back_coords);
 
 	int back_texture =
 		limare_texture_upload(state, texture_milkyway,
@@ -170,9 +172,9 @@ main(int argc, char *argv[])
 		return ret;
 
 	limare_attribute_pointer(state, "in_position", 4,
-				 3, CUBE_VERTEX_COUNT, cube_vertices);
+				 3, 0, CUBE_VERTEX_COUNT, cube_vertices);
 	limare_attribute_pointer(state, "in_normal", 4,
-				 3, CUBE_VERTEX_COUNT, cube_normals);
+				 3, 0, CUBE_VERTEX_COUNT, cube_normals);
 
 	ESMatrix constant_modelview;
 	esMatrixLoadIdentity(&constant_modelview);
@@ -270,12 +272,12 @@ main(int argc, char *argv[])
 		return ret;
 
 	limare_attribute_pointer(state, "in_position", 4,
-				 3, CUBE_VERTEX_COUNT, cube_vertices);
+				 3, 0, CUBE_VERTEX_COUNT, cube_vertices);
 	limare_attribute_pointer(state, "in_coord", 4,
-				 2, CUBE_VERTEX_COUNT,
+				 2, 0, CUBE_VERTEX_COUNT,
 				 cube_texture_coordinates);
 	limare_attribute_pointer(state, "in_normal", 4,
-				 3, CUBE_VERTEX_COUNT, cube_normals);
+				 3, 0, CUBE_VERTEX_COUNT, cube_normals);
 
 	int flat_texture =
 		limare_texture_upload(state, companion_texture_flat,
@@ -332,18 +334,18 @@ main(int argc, char *argv[])
 	 */
 #if 1
 	int cube_vertices_buffer =
-		limare_attribute_buffer_upload(state, 4, 3,
-					       COMPANION_VERTEX_COUNT,
+		limare_attribute_buffer_upload(state, 4,
+					       3, 0, COMPANION_VERTEX_COUNT,
 					       companion_vertices);
 
 	int cube_texture_coordinates_buffer =
-		limare_attribute_buffer_upload(state, 4, 2,
-					       COMPANION_VERTEX_COUNT,
+		limare_attribute_buffer_upload(state, 4,
+					       2, 0, COMPANION_VERTEX_COUNT,
 					       companion_texture_coordinates);
 
 	int cube_normals_buffer =
-		limare_attribute_buffer_upload(state, 4, 3,
-					       COMPANION_VERTEX_COUNT,
+		limare_attribute_buffer_upload(state, 4,
+					       3, 0, COMPANION_VERTEX_COUNT,
 					       companion_normals);
 
 	limare_attribute_buffer_attach(state, "in_position",

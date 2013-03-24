@@ -99,12 +99,12 @@ main(int argc, char *argv[])
 	limare_link(state);
 
 	limare_attribute_pointer(state, "in_position", 4,
-				 3, CUBE_VERTEX_COUNT, cube_vertices);
+				 3, 0, CUBE_VERTEX_COUNT, cube_vertices);
 	limare_attribute_pointer(state, "in_coord", 4,
-				 2, CUBE_VERTEX_COUNT,
+				 2, 0, CUBE_VERTEX_COUNT,
 				 cube_texture_coordinates);
 	limare_attribute_pointer(state, "in_normal", 4,
-				 3, CUBE_VERTEX_COUNT, cube_normals);
+				 3, 0, CUBE_VERTEX_COUNT, cube_normals);
 
 	int texture = limare_texture_upload(state, companion_texture_flat,
 					    COMPANION_TEXTURE_WIDTH,

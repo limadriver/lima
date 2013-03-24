@@ -98,18 +98,18 @@ main(int argc, char *argv[])
 	limare_link(state);
 
 	int vertices_buffer =
-		limare_attribute_buffer_upload(state, 4, 3,
-					       COMPANION_ARRAY_COUNT,
+		limare_attribute_buffer_upload(state, 4,
+					       3, 0, COMPANION_ARRAY_COUNT,
 					       vertices_array);
 
 	int texture_coordinates_buffer =
-		limare_attribute_buffer_upload(state, 4, 2,
-					       COMPANION_ARRAY_COUNT,
+		limare_attribute_buffer_upload(state, 4,
+					       2, 0, COMPANION_ARRAY_COUNT,
 					       texture_coordinates_array);
 
 	int normals_buffer =
-		limare_attribute_buffer_upload(state, 4, 3,
-					       COMPANION_ARRAY_COUNT,
+		limare_attribute_buffer_upload(state, 4,
+					       3, 0, COMPANION_ARRAY_COUNT,
 					       normals_array);
 
 	limare_attribute_buffer_attach(state, "in_position", vertices_buffer);

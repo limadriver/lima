@@ -102,13 +102,13 @@ main(int argc, char *argv[])
 
 	limare_link(state);
 
-	limare_attribute_pointer(state, "in_position", 4, 3,
-				 COMPANION_ARRAY_COUNT, vertices_array);
-	limare_attribute_pointer(state, "in_coord", 4, 2,
-				 COMPANION_ARRAY_COUNT,
+	limare_attribute_pointer(state, "in_position", 4,
+				 3, 0, COMPANION_ARRAY_COUNT, vertices_array);
+	limare_attribute_pointer(state, "in_coord", 4,
+				 2, 0, COMPANION_ARRAY_COUNT,
 				 texture_coordinates_array);
-	limare_attribute_pointer(state, "in_normal", 4, 3,
-				 COMPANION_ARRAY_COUNT, normals_array);
+	limare_attribute_pointer(state, "in_normal", 4,
+				 3, 0, COMPANION_ARRAY_COUNT, normals_array);
 
 	int texture = limare_texture_upload(state, companion_texture,
 					    COMPANION_TEXTURE_WIDTH,
