@@ -172,8 +172,6 @@ main(int argc, char *argv[])
 	normal[7] = modelview.m[2][1];
 	normal[8] = modelview.m[2][2];
 
-	glEnable(GL_TEXTURE_2D);
-
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
 
