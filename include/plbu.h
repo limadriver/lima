@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -57,6 +57,7 @@
  *         Set these according to cull face mode, and front face value.
  */
 #define LIMA_PLBU_CMD_PRIMITIVE_SETUP    0x1000010B
+#define LIMA_PLBU_CMD_PRIMITIVE_GLES2            0x00002000
 #define LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW         0x00040000
 #define LIMA_PLBU_CMD_PRIMITIVE_INDEX_BYTE       0x00000000
 #define LIMA_PLBU_CMD_PRIMITIVE_INDEX_SHORT      0x00000400
