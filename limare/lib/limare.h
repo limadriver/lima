@@ -118,6 +118,8 @@ int limare_link(struct limare_state *state);
 
 int limare_texture_upload(struct limare_state *state, const void *pixels,
 			  int width, int height, int format, int mipmap);
+int limare_texture_mipmap_upload(struct limare_state *state, int handle,
+				 int level, const void *pixels);
 int limare_texture_parameters(struct limare_state *state, int handle,
 			      int filter_mag, int filter_min,
 			      int wrap_s, int wrap_t);

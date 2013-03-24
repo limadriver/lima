@@ -664,6 +664,20 @@ limare_texture_upload(struct limare_state *state, const void *pixels,
 }
 
 int
+limare_texture_mipmap_upload(struct limare_state *state, int handle, int level,
+			     const void *pixels)
+{
+	struct limare_texture *texture = limare_texture_find(state, handle);
+
+	if (!texture) {
+		printf("%s: texture 0x%08X not found!\n", __func__, handle);
+		return -1;
+	}
+
+	return limare_texture_mipmap_upload_low(state, texture, level, pixels);
+}
+
+int
 limare_texture_parameters(struct limare_state *state, int handle,
 			  int filter_mag, int filter_min,
 			  int wrap_s, int wrap_t)
@@ -741,6 +755,12 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 
 	if (!texture) {
 		printf("%s: texture 0x%08X not found!\n", __func__, handle);
+		return -1;
+	}
+
+	if (!texture->complete) {
+		printf("%s: Error: texture 0x%08X still lacks mipmaps!\n",
+		       __func__, handle);
 		return -1;
 	}
 

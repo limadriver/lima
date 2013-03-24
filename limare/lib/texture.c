@@ -92,7 +92,7 @@ space_filler_index(int x, int y)
  * seem to be some positioning issues with the binary code as well.
  */
 static void
-texture_rgb565_swizzle(struct limare_texture *texture,
+texture_rgb565_swizzle(struct limare_texture_level *level,
 		       const unsigned char *pixels)
 {
 	int block_x, block_y, block_pitch;
@@ -100,21 +100,21 @@ texture_rgb565_swizzle(struct limare_texture *texture,
 	const unsigned char *source;
 	unsigned char *dest;
 
-	block_pitch = ALIGN(texture->width, 16) >> 4;
-	source_pitch = ALIGN(texture->width * 2, 4);
+	block_pitch = ALIGN(level->width, 16) >> 4;
+	source_pitch = ALIGN(level->width * 2, 4);
 
-	for (y = 0; y < texture->height; y++) {
+	for (y = 0; y < level->height; y++) {
 		block_y = y >> 4;
 		rem_y = y & 0x0F;
 
-		for (x = 0; x < texture->width; x++) {
+		for (x = 0; x < level->width; x++) {
 			block_x = x >> 4;
 			rem_x = x & 0x0F;
 
 			index = space_filler_index(rem_x, rem_y);
 
 			source = &pixels[y * source_pitch + 2 * x];
-			dest = texture->level[0].dest;
+			dest = level->dest;
 			dest += (2 * 256) * (block_y * block_pitch + block_x);
 			dest += 2 * index;
 
@@ -122,11 +122,13 @@ texture_rgb565_swizzle(struct limare_texture *texture,
 			dest[1] = source[1];
 		}
 	}
+
+	level->uploaded = 1;
 }
 
 static void
-texture_rgb565_mipmap(struct limare_texture_level *dst,
-		      struct limare_texture_level *src)
+texture_rgb565_mipmap_auto(struct limare_texture_level *dst,
+			   struct limare_texture_level *src)
 {
 	int x, y, dx, dy, offset;
 	int block_x, block_y, block_pitch;
@@ -228,16 +230,23 @@ texture_rgb565_mipmap(struct limare_texture_level *dst,
 			}
 		}
 	}
+
+	dst->uploaded = 1;
 }
 
 static int
-texture_rgb565_create(struct limare_state *state,
-		      struct limare_texture *texture, const void *src)
+texture_rgb565_allocate(struct limare_state *state,
+			struct limare_texture *texture)
 {
 	struct limare_texture_level *level;
-	int i, size = 0;
+	int i, size = 0, start;
 
-	for (i = 0; i < texture->levels; i++) {
+	if (texture->level[0].uploaded)
+		start = 1;
+	else
+		start = 0;
+
+	for (i = start; i < texture->levels; i++) {
 		int width, height, pitch;
 		level = &texture->level[i];
 
@@ -264,7 +273,7 @@ texture_rgb565_create(struct limare_state *state,
 		return -1;
 	}
 
-	for (i = 0; i < texture->levels; i++) {
+	for (i = start; i < texture->levels; i++) {
 		level = &texture->level[i];
 
 		level->dest = state->aux_mem_address + state->aux_mem_used;
@@ -273,11 +282,24 @@ texture_rgb565_create(struct limare_state *state,
 		state->aux_mem_used += level->size;
 	}
 
-	texture_rgb565_swizzle(texture, src);
+	return 0;
+}
+
+static int
+texture_rgb565_create(struct limare_state *state,
+		      struct limare_texture *texture, const void *src)
+{
+	int i, ret;
+
+	ret = texture_rgb565_allocate(state, texture);
+	if (ret)
+		return ret;
+
+	texture_rgb565_swizzle(&texture->level[0], src);
 
 	for (i = 1; i < texture->levels; i++)
-		texture_rgb565_mipmap(&texture->level[i],
-				      &texture->level[i - 1]);
+		texture_rgb565_mipmap_auto(&texture->level[i],
+					   &texture->level[i - 1]);
 
 	return 0;
 }
@@ -288,28 +310,29 @@ texture_rgb565_create(struct limare_state *state,
  *
  */
 static void
-texture_24_swizzle(struct limare_texture *texture, const unsigned char *pixels)
+texture_24_swizzle(struct limare_texture_level  *level,
+		   const unsigned char *pixels)
 {
 	int block_x, block_y, block_pitch;
 	int x, y, rem_x, rem_y, index, source_pitch;;
 	const unsigned char *source;
 	unsigned char *dest;
 
-	block_pitch = ALIGN(texture->width, 16) >> 4;
-	source_pitch = ALIGN(texture->width * 3, 4);
+	block_pitch = ALIGN(level->width, 16) >> 4;
+	source_pitch = ALIGN(level->width * 3, 4);
 
-	for (y = 0; y < texture->height; y++) {
+	for (y = 0; y < level->height; y++) {
 		block_y = y >> 4;
 		rem_y = y & 0x0F;
 
-		for (x = 0; x < texture->width; x++) {
+		for (x = 0; x < level->width; x++) {
 			block_x = x >> 4;
 			rem_x = x & 0x0F;
 
 			index = space_filler_index(rem_x, rem_y);
 
 			source = &pixels[y * source_pitch + 3 * x];
-			dest = texture->level[0].dest;
+			dest = level->dest;
 			dest += (3 * 256) * (block_y * block_pitch + block_x);
 			dest += 3 * index;
 
@@ -318,6 +341,8 @@ texture_24_swizzle(struct limare_texture *texture, const unsigned char *pixels)
 			dest[2] = source[2];
 		}
 	}
+
+	level->uploaded = 1;
 }
 
 /*
@@ -336,8 +361,8 @@ texture_24_swizzle(struct limare_texture *texture, const unsigned char *pixels)
  * Our code averages the 2x2 upper level pixels at edges.
  */
 static void
-texture_24_mipmap(struct limare_texture_level *dst,
-		  struct limare_texture_level *src)
+texture_24_mipmap_auto(struct limare_texture_level *dst,
+		       struct limare_texture_level *src)
 {
 	int x, y, dx, dy, offset;
 	int block_x, block_y, block_pitch;
@@ -420,16 +445,22 @@ texture_24_mipmap(struct limare_texture_level *dst,
 			}
 		}
 	}
+
+	dst->uploaded = 1;
 }
 
 static int
-texture_24_create(struct limare_state *state, struct limare_texture *texture,
-		  const void *src)
+texture_24_allocate(struct limare_state *state, struct limare_texture *texture)
 {
 	struct limare_texture_level *level;
-	int i, size = 0;
+	int i, size = 0, start;
 
-	for (i = 0; i < texture->levels; i++) {
+	if (texture->level[0].uploaded)
+		start = 1;
+	else
+		start = 0;
+
+	for (i = start; i < texture->levels; i++) {
 		int width, height, pitch;
 		level = &texture->level[i];
 
@@ -456,7 +487,7 @@ texture_24_create(struct limare_state *state, struct limare_texture *texture,
 		return -1;
 	}
 
-	for (i = 0; i < texture->levels; i++) {
+	for (i = start; i < texture->levels; i++) {
 		level = &texture->level[i];
 
 		level->dest = state->aux_mem_address + state->aux_mem_used;
@@ -465,37 +496,52 @@ texture_24_create(struct limare_state *state, struct limare_texture *texture,
 		state->aux_mem_used += level->size;
 	}
 
-	texture_24_swizzle(texture, src);
+	return 0;
+}
+
+static int
+texture_24_create(struct limare_state *state, struct limare_texture *texture,
+		  const void *src)
+{
+	int i, ret;
+
+	ret = texture_24_allocate(state, texture);
+	if (ret)
+		return ret;
+
+	texture_24_swizzle(&texture->level[0], src);
 
 	for (i = 1; i < texture->levels; i++)
-		texture_24_mipmap(&texture->level[i], &texture->level[i - 1]);
+		texture_24_mipmap_auto(&texture->level[i],
+				       &texture->level[i - 1]);
 
 	return 0;
 }
 
 static void
-texture_32_swizzle(struct limare_texture *texture, const unsigned char *pixels)
+texture_32_swizzle(struct limare_texture_level *level,
+		   const unsigned char *pixels)
 {
 	int block_x, block_y, block_pitch;
 	int x, y, rem_x, rem_y, index, source_pitch;;
 	const unsigned char *source;
 	unsigned char *dest;
 
-	block_pitch = ALIGN(texture->width, 16) >> 4;
-	source_pitch = texture->width * 4;
+	block_pitch = ALIGN(level->width, 16) >> 4;
+	source_pitch = level->width * 4;
 
-	for (y = 0; y < texture->height; y++) {
+	for (y = 0; y < level->height; y++) {
 		block_y = y >> 4;
 		rem_y = y & 0x0F;
 
-		for (x = 0; x < texture->width; x++) {
+		for (x = 0; x < level->width; x++) {
 			block_x = x >> 4;
 			rem_x = x & 0x0F;
 
 			index = space_filler_index(rem_x, rem_y);
 
 			source = &pixels[y * source_pitch + 4 * x];
-			dest = texture->level[0].dest;
+			dest = level->dest;
 			dest += (4 * 256) * (block_y * block_pitch + block_x);
 			dest += 4 * index;
 
@@ -505,6 +551,8 @@ texture_32_swizzle(struct limare_texture *texture, const unsigned char *pixels)
 			dest[3] = source[3];
 		}
 	}
+
+	level->uploaded = 1;
 }
 
 /*
@@ -514,8 +562,8 @@ texture_32_swizzle(struct limare_texture *texture, const unsigned char *pixels)
  * binary predivides the values and then adds them.
  */
 static void
-texture_32_mipmap(struct limare_texture_level *dst,
-		  struct limare_texture_level *src)
+texture_32_mipmap_auto(struct limare_texture_level *dst,
+		       struct limare_texture_level *src)
 {
 	int x, y, dx, dy, offset;
 	int block_x, block_y, block_pitch;
@@ -602,16 +650,22 @@ texture_32_mipmap(struct limare_texture_level *dst,
 			}
 		}
 	}
+
+	dst->uploaded = 1;
 }
 
 static int
-texture_32_create(struct limare_state *state, struct limare_texture *texture,
-		  const void *src)
+texture_32_allocate(struct limare_state *state, struct limare_texture *texture)
 {
 	struct limare_texture_level *level;
-	int i, size = 0;
+	int i, size = 0, start;
 
-	for (i = 0; i < texture->levels; i++) {
+	if (texture->level[0].uploaded)
+		start = 1;
+	else
+		start = 0;
+
+	for (i = start; i < texture->levels; i++) {
 		int width, height, pitch;
 		level = &texture->level[i];
 
@@ -638,7 +692,7 @@ texture_32_create(struct limare_state *state, struct limare_texture *texture,
 		return -1;
 	}
 
-	for (i = 0; i < texture->levels; i++) {
+	for (i = start; i < texture->levels; i++) {
 		level = &texture->level[i];
 
 		level->dest = state->aux_mem_address + state->aux_mem_used;
@@ -647,10 +701,24 @@ texture_32_create(struct limare_state *state, struct limare_texture *texture,
 		state->aux_mem_used += level->size;
 	}
 
-	texture_32_swizzle(texture, src);
+	return 0;
+}
+
+static int
+texture_32_create(struct limare_state *state, struct limare_texture *texture,
+		  const void *src)
+{
+	int i, ret;
+
+	ret = texture_32_allocate(state, texture);
+	if (ret)
+		return ret;
+
+	texture_32_swizzle(&texture->level[0], src);
 
 	for (i = 1; i < texture->levels; i++)
-		texture_32_mipmap(&texture->level[i], &texture->level[i - 1]);
+		texture_32_mipmap_auto(&texture->level[i],
+				       &texture->level[i - 1]);
 
 	return 0;
 }
@@ -861,7 +929,101 @@ limare_texture_create(struct limare_state *state, const void *src,
 	texture_descriptor_levels_attach(texture);
 	limare_texture_parameters_set(texture);
 
+	texture->complete = 1;
+
 	return texture;
+}
+
+int
+limare_texture_mipmap_upload_low(struct limare_state *state,
+				 struct limare_texture *texture,
+				 int level, const void *pixels)
+{
+	int i;
+
+	/*
+	 * If we hadn't flagged mipmapping before, we need to do a bit more
+	 * work than simply uploading.
+	 */
+	if (texture->levels == 1) {
+		int max, i, ret;
+
+		texture->complete = 0;
+
+		if (texture->width > texture->height)
+			max = texture->width;
+		else
+			max = texture->height;
+
+		for (i = 0; max >> i; i++)
+			;
+
+		texture->levels = i;
+
+		switch (texture->format) {
+		case LIMA_TEXEL_FORMAT_BGR_565:
+			ret = texture_rgb565_allocate(state, texture);
+			break;
+		// case LIMA_TEXEL_FORMAT_RGBA_5551:
+		// case LIMA_TEXEL_FORMAT_RGBA_4444:
+		// case LIMA_TEXEL_FORMAT_LA_88:
+		case LIMA_TEXEL_FORMAT_RGB_888:
+			ret = texture_24_allocate(state, texture);
+			break;
+		case LIMA_TEXEL_FORMAT_RGBA_8888:
+		// case LIMA_TEXEL_FORMAT_BGRA_8888:
+			ret = texture_32_allocate(state, texture);
+			break;
+		// case LIMA_TEXEL_FORMAT_RGBA64:
+		// case LIMA_TEXEL_FORMAT_DEPTH_STENCIL_32:
+		default:
+			printf("%s: unsupported format %x\n", __func__,
+			       texture->format);
+			return -1;
+		}
+
+		if (ret)
+			return ret;
+
+		ret = limare_texture_parameters_set(texture);
+		if (ret)
+			return ret;
+	}
+
+	/* now upload our texture */
+	switch (texture->format) {
+	case LIMA_TEXEL_FORMAT_BGR_565:
+		texture_rgb565_swizzle(&texture->level[level], pixels);
+		break;
+	// case LIMA_TEXEL_FORMAT_RGBA_5551:
+	// case LIMA_TEXEL_FORMAT_RGBA_4444:
+	// case LIMA_TEXEL_FORMAT_LA_88:
+	case LIMA_TEXEL_FORMAT_RGB_888:
+		texture_24_swizzle(&texture->level[level], pixels);
+		break;
+	case LIMA_TEXEL_FORMAT_RGBA_8888:
+	// case LIMA_TEXEL_FORMAT_BGRA_8888:
+		texture_32_swizzle(&texture->level[level], pixels);
+		break;
+	// case LIMA_TEXEL_FORMAT_RGBA64:
+	// case LIMA_TEXEL_FORMAT_DEPTH_STENCIL_32:
+	default:
+		printf("%s: unsupported format %x\n", __func__,
+		       texture->format);
+		return -1;
+	}
+
+	texture_descriptor_level_attach(texture, level);
+
+	/* are we complete yet? */
+	for (i = 0; i < texture->levels; i++)
+		if (!texture->level[i].uploaded)
+			break;
+
+	if (i == texture->levels)
+		texture->complete = 1;
+
+	return 0;
 }
 
 int

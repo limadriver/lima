@@ -26,6 +26,7 @@
 
 struct limare_texture_level {
 	int level;
+	int uploaded;
 
 	int width;
 	int height;
@@ -39,6 +40,7 @@ struct limare_texture_level {
 
 struct limare_texture {
 	int handle;
+	int complete;
 
 	int width;
 	int height;
@@ -60,6 +62,9 @@ struct limare_texture {
 struct limare_texture *
 limare_texture_create(struct limare_state *state, const void *src,
 		      int width, int height, int format, int mipmap);
+int limare_texture_mipmap_upload_low(struct limare_state *state,
+				     struct limare_texture *texture,
+				     int level, const void *pixels);
 int limare_texture_parameters_set(struct limare_texture *texture);
 
 #endif /* LIMARE_TEXTURE_H */
