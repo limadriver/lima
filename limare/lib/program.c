@@ -1354,11 +1354,10 @@ static int
 varying_map_create(struct limare_program *program)
 {
 	int table[12 * 4] = {0};
-	int i, j, offset = 0;
+	int i, j, size, offset = 0;
 
 	for (i = 0; i < program->fragment_varying_count; i++) {
 		struct symbol *symbol = program->fragment_varyings[i];
-		int size;
 
 		if (program->vertex_varyings &&
 		    (program->fragment_varyings[i]->flag &
@@ -1392,10 +1391,16 @@ varying_map_create(struct limare_program *program)
 		if (!program->varying_map[i].entries)
 			break;
 
+		size = program->varying_map[i].entries *
+			program->varying_map[i].entry_size;
+		size = ALIGN(size, 8);
+
+		if (size == 16)
+			offset = ALIGN(offset, 16);
+
 		program->varying_map[i].offset = offset;
 
-		offset += program->varying_map[i].entries *
-			program->varying_map[i].entry_size;
+		offset += size;
 	}
 
 	program->varying_map_count = i;
