@@ -392,6 +392,11 @@ limare_state_init(struct limare_state *state, unsigned int clear_color)
 	state->viewport_w = state->width;
 	state->viewport_h = state->height;
 
+	state->scissor_x = 0.0;
+	state->scissor_y = 0.0;
+	state->scissor_w = state->width;
+	state->scissor_h = state->height;
+
 	state->depth_func = GL_LESS;
 	state->depth_near = 0.0;
 	state->depth_far = 1.0;
@@ -1521,6 +1526,17 @@ limare_enable(struct limare_state *state, int parameter)
 		return limare_render_state_depth_func(state->
 						      render_state_template,
 						      state->depth_func);
+	} else if (parameter == GL_SCISSOR_TEST) {
+		if (!state->scissor) {
+			state->scissor = 1;
+
+			if ((state->scissor_x != state->viewport_x) ||
+			    (state->scissor_y != state->viewport_y) ||
+			    (state->scissor_w != state->viewport_w) ||
+			    (state->scissor_h != state->viewport_h))
+				state->scissor_dirty = 1;
+		}
+		return 0;
 	} else
 		return limare_render_state_set(state->render_state_template,
 					       parameter, 1);
@@ -1534,6 +1550,17 @@ limare_disable(struct limare_state *state, int parameter)
 		return limare_render_state_depth_func(state->
 						      render_state_template,
 						      GL_ALWAYS);
+	} else if (parameter == GL_SCISSOR_TEST) {
+		if (state->scissor) {
+			state->scissor = 0;
+
+			if ((state->scissor_x != state->viewport_x) ||
+			    (state->scissor_y != state->viewport_y) ||
+			    (state->scissor_w != state->viewport_w) ||
+			    (state->scissor_h != state->viewport_h))
+				state->scissor_dirty = 1;
+		}
+		return 0;
 	} else
 		return limare_render_state_set(state->render_state_template,
 					       parameter, 0);
@@ -1585,11 +1612,9 @@ int
 limare_viewport(struct limare_state *state, int x, int y,
 		int width, int height)
 {
-	/*
-	 * TODO: fix some of this with scissoring.
-	 */
-	if ((x < 0) || (y < 0) || (width < 0) || (height < 0) ||
-	    ((x + width) > state->width) || ((y + height) > state->height)) {
+	float new_x, new_y, new_w, new_h;
+
+	if ((x < 0) || (y < 0) || (width < 0) || (height < 0)) {
 		printf("%s: Error: dimensions outside window not supported.\n",
 		       __func__);
 		return -1;
@@ -1597,15 +1622,132 @@ limare_viewport(struct limare_state *state, int x, int y,
 
 	if ((x + width) > state->width)
 		width = state->width - x;
+
 	if ((y + height) > state->height)
 		height = state->height - y;
 
-	state->viewport_x = x;
-	state->viewport_y = state->height - (y + height);
-	state->viewport_w = width;
-	state->viewport_h = height;
+	new_x = x;
+	new_y = state->height - (y + height);
+	new_w = width;
+	new_h = height;
 
-	state->viewport_dirty = 1;
+	if ((new_x != state->viewport_x) || (new_x != state->viewport_x) ||
+	    (new_x != state->viewport_x) || (new_x != state->viewport_x)) {
+		int scissor_dirty = 0;
+
+		state->viewport_x = new_x;
+		state->viewport_y = new_y;
+		state->viewport_w = new_w;
+		state->viewport_h = new_h;
+
+		state->viewport_dirty = 1;
+
+		if (((state->scissor_x + state->scissor_w) <= new_x) ||
+		    ((new_x + new_w) <= state->scissor_x) ||
+		    ((state->scissor_y + state->scissor_h) <= new_y) ||
+		    ((new_y + new_h) <= state->scissor_y)) {
+			/* we have no overlap, program viewport */
+			state->scissor_x = new_x;
+			state->scissor_y = new_y;
+			state->scissor_w = new_w;
+			state->scissor_h = new_h;
+
+			scissor_dirty = 1;
+		} else {
+			if (state->scissor_x < new_x) {
+				state->scissor_w -= new_x - state->scissor_x;
+				state->scissor_x = new_x;
+				scissor_dirty = 1;
+			}
+
+			if (state->scissor_y < new_y) {
+				state->scissor_h -= new_y - state->scissor_y;
+				state->scissor_y = new_y;
+				scissor_dirty = 1;
+			}
+
+			if ((state->scissor_x + state->scissor_w) >
+			    (new_x + new_w)) {
+				state->scissor_w =
+					new_x + new_w - state->scissor_x;
+				scissor_dirty = 1;
+			}
+
+			if ((state->scissor_y + state->scissor_h) >
+			    (new_y + new_h)) {
+				state->scissor_h =
+					new_y + new_h - state->scissor_y;
+				scissor_dirty = 1;
+			}
+		}
+
+		if (state->scissor)
+			state->scissor_dirty = scissor_dirty;
+	}
+
+	return 0;
+}
+
+int
+limare_scissor(struct limare_state *state, int x, int y,
+	       int width, int height)
+{
+	float new_x, new_y, new_w, new_h;
+
+	if ((x < 0) || (y < 0) || (width < 0) || (height < 0)) {
+		printf("%s: Error: dimensions outside window not supported.\n",
+		       __func__);
+		return -1;
+	}
+
+	if ((x + width) > state->width)
+		width = state->width - x;
+
+	if ((y + height) > state->height)
+		height = state->height - y;
+
+	new_x = x;
+	new_y = state->height - (y + height);
+	new_w = width;
+	new_h = height;
+
+	if (((state->viewport_x + state->viewport_w) <= new_x) ||
+	    ((new_x + new_w) <= state->viewport_x) ||
+	    ((state->viewport_y + state->viewport_h) <= new_y) ||
+	    ((new_y + new_h) <= state->viewport_y)) {
+		/* we have no overlap, program viewport */
+		new_x = state->scissor_x;
+		new_y = state->scissor_y;
+		new_w = state->scissor_w;
+		new_h = state->scissor_h;
+	} else {
+		if (new_x < state->viewport_x) {
+			new_w -= state->viewport_x - new_x;
+			new_x = state->viewport_x;
+		}
+
+		if (new_y < state->viewport_y) {
+			new_h -= state->viewport_y - new_y;
+			new_y = state->viewport_y;
+		}
+
+		if ((new_x + new_w) > (state->viewport_x + state->viewport_w))
+			new_w = state->viewport_x + state->viewport_w - new_x;
+
+		if ((new_y + new_h) > (state->viewport_y + state->viewport_h))
+			new_h = state->viewport_y + state->viewport_h - new_y;
+	}
+
+	if ((new_x != state->scissor_x) || (new_y != state->scissor_y) ||
+	    (new_w != state->scissor_w) || (new_h != state->scissor_h)) {
+		state->scissor_x = new_x;
+		state->scissor_y = new_y;
+		state->scissor_w = new_w;
+		state->scissor_h = new_h;
+
+		if (state->scissor)
+			state->scissor_dirty = 1;
+	}
 
 	return 0;
 }

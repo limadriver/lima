@@ -130,6 +130,13 @@ struct limare_state {
 	float viewport_h;
 	int viewport_dirty;
 
+	int scissor;
+	int scissor_x;
+	int scissor_y;
+	int scissor_w;
+	int scissor_h;
+	int scissor_dirty;
+
 	float depth_near;
 	float depth_far;
 	int depth_dirty;
@@ -253,5 +260,7 @@ int limare_depth_mask(struct limare_state *state, int value);
 int limare_depth(struct limare_state *state, float near, float far);
 int limare_viewport(struct limare_state *state, int x, int y,
 		    int width, int height);
+int limare_scissor(struct limare_state *state, int x, int y,
+		   int width, int height);
 
 #endif /* LIMARE_LIMARE_H */

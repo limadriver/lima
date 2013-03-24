@@ -96,6 +96,32 @@ plbu_viewport_set(struct limare_frame *frame,
 	frame->plbu_commands_count = i;
 }
 
+void
+plbu_scissor(struct limare_state *state, struct limare_frame *frame)
+{
+	struct lima_cmd *cmds = frame->plbu_commands;
+	int i = frame->plbu_commands_count;
+	int x, y, w, h;
+
+	if (state->scissor) {
+		x = state->scissor_x;
+		y = state->scissor_y;
+		w = state->scissor_w;
+		h = state->scissor_h;
+	} else {
+		x = state->viewport_x;
+		y = state->viewport_y;
+		w = state->viewport_w;
+		h = state->viewport_h;
+	}
+
+	cmds[i].val = (x << 30) | (y + h - 1) << 15 | y;
+	cmds[i].cmd = LIMA_PLBU_CMD_SCISSORS |
+		(x + w  -1) << 13 | (x >> 2);
+
+	frame->plbu_commands_count++;
+}
+
 int
 plbu_command_queue_create(struct limare_state *state,
 			  struct limare_frame *frame, int size, int heap_size)
@@ -500,10 +526,20 @@ plbu_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 	i++;
 
 	frame->plbu_commands_count = i;
+
+	/* original mali driver also flushes depth in this case. */
+	if (state->viewport_dirty && state->scissor_dirty)
+		state->depth_dirty = 1;
+
 	if (state->viewport_dirty) {
 		plbu_viewport_set(frame, state->viewport_x, state->viewport_y,
 				  state->viewport_w, state->viewport_h);
 		state->viewport_dirty = 0;
+	}
+
+	if (state->scissor_dirty) {
+		plbu_scissor(state, frame);
+		state->scissor_dirty = 0;
 	}
 
 	i = frame->plbu_commands_count;
@@ -566,6 +602,11 @@ plbu_commands_depth_clear_draw_add(struct limare_state *state,
 
 	plbu_viewport_set(frame, 0.0, 0.0, 4096.0, 4096.0);
 	state->viewport_dirty = 1;
+
+	if (state->scissor_dirty) {
+		plbu_scissor(state, frame);
+		state->scissor_dirty = 0;
+	}
 
 	i = frame->plbu_commands_count;
 	cmds[i].val = frame->mem_physical + plbu->render_state_offset;
