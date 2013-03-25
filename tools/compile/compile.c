@@ -28,6 +28,7 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -201,6 +202,28 @@ dump_shader_binary(struct lima_shader_binary *binary, int type)
 	printf("}\n");
 }
 
+void
+dump_shader_mbs(const char *filename, struct lima_shader_binary_mbs *binary)
+{
+	char name[1024];
+	int fd, ret;
+
+	snprintf(name, sizeof(name), "%s.mbs", filename);
+
+	fd = open(name, O_WRONLY | O_CREAT | O_TRUNC, 00600);
+	if (fd < 0) {
+		printf("Error: failed to open %s: %s\n",
+			name, strerror(errno));
+		return;
+	}
+
+	ret = write(fd, binary->mbs_stream, binary->mbs_stream_size);
+	if (ret < 0) {
+		printf("Error: failed to write to %s: %s\n",
+			name, strerror(-ret));
+		return;
+	}
+}
 
 int
 main(int argc, char *argv[])
@@ -272,9 +295,10 @@ main(int argc, char *argv[])
 		return ret;
 	}
 
-	if ((((unsigned int *)binary.mbs_stream)[0]) == STREAM_TAG_MBS1)
+	if ((((unsigned int *)binary.mbs_stream)[0]) == STREAM_TAG_MBS1) {
 		dump_shader_binary_mbs(&binary, type);
-	else
+		dump_shader_mbs(filename, &binary);
+	} else
 		dump_shader_binary((struct lima_shader_binary *) &binary, type);
 
 	return 0;
