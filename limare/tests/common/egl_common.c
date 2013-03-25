@@ -31,6 +31,7 @@
 #include <sys/ioctl.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
@@ -378,6 +379,46 @@ fragment_shader_compile(const char *source)
 	}
 
 	return ret;
+}
+
+/*
+ * simplistic benchmarking.
+ */
+static struct timespec framerate_time;
+static struct timespec framerate_start;
+
+void
+framerate_init(void)
+{
+	if (clock_gettime(CLOCK_MONOTONIC, &framerate_start))
+		printf("Error: failed to get time: %s\n", strerror(errno));
+
+	framerate_time = framerate_start;
+}
+
+void
+_framerate_print(int count, int total)
+{
+	struct timespec new = { 0 };
+	int usec;
+	long long average;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &new)) {
+		printf("Error: failed to get time: %s\n", strerror(errno));
+		return;
+	}
+
+	usec = (new.tv_sec - framerate_time.tv_sec) * 1000000;
+	usec += (new.tv_nsec - framerate_time.tv_nsec) / 1000;
+
+	average = (new.tv_sec - framerate_start.tv_sec) * 1000000;
+	average += (new.tv_nsec - framerate_start.tv_nsec) / 1000;
+
+	framerate_time = new;
+
+	printf("%df in %fs: %f fps (%4d at %f fps)\n", count,
+	       (float) usec / 1000000, (float) (count * 1000000) / usec,
+	       total, (double) (total * 1000000.0) / average);
 }
 
 #if 0 /* Sample code */

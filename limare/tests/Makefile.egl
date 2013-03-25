@@ -7,7 +7,7 @@ EGL_OBJS = egl.o ../common/egl_common.o $(objs)
 ifeq ($(OS), android)
 	EGL_LIBS = -lEGL_mali -lGLESv2_mali
 else
-	EGL_LIBS = -lEGL -lGLESv2
+	EGL_LIBS = -lEGL -lGLESv2 -lrt
 endif
 
 egl: egl_$(NAME)

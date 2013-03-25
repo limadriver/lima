@@ -36,4 +36,13 @@ EGLSurface *egl_surface_init(EGLDisplay display, int gles_version,
 int vertex_shader_compile(const char *source);
 int fragment_shader_compile(const char *source);
 
+void framerate_init(void);
+void _framerate_print(int count, int total);
+
+#define framerate_print(c, t) \
+do { \
+	if (!((t) & ((c) - 1))) \
+		_framerate_print((c), (t)); \
+} while (0)
+
 #endif /* EGL_COMMON_H */

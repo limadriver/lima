@@ -7,7 +7,7 @@ GLES1_OBJS = gles1.o ../common/egl_common.o $(objs)
 ifeq ($(OS), android)
 	GLES1_LIBS = -lEGL_mali -lGLESv1_CM
 else
-	GLES1_LIBS = -lEGL -lGLESv1_CM
+	GLES1_LIBS = -lEGL -lGLESv1_CM -lrt
 endif
 
 gles1: gles1_$(NAME)

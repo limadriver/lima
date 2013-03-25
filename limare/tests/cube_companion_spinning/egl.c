@@ -25,6 +25,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#include <errno.h>
 
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
@@ -169,6 +172,8 @@ main(int argc, char *argv[])
 	GLint texture_loc = glGetUniformLocation(program, "in_texture");
 	glUniform1i(texture_loc, 0); // 0 -> GL_TEXTURE0 in glActiveTexture
 
+	framerate_init();
+
 	int i = 0;
 
 	while (1) {
@@ -221,6 +226,13 @@ main(int argc, char *argv[])
 		glDrawArrays(GL_TRIANGLES, 0, COMPANION_ARRAY_COUNT);
 
 		eglSwapBuffers(display, surface);
+
+		framerate_print(128, i);
+
+#if 1
+		if (i >= 6400)
+			break;
+#endif
 	}
 
 	usleep(1000000);
