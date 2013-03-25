@@ -355,15 +355,13 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 		i++;
 	}
 
-	cmds[i].val = program->mem_physical + program->vertex_offset;
+	cmds[i].val = program->mem_physical + program->vertex_mem_offset;
 	cmds[i].cmd = LIMA_VS_CMD_SHADER_ADDRESS |
-		((program->vertex_binary->shader_size / 16) << 16);
+		((program->vertex_shader_size / 16) << 16);
 	i++;
 
-	cmds[i].val =
-		(program->vertex_binary->parameters.vertex.varying_something - 1)
-		<< 20;
-	cmds[i].val |= ((program->vertex_binary->shader_size / 16) - 1) << 10;
+	cmds[i].val = (program->vertex_shader_param - 1) << 20;
+	cmds[i].val |= ((program->vertex_shader_size / 16) - 1) << 10;
 	cmds[i].cmd = LIMA_VS_CMD_SHADER_INFO;
 	i++;
 

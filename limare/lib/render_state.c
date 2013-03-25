@@ -115,9 +115,8 @@ draw_render_state_create(struct limare_frame *frame,
 	render->unknown1C = template->unknown1C;
 	render->unknown20 = template->unknown20;
 
-	render->shader_address =
-		(program->mem_physical + program->fragment_offset) |
-		program->fragment_binary->parameters.fragment.unknown04;
+	render->shader_address = program->fragment_shader_param |
+		(program->mem_physical + program->fragment_mem_offset);
 
 	render->uniforms_address = 0;
 	render->textures_address = 0;

@@ -40,9 +40,12 @@ struct limare_program {
 	unsigned int mem_size;
 	void *mem_address;
 
-	struct lima_shader_binary *vertex_binary;
-	int vertex_offset;
-	int vertex_size;
+	void *vertex_shader;
+	int vertex_shader_size;
+	int vertex_shader_param; /* name me! */
+
+	int vertex_mem_offset;
+	int vertex_mem_size;
 
 	struct symbol **vertex_uniforms;
 	int vertex_uniform_count;
@@ -54,9 +57,12 @@ struct limare_program {
 	struct symbol **vertex_varyings;
 	int vertex_varying_count;
 
-	struct lima_shader_binary *fragment_binary;
-	int fragment_offset;
-	int fragment_size;
+	void *fragment_shader;
+	int fragment_shader_size;
+	int fragment_shader_param; /* name me! */
+
+	int fragment_mem_offset;
+	int fragment_mem_size;
 
 	struct symbol **fragment_uniforms;
 	int fragment_uniform_count;

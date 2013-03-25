@@ -1069,26 +1069,13 @@ limare_shader_compile(struct limare_state *state, int type, const char *source)
 	return binary;
 }
 
-int
-limare_program_vertex_shader_attach(struct limare_state *state,
-				    struct limare_program *program,
-				    const char *source)
+static int
+program_vertex_shader_symbols_attach(struct limare_program *program,
+				     struct lima_shader_binary *binary)
 {
-	struct lima_shader_binary *binary;
 	struct stream_uniform_table *uniform_table;
 	struct stream_attribute_table *attribute_table;
 	struct stream_varying_table *varying_table;
-
-	binary = limare_shader_compile(state, LIMA_SHADER_VERTEX, source);
-	if (!binary)
-		return -1;
-
-	if (binary->shader_size > program->vertex_size) {
-		printf("%s: Vertex shader is too large: %d\n",
-		       __func__, binary->shader_size);
-		limare_shader_binary_free(binary);
-		return -1;
-	}
 
 	uniform_table =
 		stream_uniform_table_create(binary->uniform_stream,
@@ -1121,30 +1108,46 @@ limare_program_vertex_shader_attach(struct limare_state *state,
 		stream_varying_table_destroy(varying_table);
 	}
 
-	program->vertex_binary = binary;
-
 	return 0;
 }
 
 int
-limare_program_fragment_shader_attach(struct limare_state *state,
-				      struct limare_program *program,
-				      const char *source)
+limare_program_vertex_shader_attach(struct limare_state *state,
+				    struct limare_program *program,
+				    const char *source)
 {
 	struct lima_shader_binary *binary;
-	struct stream_uniform_table *uniform_table;
-	struct stream_varying_table *varying_table;
 
-	binary = limare_shader_compile(state, LIMA_SHADER_FRAGMENT, source);
+	binary = limare_shader_compile(state, LIMA_SHADER_VERTEX, source);
 	if (!binary)
 		return -1;
 
-	if (binary->shader_size > program->fragment_size) {
-		printf("%s: Fragment shader is too large: %d\n",
+	if (binary->shader_size > program->vertex_mem_size) {
+		printf("%s: Vertex shader is too large: %d\n",
 		       __func__, binary->shader_size);
 		limare_shader_binary_free(binary);
 		return -1;
 	}
+
+	program->vertex_shader = binary->shader;
+	binary->shader = NULL;
+	program->vertex_shader_size = binary->shader_size;
+	program->vertex_shader_param =
+		binary->parameters.vertex.varying_something;
+
+	program_vertex_shader_symbols_attach(program, binary);
+
+	limare_shader_binary_free(binary);
+
+	return 0;
+}
+
+static int
+program_fragment_shader_symbols_attach(struct limare_program *program,
+				       struct lima_shader_binary *binary)
+{
+	struct stream_uniform_table *uniform_table;
+	struct stream_varying_table *varying_table;
 
 	uniform_table =
 		stream_uniform_table_create(binary->uniform_stream,
@@ -1167,7 +1170,35 @@ limare_program_fragment_shader_attach(struct limare_state *state,
 		stream_varying_table_destroy(varying_table);
 	}
 
-	program->fragment_binary = binary;
+	return 0;
+}
+
+int
+limare_program_fragment_shader_attach(struct limare_state *state,
+				      struct limare_program *program,
+				      const char *source)
+{
+	struct lima_shader_binary *binary;
+
+	binary = limare_shader_compile(state, LIMA_SHADER_FRAGMENT, source);
+	if (!binary)
+		return -1;
+
+	if (binary->shader_size > program->fragment_mem_size) {
+		printf("%s: Fragment shader is too large: %d\n",
+		       __func__, binary->shader_size);
+		limare_shader_binary_free(binary);
+		return -1;
+	}
+
+	program->fragment_shader = binary->shader;
+	binary->shader = NULL;
+	program->fragment_shader_size = binary->shader_size;
+	program->fragment_shader_param = binary->parameters.fragment.unknown04;
+
+	program_fragment_shader_symbols_attach(program, binary);
+
+	limare_shader_binary_free(binary);
 
 	return 0;
 }
@@ -1281,8 +1312,8 @@ vertex_shader_varyings_rewrite(struct limare_program *program)
 			     -1, -1, -1, -1, -1, -1, -1, -1 };
 
 	link_varyings_indices_get(program, varyings);
-	vertex_shader_varyings_patch(program->vertex_binary->shader,
-				     program->vertex_binary->shader_size / 16,
+	vertex_shader_varyings_patch(program->vertex_shader,
+				     program->vertex_shader_size / 16,
 				     varyings);
 }
 
@@ -1467,13 +1498,11 @@ limare_program_link(struct limare_program *program)
 	vertex_shader_varyings_rewrite(program);
 
 	/* now throw the shaders into mali mem. */
-	memcpy(program->mem_address + program->vertex_offset,
-	       program->vertex_binary->shader,
-	       program->vertex_binary->shader_size);
+	memcpy(program->mem_address + program->vertex_mem_offset,
+	       program->vertex_shader, program->vertex_shader_size);
 
-	memcpy(program->mem_address + program->fragment_offset,
-	       program->fragment_binary->shader,
-	       program->fragment_binary->shader_size);
+	memcpy(program->mem_address + program->fragment_mem_offset,
+	       program->fragment_shader, program->fragment_shader_size);
 
 	return ret;
 }
@@ -1499,11 +1528,12 @@ limare_program_create(void *address, unsigned int physical,
 	program->mem_size = size;
 
 	/* when we have proper memory management... */
-	program->vertex_offset = 0;
-	program->vertex_size = ALIGN(program->mem_size / 2, 0x40);
+	program->vertex_mem_offset = 0;
+	program->vertex_mem_size = ALIGN(program->mem_size / 2, 0x40);
 
-	program->fragment_offset = program->vertex_size;
-	program->fragment_size = program->mem_size - program->vertex_size;
+	program->fragment_mem_offset = program->vertex_mem_size;
+	program->fragment_mem_size =
+		program->mem_size - program->vertex_mem_size;
 
 	return program;
 }
@@ -1538,9 +1568,8 @@ limare_depth_clear_link(struct limare_state *state,
 		return ret;
 
 	/* now throw the shader into mali mem. */
-	memcpy(program->mem_address + program->fragment_offset,
-	       program->fragment_binary->shader,
-	       program->fragment_binary->shader_size);
+	memcpy(program->mem_address + program->fragment_mem_offset,
+	       program->fragment_shader, program->fragment_shader_size);
 
 	return ret;
 }
