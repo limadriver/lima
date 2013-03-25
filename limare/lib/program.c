@@ -601,7 +601,7 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 {
 	struct stream_attribute *attribute;
 	struct symbol **symbols;
-	int i;
+	int i, j = 0;
 
 	if (!table || !count)
 		return NULL;
@@ -637,7 +637,8 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 
 		symbol->offset = attribute->data->offset;
 
-		symbols[symbol->offset / 4] = symbol;
+		symbols[j] = symbol;
+		j++;
 	}
 
 	return symbols;
