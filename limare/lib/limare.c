@@ -243,20 +243,24 @@ limare_mem_init(struct limare_state *state)
 /*
  * simplistic benchmarking.
  */
+static struct timespec framerate_start;
 static struct timespec framerate_time;
 
 static void
 limare_framerate_init(struct limare_state *state)
 {
-	if (clock_gettime(CLOCK_MONOTONIC, &framerate_time))
+	if (clock_gettime(CLOCK_MONOTONIC, &framerate_start))
 		printf("Error: failed to get time: %s\n", strerror(errno));
+
+	framerate_time = framerate_start;
 }
 
 static void
-limare_framerate_print(struct limare_state *state, int count)
+limare_framerate_print(struct limare_state *state, int count, int total)
 {
 	struct timespec new = { 0 };
 	int usec;
+	long long average;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &new)) {
 		printf("Error: failed to get time: %s\n", strerror(errno));
@@ -266,10 +270,14 @@ limare_framerate_print(struct limare_state *state, int count)
 	usec = (new.tv_sec - framerate_time.tv_sec) * 1000000;
 	usec += (new.tv_nsec - framerate_time.tv_nsec) / 1000;
 
+	average = (new.tv_sec - framerate_start.tv_sec) * 1000000;
+	average += (new.tv_nsec - framerate_start.tv_nsec) / 1000;
+
 	framerate_time = new;
 
-	printf("%d frames in %f seconds: %f fps\n", count,
-	       (float) usec / 1000000, (float) (count * 1000000) / usec);
+	printf("%df in %fs: %f fps (%4d at %f fps)\n", count,
+	       (float) usec / 1000000, (float) (count * 1000000) / usec,
+	       total, (double) (total * 1000000.0) / average);
 }
 
 struct limare_state *
@@ -1287,7 +1295,7 @@ limare_frame_flush(struct limare_state *state)
 void
 limare_finish(struct limare_state *state)
 {
-	printf("Last frame memory used: %d/%dkB\n",
+	printf("Max frame memory used: %d/%dkB\n",
 	       state->frame_memory_max / 1024, FRAME_MEMORY_SIZE / 1024);
 
 	printf("Auxiliary memory used: %d/%dkB\n",
@@ -1526,8 +1534,10 @@ limare_frame_new(struct limare_state *state)
 
 	state->frame_count++;
 
+#if 1
 	if (!(state->frame_count & 0x3F))
-		limare_framerate_print(state, 64);
+		limare_framerate_print(state, 64, state->frame_count);
+#endif
 
 	return 0;
 }
