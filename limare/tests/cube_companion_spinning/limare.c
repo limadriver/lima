@@ -77,16 +77,11 @@ main(int argc, char *argv[])
 	  "    gl_FragColor = vVaryingColor * texture2D(in_texture, coord);\n"
 	  "}                            \n";
 
-	float *vertices_array = companion_vertices_array();
-	float *texture_coordinates_array =
-		companion_texture_coordinates_array();
-	float *normals_array = companion_normals_array();
-
 	state = limare_init();
 	if (!state)
 		return -1;
 
-	limare_buffer_clear(state);
+	//limare_buffer_clear(state);
 
 	ret = limare_state_setup(state, 0, 0, 0xFF505050);
 	if (ret)
@@ -106,13 +101,33 @@ main(int argc, char *argv[])
 
 	limare_link(state);
 
-	limare_attribute_pointer(state, "in_position", LIMARE_ATTRIB_FLOAT,
-				 3, 0, COMPANION_ARRAY_COUNT, vertices_array);
-	limare_attribute_pointer(state, "in_coord", LIMARE_ATTRIB_FLOAT,
-				 2, 0, COMPANION_ARRAY_COUNT,
-				 texture_coordinates_array);
-	limare_attribute_pointer(state, "in_normal", LIMARE_ATTRIB_FLOAT,
-				 3, 0, COMPANION_ARRAY_COUNT, normals_array);
+	int vertices_buffer =
+		limare_attribute_buffer_upload(state, LIMARE_ATTRIB_FLOAT, 3,
+					       0, COMPANION_VERTEX_COUNT,
+					       companion_vertices);
+
+	int texture_coordinates_buffer =
+		limare_attribute_buffer_upload(state, LIMARE_ATTRIB_FLOAT, 2,
+					       0, COMPANION_VERTEX_COUNT,
+					       companion_texture_coordinates);
+
+	int normals_buffer =
+		limare_attribute_buffer_upload(state, LIMARE_ATTRIB_FLOAT, 3,
+					       0, COMPANION_VERTEX_COUNT,
+					       companion_normals);
+
+	limare_attribute_buffer_attach(state, "in_position",
+				       vertices_buffer);
+	limare_attribute_buffer_attach(state, "in_coord",
+				       texture_coordinates_buffer);
+	limare_attribute_buffer_attach(state, "in_normal",
+				       normals_buffer);
+
+	int elements_buffer =
+		limare_elements_buffer_upload(state, GL_TRIANGLES,
+					      GL_UNSIGNED_SHORT,
+					      COMPANION_INDEX_COUNT,
+					      companion_triangles);
 
 	int texture = limare_texture_upload(state, companion_texture,
 					    COMPANION_TEXTURE_WIDTH,
@@ -163,7 +178,7 @@ main(int argc, char *argv[])
 
 		limare_frame_new(state);
 
-		ret = limare_draw_arrays(state, GL_TRIANGLES, 0, COMPANION_ARRAY_COUNT);
+		ret = limare_draw_elements_buffer(state, elements_buffer);
 		if (ret)
 			return ret;
 
@@ -172,6 +187,11 @@ main(int argc, char *argv[])
 			return ret;
 
 		limare_buffer_swap(state);
+
+#if 1
+		if (i >= 6400)
+			break;
+#endif
 	}
 
 	limare_finish(state);
