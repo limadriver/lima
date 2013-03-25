@@ -154,7 +154,9 @@ limare_notification_thread(void *arg)
 				wait.data.pp_job_finished.status;
 
 			if (status != _MALI_UK_JOB_STATUS_END_SUCCESS)
-				printf("pp job returned 0x%08X\n", status);
+				printf("pp job 0x%08X returned 0x%08X\n",
+				       wait.data.pp_job_finished.user_job_ptr,
+				       status);
 
 			limare_pp_job_done();
 		} else if (wait.code.type == _MALI_NOTIFICATION_GP_FINISHED) {
@@ -182,7 +184,7 @@ limare_gp_job_start_r2p1(struct limare_state *state,
 	int ret;
 
 	job.fd = state->fd;
-	job.user_job_ptr = (unsigned int) &job;
+	job.user_job_ptr = frame->id | 0x80000000;
 	job.priority = 1;
 	job.watchdog_msecs = 0;
 	job.frame = *frame_regs;
@@ -206,7 +208,7 @@ limare_gp_job_start_r3p0(struct limare_state *state,
 	int ret;
 
 	job.fd = state->fd;
-	job.user_job_ptr = (unsigned int) &job;
+	job.user_job_ptr = frame->id | 0x80000000;
 	job.priority = 1;
 	job.frame = *frame_regs;
 	ret = ioctl(state->fd, LIMA_GP_START_JOB_R3P0, &job);
@@ -259,7 +261,7 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 	int ret;
 
 	job.fd = state->fd;
-	job.user_job_ptr = (unsigned int) &job;
+	job.user_job_ptr = frame->id | 0xC0000000;
 	job.priority = 1;
 	job.watchdog_msecs = 0;
 	job.frame = *frame_regs;
@@ -288,7 +290,7 @@ limare_m400_pp_job_start_r2p1(struct limare_state *state,
 	int ret;
 
 	job.fd = state->fd;
-	job.user_job_ptr = (unsigned int) &job;
+	job.user_job_ptr = frame->id | 0xC0000000;
 	job.priority = 1;
 	job.watchdog_msecs = 0;
 	job.frame = *frame_regs;
@@ -317,7 +319,7 @@ limare_m400_pp_job_start_r3p0(struct limare_state *state,
 	int ret;
 
 	job.fd = state->fd;
-	job.user_job_ptr = (unsigned int) &job;
+	job.user_job_ptr = frame->id | 0xC0000000;
 	job.priority = 1;
 	job.frame = *frame_regs;
 	job.wb0 = *wb_regs;

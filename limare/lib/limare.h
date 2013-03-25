@@ -32,6 +32,9 @@ struct lima_cmd {
 };
 
 struct limare_frame {
+	int id;
+	int index;
+
 	unsigned int mem_physical;
 	int mem_size;
 	int mem_used;

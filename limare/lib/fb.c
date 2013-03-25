@@ -222,13 +222,13 @@ fb_clear(struct limare_state *state)
 	memset(fb->map, 0xFF, fb->map_size);
 }
 
-static void
-fb_switch(struct limare_state *state)
+void
+limare_fb_flip(struct limare_state *state, struct limare_frame *frame)
 {
 	struct limare_fb *fb = state->fb;
 	//int sync_arg = 0;
 
-	if (state->frame_current)
+	if (frame->index)
 		fb->fb_var->yoffset = fb->height;
 	else
 		fb->fb_var->yoffset = 0;
@@ -242,15 +242,6 @@ fb_switch(struct limare_state *state)
 	if (ioctl(fb->fd, FBIOPAN_DISPLAY, fb->fb_var))
 		printf("Error: failed to run ioctl on %s: %s\n",
 			FBDEV_DEV, strerror(errno));
-}
-
-void
-fb_dump(struct limare_state *state)
-{
-	struct limare_fb *fb = state->fb;
-
-	if (fb->dual_buffer)
-		fb_switch(state);
 }
 
 void

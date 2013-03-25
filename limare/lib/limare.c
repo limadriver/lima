@@ -329,6 +329,9 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 	if (!frame)
 		return NULL;
 
+	frame->id = state->frame_count;
+	frame->index = frame->id & 0x01;
+
 	/* space for our programs and textures. */
 	frame->mem_size = size;
 	frame->mem_used = 0;
@@ -860,5 +863,5 @@ limare_buffer_clear(struct limare_state *state)
 void
 limare_buffer_swap(struct limare_state *state)
 {
-	fb_dump(state);
+	limare_fb_flip(state, state->frames[state->frame_current]);
 }

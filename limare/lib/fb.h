@@ -54,8 +54,8 @@ struct limare_fb {
 int fb_open(struct limare_state *state);
 int fb_init(struct limare_state *state, int width, int height, int offset);
 void fb_clear(struct limare_state *state);
-void fb_dump(struct limare_state *state);
 void fb_dump_direct(struct limare_state *state, unsigned char *buffer,
 		    int width, int height);
+void limare_fb_flip(struct limare_state *state, struct limare_frame *frame);
 
 #endif /* LIMARE_FB_H */

@@ -148,7 +148,7 @@ limare_m200_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	/* write back registers */
 	wb_regs.type = LIMA_PP_WB_TYPE_COLOR;
 	if (state->fb->dual_buffer)
-		wb_regs.address = state->fb->mali_physical[state->frame_current];
+		wb_regs.address = state->fb->mali_physical[frame->index];
 	else
 		wb_regs.address = state->fb->mali_physical[0];
 	wb_regs.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
@@ -231,7 +231,7 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	/* write back registers */
 	wb_regs.type = LIMA_PP_WB_TYPE_COLOR;
 	if (state->fb->dual_buffer)
-		wb_regs.address = state->fb->mali_physical[state->frame_current];
+		wb_regs.address = state->fb->mali_physical[frame->index];
 	else
 		wb_regs.address = state->fb->mali_physical[0];
 	wb_regs.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
