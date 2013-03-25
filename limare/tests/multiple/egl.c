@@ -446,20 +446,35 @@ main(int argc, char *argv[])
 	 *
 	 */
 #if 1
-	float *comp_vertices_array = companion_vertices_array();
-	float *comp_texture_coordinates_array =
-		companion_texture_coordinates_array();
-	float *comp_normals_array = companion_normals_array();
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, comp_vertices_array);
+	unsigned int vertices_buffer;
+	glGenBuffers(1, &vertices_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, vertices_buffer);
+	glBufferData(GL_ARRAY_BUFFER, 4 * 3 * COMPANION_VERTEX_COUNT,
+		     companion_vertices, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, comp_normals_array);
+	unsigned int normals_buffer;
+	glGenBuffers(1, &normals_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, normals_buffer);
+	glBufferData(GL_ARRAY_BUFFER, 4 * 3 * COMPANION_VERTEX_COUNT,
+		     companion_normals, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0,
-			      comp_texture_coordinates_array);
+	unsigned int texture_coordinates_buffer;
+	glGenBuffers(1, &texture_coordinates_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, texture_coordinates_buffer);
+	glBufferData(GL_ARRAY_BUFFER, 4 * 3 * COMPANION_VERTEX_COUNT,
+		     companion_texture_coordinates, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+	unsigned int elements_buffer;
+	glGenBuffers(1, &elements_buffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elements_buffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * COMPANION_INDEX_COUNT,
+		     companion_triangles, GL_STATIC_DRAW);
 
 	glActiveTexture(GL_TEXTURE2);
 
@@ -517,7 +532,8 @@ main(int argc, char *argv[])
 			   &cube_modelviewprojection.m[0][0]);
 	glUniformMatrix3fv(cube_normalmatrix_handle, 1, GL_FALSE, cube_normal);
 
-	glDrawArrays(GL_TRIANGLES, 0, COMPANION_ARRAY_COUNT);
+	glDrawElements(GL_TRIANGLES, COMPANION_INDEX_COUNT,
+		       GL_UNSIGNED_SHORT, NULL);
 #endif
 
 	eglSwapBuffers(display, surface);
