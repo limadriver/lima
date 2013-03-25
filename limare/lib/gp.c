@@ -729,6 +729,17 @@ plbu_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
 	if (!count)
 		return 0;
 
+	/* if we have only samplers, we can shortcut this. */
+	for (i = 0; i < count; i++) {
+		struct symbol *symbol = uniforms[i];
+
+		if (symbol->value_type != SYMBOL_SAMPLER)
+			break;
+	}
+
+	if (i == count)
+		return 0;
+
 	if ((frame->mem_size - frame->mem_used) < (0x40 + ALIGN(size, 0x40))) {
 		printf("%s: no space for plbu uniforms\n", __func__);
 		return -1;
