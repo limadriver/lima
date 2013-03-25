@@ -1240,7 +1240,7 @@ program_symbols_print(struct limare_program *program)
 #endif
 
 /*
- * Checks whether vertex and fragment attributes match.
+ * Checks whether vertex and fragment varyings match.
  */
 static int
 link_varyings_match(struct limare_program *program)
