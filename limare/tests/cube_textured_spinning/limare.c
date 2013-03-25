@@ -82,7 +82,7 @@ main(int argc, char *argv[])
 	if (!state)
 		return -1;
 
-	limare_buffer_clear(state);
+	//limare_buffer_clear(state);
 
 	ret = limare_state_setup(state, 0, 0, 0xFF505050);
 	if (ret)
@@ -158,22 +158,8 @@ main(int argc, char *argv[])
 
 		limare_frame_new(state);
 
-		ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP,  0, 4);
-		if (ret)
-			return ret;
-		ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP,  4, 4);
-		if (ret)
-			return ret;
-		ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP,  8, 4);
-		if (ret)
-			return ret;
-		ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 12, 4);
-		if (ret)
-			return ret;
-		ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 16, 4);
-		if (ret)
-			return ret;
-		ret = limare_draw_arrays(state, GL_TRIANGLE_STRIP, 20, 4);
+		ret = limare_draw_elements(state, GL_TRIANGLES, 36,
+					   &cube_indices, GL_UNSIGNED_BYTE);
 		if (ret)
 			return ret;
 
@@ -182,6 +168,11 @@ main(int argc, char *argv[])
 			return ret;
 
 		limare_buffer_swap(state);
+
+#if 1
+		if (i >= 6400)
+			break;
+#endif
 	}
 
 	limare_finish(state);
