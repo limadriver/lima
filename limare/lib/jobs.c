@@ -175,6 +175,68 @@ limare_notification_thread(void *arg)
 
 static pthread_t limare_notification_pthread;
 
+static pthread_mutex_t gp_job_time_mutex = PTHREAD_MUTEX_INITIALIZER;
+static long long gp_job_time;
+
+void
+limare_gp_job_bench_start(struct timespec *start)
+{
+	if (clock_gettime(CLOCK_MONOTONIC, start)) {
+		printf("Error: failed to get time: %s\n", strerror(errno));
+		return;
+	}
+}
+
+void
+limare_gp_job_bench_stop(struct timespec *start)
+{
+	struct timespec new = { 0 };
+	long long total;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &new)) {
+		printf("Error: failed to get time: %s\n", strerror(errno));
+		return;
+	}
+
+	total = (new.tv_sec - start->tv_sec) * 1000000;
+	total += (new.tv_nsec - start->tv_nsec) / 1000;
+
+	pthread_mutex_lock(&gp_job_time_mutex);
+	gp_job_time += total;
+	pthread_mutex_unlock(&gp_job_time_mutex);
+}
+
+static pthread_mutex_t pp_job_time_mutex = PTHREAD_MUTEX_INITIALIZER;
+static long long pp_job_time;
+
+void
+limare_pp_job_bench_start(struct timespec *start)
+{
+	if (clock_gettime(CLOCK_MONOTONIC, start)) {
+		printf("Error: failed to get time: %s\n", strerror(errno));
+		return;
+	}
+}
+
+void
+limare_pp_job_bench_stop(struct timespec *start)
+{
+	struct timespec new = { 0 };
+	long long total;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &new)) {
+		printf("Error: failed to get time: %s\n", strerror(errno));
+		return;
+	}
+
+	total = (new.tv_sec - start->tv_sec) * 1000000;
+	total += (new.tv_nsec - start->tv_nsec) / 1000;
+
+	pthread_mutex_lock(&pp_job_time_mutex);
+	pp_job_time += total;
+	pthread_mutex_unlock(&pp_job_time_mutex);
+}
+
 static int
 limare_gp_job_start_r2p1(struct limare_state *state,
 			 struct limare_frame *frame,
@@ -346,21 +408,31 @@ limare_m400_pp_job_start_direct(struct limare_state *state,
 static void
 limare_render_sequence(struct limare_state *state, struct limare_frame *frame)
 {
+	struct timespec start;
+
 	pthread_mutex_lock(&frame->mutex);
 
 	/*
 	 * First, push the job through the gp.
 	 */
+	limare_gp_job_bench_start(&start);
+
 	limare_gp_job_start(state, frame);
 
 	limare_gp_job_wait(frame);
 
+	limare_gp_job_bench_stop(&start);
+
 	/*
 	 * Now we can work on the pp.
 	 */
+	limare_pp_job_bench_start(&start);
+
 	limare_pp_job_start(state, frame);
 
 	limare_pp_job_wait(frame);
+
+	limare_pp_job_bench_stop(&start);
 
         /* wait for display sync, and flip the current fb. */
 	limare_fb_flip(state, frame);
@@ -564,6 +636,8 @@ limare_render_start(struct limare_frame *frame)
 		limare_render_0_start(frame);
 }
 
+static struct timespec jobs_time;
+
 void
 limare_jobs_init(struct limare_state *state)
 {
@@ -586,11 +660,30 @@ limare_jobs_init(struct limare_state *state)
 	if (ret)
 		printf("%s: error starting thread: %s\n", __func__,
 		       strerror(ret));
+
+	if (clock_gettime(CLOCK_MONOTONIC, &jobs_time))
+		printf("Error: failed to get time: %s\n", strerror(errno));
 }
 
 void
 limare_jobs_end(struct limare_state *state)
 {
+	struct timespec new = { 0 };
+	long long total;
+
 	limare_render_0_stop();
 	limare_render_1_stop();
+
+	if (clock_gettime(CLOCK_MONOTONIC, &new)) {
+		printf("Error: failed to get time: %s\n", strerror(errno));
+		return;
+	}
+
+	total = (new.tv_sec - jobs_time.tv_sec) * 1000000;
+	total += (new.tv_nsec - jobs_time.tv_nsec) / 1000;
+
+	printf("Total jobs time: %f seconds\n", (float) total / 1000000);
+	printf("   GP job  time: %f seconds\n", (float) gp_job_time / 1000000);
+	printf("   PP job  time: %f seconds\n", (float) pp_job_time / 1000000);
 }
+
