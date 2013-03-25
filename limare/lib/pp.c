@@ -190,9 +190,16 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	frame_regs.width = info->width - 1;
 	frame_regs.height = info->height - 1;
 
-	/* not needed for drawing a simple triangle */
-	frame_regs.fragment_stack_address = 0;
-	frame_regs.fragment_stack_size = 0;
+	if (frame) {
+		if ((frame->mem_size - frame->mem_used) > 0x10000) {
+			frame_regs.fragment_stack_address =
+				frame->mem_physical + frame->mem_used;
+			frame_regs.fragment_stack_size = 0x10001;
+
+			frame->mem_used += 0x10000;
+		} else
+			printf("%s: no space left!\n", __func__);
+	}
 
 	frame_regs.one = 1;
 	if (supersampling)
