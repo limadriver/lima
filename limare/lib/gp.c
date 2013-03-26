@@ -669,35 +669,6 @@ plbu_commands_finish(struct limare_frame *frame)
 	struct lima_cmd *cmds = frame->plbu_commands;
 	int i = frame->plbu_commands_count;
 
-	/*
-	 * Some inter-frame communication apparently.
-	 */
-#if 0
-	cmds[i].val = 0x400e41c0;
-	cmds[i].cmd = 0xa0000103;
-	i++;
-
-	cmds[i].val = 0x400e41c4;
-	cmds[i].cmd = 0xa0000104;
-	i++;
-
-	cmds[i].val = 0x400e41c8;
-	cmds[i].cmd = 0xa0000107;
-	i++;
-
-	cmds[i].val = 0x400e41cc;
-	cmds[i].cmd = 0xa0000108;
-	i++;
-
-	cmds[i].val = 0x400e41d0;
-	cmds[i].cmd = 0xa0000105;
-	i++;
-
-	cmds[i].val = 0x400e41d4;
-	cmds[i].cmd = 0xa0000106;
-	i++;
-#endif
-
 #if 0
 	cmds[i].val = 0x00000000;
 	cmds[i].cmd = 0xd0000000;
