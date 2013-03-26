@@ -62,28 +62,6 @@ int render_format;
 static int mali_type = 400;
 static int mali_version;
 
-int
-limare_mutex_lock(pthread_mutex_t *mutex)
-{
-#if 0
-	return pthread_mutex_lock(mutex);
-#else
-	/*
-	 * On linux-sunxi with linaro userspace, threading seems to have quite
-	 * some issues. Seems that our main thread does not get woken up with
-	 * pthread_mutex_lock. This workaround is a lot more expensive, but
-	 * at least works.
-	 */
-	while (1) {
-		if (pthread_mutex_trylock(mutex))
-			sched_yield();
-		else
-			break;
-	}
-#endif
-	return 0;
-}
-
 #if 0
 /*
  * Broken with the wait_for_notification workaround.
@@ -100,7 +78,7 @@ serialized_start(const char *func)
 		       func, first_func);
 	else {
 		first_func = func;
-		limare_mutex_lock(serializer);
+		pthread_mutex_lock(serializer);
 	}
 	recursive++;
 }
@@ -118,7 +96,7 @@ serialized_stop(void)
 static inline void
 serialized_start(const char *func)
 {
-	limare_mutex_lock(serializer);
+	pthread_mutex_lock(serializer);
 }
 
 static inline void

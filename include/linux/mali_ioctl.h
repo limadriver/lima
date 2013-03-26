@@ -757,6 +757,8 @@ typedef struct
         _mali_uk_gp_job_finished_s  gp_job_finished; /**< [out] Notification data for _MALI_NOTIFICATION_GP_FINISHED notification type */
         _mali_uk_pp_job_finished_s  pp_job_finished; /**< [out] Notification data for _MALI_NOTIFICATION_PP_FINISHED notification type */
     } data;
+	unsigned int pad0;
+	unsigned int pad1;
 } _mali_uk_wait_for_notification_s;
 /** @} */ /* end group _mali_uk_waitfornotification_s */
 
