@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -53,6 +53,6 @@ struct pp_info *pp_info_create(struct limare_state *state,
 			       struct limare_frame *frame);
 void pp_info_destroy(struct pp_info *pp);
 
-int limare_pp_job_start(struct limare_state *state, struct pp_info *info);
+int limare_pp_job_start(struct limare_state *state, struct limare_frame *frame);
 
 #endif /* LIMARE_PP_H */

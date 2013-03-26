@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -29,12 +29,17 @@
 #define LIMARE_JOBS_H 1
 
 int limare_gp_job_start_direct(struct limare_state *state,
-			       struct lima_gp_frame_registers *frame);
+			       struct limare_frame *frame,
+			       struct lima_gp_frame_registers *frame_regs);
 int limare_m200_pp_job_start_direct(struct limare_state *state,
-				    struct lima_m200_pp_frame_registers *frame,
-				    struct lima_pp_wb_registers *wb);
+				    struct limare_frame *frame,
+				    struct lima_m200_pp_frame_registers
+				    *frame_regs,
+				    struct lima_pp_wb_registers *wb_regs);
 int limare_m400_pp_job_start_direct(struct limare_state *state,
-				    struct lima_m400_pp_frame_registers *frame,
-				    struct lima_pp_wb_registers *wb);
+				    struct limare_frame *frame,
+				    struct lima_m400_pp_frame_registers
+				    *frame_regs,
+				    struct lima_pp_wb_registers *wb_regs);
 
 #endif /* LIMARE_JOBS_H */

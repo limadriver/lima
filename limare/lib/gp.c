@@ -827,7 +827,7 @@ limare_gp_job_start(struct limare_state *state, struct limare_frame *frame)
 	frame_regs.tile_heap_end = frame->mem_physical +
 		frame->tile_heap_offset + frame->tile_heap_size;
 
-	return limare_gp_job_start_direct(state, &frame_regs);
+	return limare_gp_job_start_direct(state, frame, &frame_regs);
 }
 
 struct draw_info *

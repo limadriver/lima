@@ -780,7 +780,7 @@ limare_flush(struct limare_state *state)
 	if (ret)
 		return ret;
 
-	ret = limare_pp_job_start(state, frame->pp);
+	ret = limare_pp_job_start(state, frame);
 	if (ret)
 		return ret;
 

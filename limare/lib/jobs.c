@@ -95,7 +95,8 @@ limare_jobs_wait(void)
 
 static int
 limare_gp_job_start_r2p1(struct limare_state *state,
-			 struct lima_gp_frame_registers *frame)
+			 struct limare_frame *frame,
+			 struct lima_gp_frame_registers *frame_regs)
 {
 	struct lima_gp_job_start_r2p1 job = { 0 };
 	int ret;
@@ -106,7 +107,7 @@ limare_gp_job_start_r2p1(struct limare_state *state,
 	job.user_job_ptr = (unsigned int) &job;
 	job.priority = 1;
 	job.watchdog_msecs = 0;
-	job.frame = *frame;
+	job.frame = *frame_regs;
 	job.abort_id = 0;
 	ret = ioctl(state->fd, LIMA_GP_START_JOB_R2P1, &job);
 	if (ret == -1) {
@@ -125,7 +126,8 @@ limare_gp_job_start_r2p1(struct limare_state *state,
 
 static int
 limare_gp_job_start_r3p0(struct limare_state *state,
-			 struct lima_gp_frame_registers *frame)
+			 struct limare_frame *frame,
+			 struct lima_gp_frame_registers *frame_regs)
 {
 	struct lima_gp_job_start_r3p0 job = { 0 };
 	int ret;
@@ -135,7 +137,7 @@ limare_gp_job_start_r3p0(struct limare_state *state,
 	job.fd = state->fd;
 	job.user_job_ptr = (unsigned int) &job;
 	job.priority = 1;
-	job.frame = *frame;
+	job.frame = *frame_regs;
 	ret = ioctl(state->fd, LIMA_GP_START_JOB_R3P0, &job);
 	if (ret == -1) {
 		printf("%s: Error: failed to start job: %s\n",
@@ -153,18 +155,20 @@ limare_gp_job_start_r3p0(struct limare_state *state,
 
 int
 limare_gp_job_start_direct(struct limare_state *state,
-			   struct lima_gp_frame_registers *frame)
+			   struct limare_frame *frame,
+			   struct lima_gp_frame_registers *frame_regs)
 {
 	if (state->kernel_version < MALI_DRIVER_VERSION_R3P0)
-		return limare_gp_job_start_r2p1(state, frame);
+		return limare_gp_job_start_r2p1(state, frame, frame_regs);
 	else
-		return limare_gp_job_start_r3p0(state, frame);
+		return limare_gp_job_start_r3p0(state, frame, frame_regs);
 }
 
 int
 limare_m200_pp_job_start_direct(struct limare_state *state,
-				struct lima_m200_pp_frame_registers *frame,
-				struct lima_pp_wb_registers *wb)
+				struct limare_frame *frame,
+				struct lima_m200_pp_frame_registers *frame_regs,
+				struct lima_pp_wb_registers *wb_regs)
 {
 	struct lima_m200_pp_job_start job = { 0 };
 	int ret;
@@ -175,8 +179,8 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 	job.user_job_ptr = (unsigned int) &job;
 	job.priority = 1;
 	job.watchdog_msecs = 0;
-	job.frame = *frame;
-	job.wb[0] = *wb;
+	job.frame = *frame_regs;
+	job.wb[0] = *wb_regs;
 	job.abort_id = 0;
 
 	ret = ioctl(state->fd, LIMA_M200_PP_START_JOB, &job);
@@ -193,8 +197,9 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 
 static int
 limare_m400_pp_job_start_r2p1(struct limare_state *state,
-			      struct lima_m400_pp_frame_registers *frame,
-			      struct lima_pp_wb_registers *wb)
+			      struct limare_frame *frame,
+			      struct lima_m400_pp_frame_registers *frame_regs,
+			      struct lima_pp_wb_registers *wb_regs)
 {
 	struct lima_m400_pp_job_start_r2p1 job = { 0 };
 	int ret;
@@ -205,8 +210,8 @@ limare_m400_pp_job_start_r2p1(struct limare_state *state,
 	job.user_job_ptr = (unsigned int) &job;
 	job.priority = 1;
 	job.watchdog_msecs = 0;
-	job.frame = *frame;
-	job.wb[0] = *wb;
+	job.frame = *frame_regs;
+	job.wb[0] = *wb_regs;
 	job.abort_id = 0;
 
 	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB_R2P1, &job);
@@ -223,8 +228,9 @@ limare_m400_pp_job_start_r2p1(struct limare_state *state,
 
 static int
 limare_m400_pp_job_start_r3p0(struct limare_state *state,
-			      struct lima_m400_pp_frame_registers *frame,
-			      struct lima_pp_wb_registers *wb)
+			      struct limare_frame *frame,
+			      struct lima_m400_pp_frame_registers *frame_regs,
+			      struct lima_pp_wb_registers *wb_regs)
 {
 	struct lima_m400_pp_job_start_r3p0 job = { 0 };
 	int ret;
@@ -234,8 +240,8 @@ limare_m400_pp_job_start_r3p0(struct limare_state *state,
 	job.fd = state->fd;
 	job.user_job_ptr = (unsigned int) &job;
 	job.priority = 1;
-	job.frame = *frame;
-	job.wb0 = *wb;
+	job.frame = *frame_regs;
+	job.wb0 = *wb_regs;
 	job.num_cores = 1;
 
 	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB_R3P0, &job);
@@ -252,11 +258,14 @@ limare_m400_pp_job_start_r3p0(struct limare_state *state,
 
 int
 limare_m400_pp_job_start_direct(struct limare_state *state,
-				struct lima_m400_pp_frame_registers *frame,
-				struct lima_pp_wb_registers *wb)
+				struct limare_frame *frame,
+				struct lima_m400_pp_frame_registers *frame_regs,
+				struct lima_pp_wb_registers *wb_regs)
 {
 	if (state->kernel_version < MALI_DRIVER_VERSION_R3P0)
-		return limare_m400_pp_job_start_r2p1(state, frame, wb);
+		return limare_m400_pp_job_start_r2p1(state, frame,
+						     frame_regs, wb_regs);
 	else
-		return limare_m400_pp_job_start_r3p0(state, frame, wb);
+		return limare_m400_pp_job_start_r3p0(state, frame,
+						     frame_regs, wb_regs);
 }
