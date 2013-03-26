@@ -43,55 +43,135 @@
 #include "limare.h"
 #include "jobs.h"
 
-static _mali_uk_wait_for_notification_s wait;
-static pthread_mutex_t wait_mutex = PTHREAD_MUTEX_INITIALIZER;
+#include "plb.h"
+#include "fb.h"
 
-static void *
-wait_for_notification(void *arg)
+static pthread_mutex_t gp_job_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t gp_job_cond = PTHREAD_COND_INITIALIZER;
+static int gp_job_done;
+
+static pthread_mutex_t pp_job_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t pp_job_cond = PTHREAD_COND_INITIALIZER;
+static int pp_job_done;
+
+static void
+limare_gp_job_done(void)
 {
-	struct limare_state *state = arg;
 	int ret;
 
-	pthread_mutex_lock(&wait_mutex);
+	ret = pthread_mutex_lock(&gp_job_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
 
-	do {
-		do {
-			wait.code.timeout = 25;
-			ret = ioctl(state->fd, MALI_IOC_WAIT_FOR_NOTIFICATION,
-				    &wait);
-			if (ret == -1) {
-				printf("%s: Error: wait failed: %s\n",
-				       __func__, strerror(errno));
-				exit(-1);
-			}
-		} while (wait.code.type == _MALI_NOTIFICATION_CORE_TIMEOUT);
+        gp_job_done = 1;
 
-		if ((wait.code.type & 0xFF) == 0x10)
-			break;
+        pthread_cond_broadcast(&gp_job_cond);
 
-		printf("%s: %x: %x\n", __func__, wait.code.type,
-		       wait.data.gp_job_suspended.reason);
-	} while (1);
+        ret = pthread_mutex_unlock(&gp_job_mutex);
+	if (ret)
+		printf("%s: error unlocking mutex: %s\n", __func__,
+		       strerror(ret));
+}
 
-	pthread_mutex_unlock(&wait_mutex);
+static void
+limare_gp_job_wait(void)
+{
+	int ret;
+
+	ret = pthread_mutex_lock(&gp_job_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
+
+	while (!gp_job_done)
+		pthread_cond_wait(&gp_job_cond, &gp_job_mutex);
+
+	gp_job_done = 0;
+
+	ret = pthread_mutex_unlock(&gp_job_mutex);
+	if (ret)
+		printf("%s: error unlocking mutex: %s\n", __func__,
+		       strerror(ret));
+}
+
+static void
+limare_pp_job_done(void)
+{
+	pthread_mutex_lock(&pp_job_mutex);
+
+        pp_job_done = 1;
+
+        pthread_cond_broadcast(&pp_job_cond);
+
+        pthread_mutex_unlock(&pp_job_mutex);
+}
+
+static void
+limare_pp_job_wait(void)
+{
+	pthread_mutex_lock(&pp_job_mutex);
+
+	while (!pp_job_done)
+		pthread_cond_wait(&pp_job_cond, &pp_job_mutex);
+
+	pp_job_done = 0;
+
+        pthread_mutex_unlock(&pp_job_mutex);
+}
+
+static void *
+limare_notification_thread(void *arg)
+{
+	struct limare_state *state = arg;
+	static _mali_uk_wait_for_notification_s wait = { 0 };
+	int ret;
+
+	while (1) {
+		while (1) {
+			do {
+				wait.code.timeout = 500;
+				ret = ioctl(state->fd,
+					    MALI_IOC_WAIT_FOR_NOTIFICATION,
+					    &wait);
+				if (ret == -1) {
+					printf("%s: Error: wait failed: %s\n",
+					       __func__, strerror(errno));
+					exit(-1);
+				}
+			} while (wait.code.type ==
+				 _MALI_NOTIFICATION_CORE_TIMEOUT);
+
+			if ((wait.code.type & 0xFF) == 0x10)
+				break;
+
+			printf("%s: %x: %x\n", __func__, wait.code.type,
+			       wait.data.gp_job_suspended.reason);
+		}
+
+		if (wait.code.type == _MALI_NOTIFICATION_PP_FINISHED) {
+			_mali_uk_job_status status =
+				wait.data.pp_job_finished.status;
+
+			if (status != _MALI_UK_JOB_STATUS_END_SUCCESS)
+				printf("pp job returned 0x%08X\n", status);
+
+			limare_pp_job_done();
+		} else if (wait.code.type == _MALI_NOTIFICATION_GP_FINISHED) {
+			_mali_uk_job_status status =
+				wait.data.gp_job_finished.status;
+
+			if (status != _MALI_UK_JOB_STATUS_END_SUCCESS)
+				printf("gp job returned 0x%08X\n", status);
+
+			limare_gp_job_done();
+		}
+	}
 
 	return NULL;
 }
 
-static void
-wait_for_notification_start(struct limare_state *state)
-{
-	pthread_t thread;
-
-	pthread_create(&thread, NULL, wait_for_notification, state);
-}
-
-static void
-limare_jobs_wait(void)
-{
-	pthread_mutex_lock(&wait_mutex);
-	pthread_mutex_unlock(&wait_mutex);
-}
+static pthread_t limare_notification_pthread;
 
 static int
 limare_gp_job_start_r2p1(struct limare_state *state,
@@ -100,8 +180,6 @@ limare_gp_job_start_r2p1(struct limare_state *state,
 {
 	struct lima_gp_job_start_r2p1 job = { 0 };
 	int ret;
-
-	wait_for_notification_start(state);
 
 	job.fd = state->fd;
 	job.user_job_ptr = (unsigned int) &job;
@@ -116,11 +194,6 @@ limare_gp_job_start_r2p1(struct limare_state *state,
 		return errno;
 	}
 
-	limare_jobs_wait();
-
-	/* wait for the plb to be fully written out */
-	usleep(8500);
-
 	return 0;
 }
 
@@ -132,8 +205,6 @@ limare_gp_job_start_r3p0(struct limare_state *state,
 	struct lima_gp_job_start_r3p0 job = { 0 };
 	int ret;
 
-	wait_for_notification_start(state);
-
 	job.fd = state->fd;
 	job.user_job_ptr = (unsigned int) &job;
 	job.priority = 1;
@@ -144,11 +215,6 @@ limare_gp_job_start_r3p0(struct limare_state *state,
 		       __func__, strerror(errno));
 		return errno;
 	}
-
-	limare_jobs_wait();
-
-	/* wait for the plb to be fully written out */
-	usleep(8500);
 
 	return 0;
 }
@@ -175,7 +241,12 @@ limare_gp_job_start(struct limare_state *state, struct limare_frame *frame)
 	else
 		ret = limare_gp_job_start_r3p0(state, frame, &frame_regs);
 
-	return ret;
+	if (ret)
+		return ret;
+
+	limare_gp_job_wait();
+
+	return 0;
 }
 
 int
@@ -186,8 +257,6 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 {
 	struct lima_m200_pp_job_start job = { 0 };
 	int ret;
-
-	wait_for_notification_start(state);
 
 	job.fd = state->fd;
 	job.user_job_ptr = (unsigned int) &job;
@@ -204,7 +273,7 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 		return errno;
 	}
 
-	limare_jobs_wait();
+	limare_pp_job_wait();
 
 	return 0;
 }
@@ -217,8 +286,6 @@ limare_m400_pp_job_start_r2p1(struct limare_state *state,
 {
 	struct lima_m400_pp_job_start_r2p1 job = { 0 };
 	int ret;
-
-	wait_for_notification_start(state);
 
 	job.fd = state->fd;
 	job.user_job_ptr = (unsigned int) &job;
@@ -235,7 +302,7 @@ limare_m400_pp_job_start_r2p1(struct limare_state *state,
 		return errno;
 	}
 
-	limare_jobs_wait();
+	limare_pp_job_wait();
 
 	return 0;
 }
@@ -248,8 +315,6 @@ limare_m400_pp_job_start_r3p0(struct limare_state *state,
 {
 	struct lima_m400_pp_job_start_r3p0 job = { 0 };
 	int ret;
-
-	wait_for_notification_start(state);
 
 	job.fd = state->fd;
 	job.user_job_ptr = (unsigned int) &job;
@@ -265,7 +330,7 @@ limare_m400_pp_job_start_r3p0(struct limare_state *state,
 		return errno;
 	}
 
-	limare_jobs_wait();
+	limare_pp_job_wait();
 
 	return 0;
 }
@@ -282,4 +347,16 @@ limare_m400_pp_job_start_direct(struct limare_state *state,
 	else
 		return limare_m400_pp_job_start_r3p0(state, frame,
 						     frame_regs, wb_regs);
+}
+
+void
+limare_jobs_init(struct limare_state *state)
+{
+	int ret;
+
+	ret = pthread_create(&limare_notification_pthread, NULL,
+			     limare_notification_thread, state);
+	if (ret)
+		printf("%s: error starting thread: %s\n", __func__,
+		       strerror(ret));
 }

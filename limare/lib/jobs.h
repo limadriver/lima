@@ -40,4 +40,6 @@ int limare_m400_pp_job_start_direct(struct limare_state *state,
 				    *frame_regs,
 				    struct lima_pp_wb_registers *wb_regs);
 
+void limare_jobs_init(struct limare_state *state);
+
 #endif /* LIMARE_JOBS_H */

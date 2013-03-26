@@ -289,6 +289,8 @@ limare_init(void)
 	fb_open(state);
 	limare_framerate_init(state);
 
+	limare_jobs_init(state);
+
 	return state;
  error:
 	free(state);
