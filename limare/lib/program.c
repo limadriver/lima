@@ -179,6 +179,7 @@ stream_uniform_table_size_read(const void *stream, int *size)
 {
 	const struct stream_uniform_table_start *start = stream;
 
+	*size = 0;
 	if (start->tag != STREAM_TAG_SUNI)
 		return 0;
 
@@ -507,6 +508,7 @@ stream_attribute_table_size_read(const void *stream, int *size)
 {
 	const struct stream_attribute_table_start *start = stream;
 
+	*size = 0;
 	if (start->tag != STREAM_TAG_SATT)
 		return 0;
 
@@ -1680,7 +1682,7 @@ limare_program_fragment_shader_attach_mbs_stream(struct limare_state *state,
 
 	ret = stream_uniform_table_size_read(stream + offset,
 					     &binary->uniform_stream_size);
-	if (ret <= 0) {
+	if (ret < 0) {
 		printf("%s: Error: missing or invalid uniform table start at"
 		       " 0x%x\n", __func__, offset);
 		goto end;
@@ -1690,7 +1692,7 @@ limare_program_fragment_shader_attach_mbs_stream(struct limare_state *state,
 	binary->varying_stream = stream + offset;
 	ret = stream_varying_table_size_read(stream + offset,
 					     &binary->varying_stream_size);
-	if (ret <= 0) {
+	if (ret < 0) {
 		printf("%s: Error: missing or invalid varying table start "
 		       "at 0x%x\n", __func__, offset);
 		goto end;
