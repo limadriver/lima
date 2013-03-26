@@ -31,6 +31,43 @@
 #include "limare.h"
 #include "plb.h"
 
+static void
+hilbert_rotate(int n, int *x, int *y, int rx, int ry)
+{
+	if (ry == 0) {
+		if (rx == 1) {
+			*x = n-1 - *x;
+			*y = n-1 - *y;
+		}
+
+		/* Swap x and y */
+		int t  = *x;
+		*x = *y;
+		*y = t;
+	}
+}
+
+static void
+hilbert_coords(int n, int d, int *x, int *y)
+{
+	int rx, ry, i, t=d;
+
+	*x = *y = 0;
+
+	for (i = 0; (1 << i) < n; i++) {
+
+		rx = 1 & (t / 2);
+		ry = 1 & (t ^ rx);
+
+		hilbert_rotate(1 << i, x, y, rx, ry);
+
+		*x += rx << i;
+		*y += ry << i;
+
+		t /= 4;
+	}
+}
+
 /*
  * Pre-generate the PLB desciptors for the PP.
  */
@@ -38,19 +75,38 @@ static void
 plb_pp_template_create(struct plb_info *plb)
 {
 	unsigned int *stream = plb->pp_template;
-	int x, y, index = 0;
+	int size = plb->tiled_w * plb->tiled_h * 4;
+	int max, dim, count, i, index;
 
-	for (y = 0; y < plb->tiled_h; y += 1) {
-		for (x = 0; x < plb->tiled_w; x += 1) {
+	if (plb->tiled_w < plb->tiled_h)
+		max = plb->tiled_h;
+	else
+		max = plb->tiled_w;
+
+	for (dim = 0; (1 << dim) < max; dim++)
+		;
+	count = 1 << (dim + dim);
+
+	for (i = 0, index = 0; i < count; i++) {
+		int x, y;
+
+		hilbert_coords(max, i, &x, &y);
+
+		if ((x < plb->tiled_w) && (y < plb->tiled_h)) {
 			int offset = ((y >> plb->shift_h) * plb->block_w +
 				      (x >> plb->shift_w)) * plb->block_size;
 
 			stream[index + 0] = 0;
 			stream[index + 1] = 0xB8000000 | x | (y << 8);
-			stream[index + 2] = 0xE0000002 | ((offset >> 3) & ~0xE0000003);
+			stream[index + 2] = 0xE0000002 |
+				((offset >> 3) & ~0xE0000003);
 			stream[index + 3] = 0xB0000000;
 
 			index += 4;
+			if (index > size) {
+				printf("Error: plb stream overrun!\n");
+				break;
+			}
 		}
 	}
 
