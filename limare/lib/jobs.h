@@ -28,9 +28,7 @@
 #ifndef LIMARE_JOBS_H
 #define LIMARE_JOBS_H 1
 
-int limare_gp_job_start_direct(struct limare_state *state,
-			       struct limare_frame *frame,
-			       struct lima_gp_frame_registers *frame_regs);
+int limare_gp_job_start(struct limare_state *state, struct limare_frame *frame);
 int limare_m200_pp_job_start_direct(struct limare_state *state,
 				    struct limare_frame *frame,
 				    struct lima_m200_pp_frame_registers

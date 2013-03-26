@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -134,8 +134,5 @@ struct draw_info *draw_create_new(struct limare_state *state,
 				  int vertex_start, int vertex_count);
 
 void draw_info_destroy(struct draw_info *draw);
-
-int limare_gp_job_start(struct limare_state *state,
-			struct limare_frame *frame);
 
 #endif /* LIMARE_GP_H */

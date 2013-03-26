@@ -811,25 +811,6 @@ plbu_info_render_state_create(struct limare_program *program,
 	return 0;
 }
 
-int
-limare_gp_job_start(struct limare_state *state, struct limare_frame *frame)
-{
-	struct lima_gp_frame_registers frame_regs = { 0 };
-
-	frame_regs.vs_commands_start = frame->vs_commands_physical;
-	frame_regs.vs_commands_end =
-		frame->vs_commands_physical + 8 * frame->vs_commands_count;
-	frame_regs.plbu_commands_start = frame->plbu_commands_physical;
-	frame_regs.plbu_commands_end =
-		frame->plbu_commands_physical + 8 * frame->plbu_commands_count;
-	frame_regs.tile_heap_start =
-		frame->mem_physical + frame->tile_heap_offset;
-	frame_regs.tile_heap_end = frame->mem_physical +
-		frame->tile_heap_offset + frame->tile_heap_size;
-
-	return limare_gp_job_start_direct(state, frame, &frame_regs);
-}
-
 struct draw_info *
 draw_create_new(struct limare_state *state, struct limare_frame *frame,
 		int draw_mode, int vertex_start, int vertex_count)
