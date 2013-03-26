@@ -134,22 +134,23 @@ struct stream_uniform_init {
 struct stream_uniform {
 	struct stream_uniform *next;
 
-	struct stream_uniform_start *start;
-	struct stream_string *string;
-	struct stream_uniform_data *data;
-	struct stream_uniform_init *init;
+	const struct stream_uniform_start *start;
+	const struct stream_string *string;
+	const struct stream_uniform_data *data;
+	const struct stream_uniform_init *init;
 };
 
 struct stream_uniform_table {
-	struct stream_uniform_table_start *start;
+	const struct stream_uniform_table_start *start;
 
 	struct stream_uniform *uniforms;
 };
 
 static int
-stream_uniform_table_start_read(void *stream, struct stream_uniform_table *table)
+stream_uniform_table_start_read(const void *stream,
+				struct stream_uniform_table *table)
 {
-	struct stream_uniform_table_start *start = stream;
+	const struct stream_uniform_table_start *start = stream;
 
 	if (start->tag != STREAM_TAG_SUNI)
 		return 0;
@@ -159,9 +160,9 @@ stream_uniform_table_start_read(void *stream, struct stream_uniform_table *table
 }
 
 static int
-stream_uniform_start_read(void *stream, struct stream_uniform *uniform)
+stream_uniform_start_read(const void *stream, struct stream_uniform *uniform)
 {
-	struct stream_uniform_start *start = stream;
+	const struct stream_uniform_start *start = stream;
 
 	if (start->tag != STREAM_TAG_VUNI)
 		return 0;
@@ -171,7 +172,7 @@ stream_uniform_start_read(void *stream, struct stream_uniform *uniform)
 }
 
 static int
-stream_string_read(void *stream, struct stream_string **string)
+stream_string_read(const void *stream, const struct stream_string **string)
 {
 	*string = stream;
 
@@ -183,7 +184,7 @@ stream_string_read(void *stream, struct stream_string **string)
 }
 
 static int
-stream_uniform_data_read(void *stream, struct stream_uniform *uniform)
+stream_uniform_data_read(const void *stream, struct stream_uniform *uniform)
 {
 	uniform->data = stream;
 
@@ -191,9 +192,9 @@ stream_uniform_data_read(void *stream, struct stream_uniform *uniform)
 }
 
 static int
-stream_uniform_init_read(void *stream, struct stream_uniform *uniform)
+stream_uniform_init_read(const void *stream, struct stream_uniform *uniform)
 {
-	struct stream_uniform_init *init = stream;
+	const struct stream_uniform_init *init = stream;
 
 	if (init->tag != STREAM_TAG_VINI)
 		return 0;
@@ -207,9 +208,9 @@ stream_uniform_init_read(void *stream, struct stream_uniform *uniform)
  * Tags that are currently unused.
  */
 static int
-stream_uniform_skip(void *stream)
+stream_uniform_skip(const void *stream)
 {
-	unsigned int *tag = stream;
+	const unsigned int *tag = stream;
 
 	switch (*tag) {
 	case STREAM_TAG_VIDX:
@@ -239,7 +240,7 @@ stream_uniform_table_destroy(struct stream_uniform_table *table)
 }
 
 static struct stream_uniform_table *
-stream_uniform_table_create(void *stream, int size)
+stream_uniform_table_create(const void *stream, int size)
 {
 	struct stream_uniform_table *table;
 	struct stream_uniform *uniform;
@@ -448,21 +449,22 @@ struct stream_attribute_data { /* 0x14 */
 struct stream_attribute {
 	struct stream_attribute *next;
 
-	struct stream_attribute_start *start;
-	struct stream_string *string;
-	struct stream_attribute_data *data;
+	const struct stream_attribute_start *start;
+	const struct stream_string *string;
+	const struct stream_attribute_data *data;
 };
 
 struct stream_attribute_table {
-	struct stream_attribute_table_start *start;
+	const struct stream_attribute_table_start *start;
 
 	struct stream_attribute *attributes;
 };
 
 static int
-stream_attribute_table_start_read(void *stream, struct stream_attribute_table *table)
+stream_attribute_table_start_read(const void *stream,
+				  struct stream_attribute_table *table)
 {
-	struct stream_attribute_table_start *start = stream;
+	const struct stream_attribute_table_start *start = stream;
 
 	if (start->tag != STREAM_TAG_SATT)
 		return 0;
@@ -472,9 +474,10 @@ stream_attribute_table_start_read(void *stream, struct stream_attribute_table *t
 }
 
 static int
-stream_attribute_start_read(void *stream, struct stream_attribute *attribute)
+stream_attribute_start_read(const void *stream,
+			    struct stream_attribute *attribute)
 {
-	struct stream_attribute_start *start = stream;
+	const struct stream_attribute_start *start = stream;
 
 	if (start->tag != STREAM_TAG_VATT)
 		return 0;
@@ -484,7 +487,8 @@ stream_attribute_start_read(void *stream, struct stream_attribute *attribute)
 }
 
 static int
-stream_attribute_data_read(void *stream, struct stream_attribute *attribute)
+stream_attribute_data_read(const void *stream,
+			   struct stream_attribute *attribute)
 {
 	attribute->data = stream;
 
@@ -507,7 +511,7 @@ stream_attribute_table_destroy(struct stream_attribute_table *table)
 }
 
 static struct stream_attribute_table *
-stream_attribute_table_create(void *stream, int size)
+stream_attribute_table_create(const void *stream, int size)
 {
 	struct stream_attribute_table *table;
 	struct stream_attribute *attribute;
@@ -690,21 +694,22 @@ struct stream_varying_data { /* 0x14 */
 struct stream_varying {
 	struct stream_varying *next;
 
-	struct stream_varying_start *start;
-	struct stream_string *string;
-	struct stream_varying_data *data;
+	const struct stream_varying_start *start;
+	const struct stream_string *string;
+	const struct stream_varying_data *data;
 };
 
 struct stream_varying_table {
-	struct stream_varying_table_start *start;
+	const struct stream_varying_table_start *start;
 
 	struct stream_varying *varyings;
 };
 
 static int
-stream_varying_table_start_read(void *stream, struct stream_varying_table *table)
+stream_varying_table_start_read(const void *stream,
+				struct stream_varying_table *table)
 {
-	struct stream_varying_table_start *start = stream;
+	const struct stream_varying_table_start *start = stream;
 
 	if (start->tag != STREAM_TAG_SVAR)
 		return 0;
@@ -714,9 +719,9 @@ stream_varying_table_start_read(void *stream, struct stream_varying_table *table
 }
 
 static int
-stream_varying_start_read(void *stream, struct stream_varying *varying)
+stream_varying_start_read(const void *stream, struct stream_varying *varying)
 {
-	struct stream_varying_start *start = stream;
+	const struct stream_varying_start *start = stream;
 
 	if (start->tag != STREAM_TAG_VVAR)
 		return 0;
@@ -726,7 +731,7 @@ stream_varying_start_read(void *stream, struct stream_varying *varying)
 }
 
 static int
-stream_varying_data_read(void *stream, struct stream_varying *varying)
+stream_varying_data_read(const void *stream, struct stream_varying *varying)
 {
 	varying->data = stream;
 
@@ -749,7 +754,7 @@ stream_varying_table_destroy(struct stream_varying_table *table)
 }
 
 static struct stream_varying_table *
-stream_varying_table_create(void *stream, int size)
+stream_varying_table_create(const void *stream, int size)
 {
 	struct stream_varying_table *table;
 	struct stream_varying *varying;
@@ -989,11 +994,11 @@ vertex_shader_varyings_patch(unsigned int *shader, int size, int *indices)
 static void
 limare_shader_binary_free(struct lima_shader_binary *binary)
 {
-	free(binary->error_log);
-	free(binary->shader);
-	free(binary->varying_stream);
-	free(binary->uniform_stream);
-	free(binary->attribute_stream);
+	free((void *) binary->error_log);
+	free((void *) binary->shader);
+	free((void *) binary->varying_stream);
+	free((void *) binary->uniform_stream);
+	free((void *) binary->attribute_stream);
 	free(binary);
 }
 
@@ -1025,17 +1030,17 @@ limare_shader_compile(struct limare_state *state, int type, const char *source)
 				printf("%s: compilation failed: %s\n",
 				       __func__, mbs_binary->oom_log);
 
-			free(mbs_binary->error_log);
+			free((void *) mbs_binary->error_log);
 			free(mbs_binary->shader);
-			free(mbs_binary->mbs_stream);
-			free(mbs_binary->varying_stream);
-			free(mbs_binary->uniform_stream);
-			free(mbs_binary->attribute_stream);
+			free((void *) mbs_binary->mbs_stream);
+			free((void *) mbs_binary->varying_stream);
+			free((void *) mbs_binary->uniform_stream);
+			free((void *) mbs_binary->attribute_stream);
 			return NULL;
 		}
 
 		/* we are not using the mbs */
-		free(mbs_binary->mbs_stream);
+		free((void *) mbs_binary->mbs_stream);
 
 		binary->compile_status = mbs_binary->compile_status;
 		binary->shader = mbs_binary->shader;

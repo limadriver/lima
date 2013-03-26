@@ -62,15 +62,15 @@ struct lima_shader_binary { /* 0x5C */
 #define LIMA_SHADER_COMPILE_STATUS_CLEAR    0x00
 #define LIMA_SHADER_COMPILE_STATUS_COMPILED 0x01
 	int compile_status; /* 0x00 */
-	char *error_log; /* 0x04 - can be freed */
-	char *oom_log; /* 0x08 - static */
+	const char *error_log; /* 0x04 - can be freed */
+	const char *oom_log; /* 0x08 - static */
 	void *shader; /* 0x0C */
 	int shader_size; /* 0x10 */
-	void *varying_stream; /* 0x14 */
+	const void *varying_stream; /* 0x14 */
 	int varying_stream_size; /* 0x18 */
-	void *uniform_stream; /* 0x1C */
+	const void *uniform_stream; /* 0x1C */
 	int uniform_stream_size; /* 0x20 */
-	void *attribute_stream; /* 0x24 */
+	const void *attribute_stream; /* 0x24 */
 	int attribute_stream_size; /* 0x28 */
 	union {
 		struct lima_shader_binary_vertex_parameters vertex;
@@ -83,17 +83,17 @@ struct lima_shader_binary { /* 0x5C */
  */
 struct lima_shader_binary_mbs { /* 0x6C */
 	int compile_status; /* 0x00 */
-	char *error_log; /* 0x04 - can be freed */
-	char *oom_log; /* 0x08 - static */
+	const char *error_log; /* 0x04 - can be freed */
+	const char *oom_log; /* 0x08 - static */
 	void *shader; /* 0x0C */
 	int shader_size; /* 0x10 */
-	void *mbs_stream; /* 0x14 */
-	int mbs_stream_size; /* 0x18 */
-	void *varying_stream; /* 0x1C */
+	const void *mbs_stream; /* 0x14 */
+	const int mbs_stream_size; /* 0x18 */
+	const void *varying_stream; /* 0x1C */
 	int varying_stream_size; /* 0x20 */
-	void *uniform_stream; /* 0x24 */
+	const void *uniform_stream; /* 0x24 */
 	int uniform_stream_size; /* 0x28 */
-	void *attribute_stream; /* 0x2C */
+	const void *attribute_stream; /* 0x2C */
 	int attribute_stream_size; /* 0x30 */
 	union {
 		struct lima_shader_binary_vertex_parameters vertex;

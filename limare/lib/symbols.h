@@ -81,7 +81,7 @@ struct symbol *symbol_create(const char *name, enum symbol_type type,
 			     enum symbol_value_type value_type,
 			     int precision, int component_count,
 			     int entry_count, int src_stride, int dst_stride,
-			     void *data, int copy, int flag);
+			     const void *data, int copy, int flag);
 
 struct symbol *symbol_copy(struct symbol *original, int start, int count);
 
