@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -236,7 +236,7 @@ limare_m400_pp_job_start(struct limare_state *state, struct pp_info *info)
 	wb.pixel_layout = 0;
 	wb.pitch = info->pitch / 8;
 	/* todo: infrastructure to read fbdev and see whether, we need to swap R/B */
-	wb.mrt_bits = 4; /* set to RGBA instead of BGRA */
+	//wb.mrt_bits = 4; /* set to RGBA instead of BGRA */
 	wb.mrt_pitch = 0;
 	wb.zero = 0;
 

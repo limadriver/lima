@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011      Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -129,7 +129,7 @@ bmp_dump(unsigned char *buffer, struct limare_state *state,
 
 	/* HORRIBLE HACK */
 	if (state && state->type == 400)
-		bmp_header_write(fd, width, height, 0);
+		bmp_header_write(fd, width, height, 1);
 	else
 		bmp_header_write(fd, width, height, 1);
 
