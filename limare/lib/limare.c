@@ -523,7 +523,7 @@ limare_attribute_pointer(struct limare_state *state, char *name,
 			 int entry_count, void *data)
 {
 	struct limare_program *program = state->program_current;
-	struct symbol *symbol;
+	struct symbol *symbol = NULL;
 	int i;
 
 	for (i = 0; i < program->vertex_attribute_count; i++) {
@@ -567,27 +567,144 @@ limare_attribute_pointer(struct limare_state *state, char *name,
 	return 0;
 }
 
-int
-attribute_upload(struct limare_state *state, struct symbol *symbol)
+static int
+attribute_upload(struct limare_frame *frame, struct symbol *symbol)
 {
+	void *address;
 	int size;
-
-	/* already uploaded? */
-	if (symbol->mem_physical)
-		return 0;
 
 	size = ALIGN(symbol->size, 0x40);
 
-	if ((state->aux_mem_size - state->aux_mem_used) < size) {
+	if ((frame->mem_size - frame->mem_used) < size) {
 		printf("%s: Not enough space for %s\n", __func__, symbol->name);
 		return -1;
 	}
 
-	symbol->mem_address = state->aux_mem_address + state->aux_mem_used;
-	symbol->mem_physical = state->aux_mem_physical + state->aux_mem_used;
+	address = frame->mem_address + frame->mem_used;
+	symbol->mem_physical = frame->mem_physical + frame->mem_used;
+	frame->mem_used += size;
+
+	memcpy(address, symbol->data, symbol->size);
+
+	return 0;
+}
+
+int
+limare_attribute_buffer_upload(struct limare_state *state,
+			       int component_size, int component_count,
+			       int entry_count, void *data)
+{
+	struct limare_attribute_buffer *buffer;
+	int i, size;
+	void *address;
+
+	for (i = 0; i < LIMARE_ATTRIBUTE_BUFFER_COUNT; i++)
+		if (!state->attribute_buffers[i])
+			break;
+
+	if (i == LIMARE_ATTRIBUTE_BUFFER_COUNT) {
+		printf("%s: all attribute buffer slots have been taken!\n",
+		       __func__);
+		return -1;
+	}
+
+	buffer = calloc(1, sizeof(struct limare_attribute_buffer));
+	if (!buffer) {
+		printf("%s: Error: failed to allocate attribute buffer: %s\n",
+		       __func__, strerror(errno));
+		return -1;
+	}
+
+	size = component_size * component_count * entry_count;
+	size = ALIGN(size, 0x40);
+
+	if ((state->aux_mem_size - state->aux_mem_used) < size) {
+		printf("%s: Not enough space for buffer\n", __func__);
+		free(buffer);
+		return -1;
+	}
+
+	address = state->aux_mem_address + state->aux_mem_used;
+	buffer->mem_offset = state->aux_mem_used;
+	buffer->mem_physical = state->aux_mem_physical + state->aux_mem_used;
 	state->aux_mem_used += size;
 
-	memcpy(symbol->mem_address, symbol->data, symbol->size);
+	buffer->component_size = component_size;
+	buffer->component_count = component_count;
+	buffer->entry_count = entry_count;
+
+	buffer->handle = 0x80000000 + state->attribute_buffer_handles;
+	state->attribute_buffer_handles++;
+
+	memcpy(address, data, size);
+
+	state->attribute_buffers[i] = buffer;
+
+	return buffer->handle;
+}
+
+int
+limare_attribute_buffer_attach(struct limare_state *state, char *name,
+			       int buffer_handle)
+{
+	struct limare_program *program = state->program_current;
+	struct symbol *symbol = NULL;
+	struct limare_attribute_buffer *buffer;
+	int i;
+
+	for (i = 0; i < LIMARE_ATTRIBUTE_BUFFER_COUNT; i++) {
+		buffer = state->attribute_buffers[i];
+
+		if (!buffer)
+			continue;
+
+		if (buffer->handle == buffer_handle)
+			break;
+	}
+
+	if (i == LIMARE_ATTRIBUTE_BUFFER_COUNT) {
+		printf("%s: Error: Unable to find attribute buffer 0x%08X\n",
+		       __func__, buffer_handle);
+		return -1;
+	}
+
+	for (i = 0; i < program->vertex_attribute_count; i++) {
+		symbol = program->vertex_attributes[i];
+
+		if (!strcmp(symbol->name, name))
+			break;
+	}
+
+	if (i == program->vertex_attribute_count) {
+		printf("%s: Error: Unable to find attribute %s\n",
+		       __func__, name);
+		return -1;
+	}
+
+	if (symbol->precision != 3) {
+		printf("%s: Attribute %s has unsupported precision\n",
+		       __func__, name);
+		return -1;
+	}
+
+	if (symbol->component_size != buffer->component_size) {
+		printf("%s: Error: Attribute %s has different dimensions\n",
+		       __func__, name);
+		return -1;
+	}
+
+	if (symbol->data && symbol->data_allocated)
+		free(symbol->data);
+	symbol->data = NULL;
+	symbol->data_allocated = 0;
+
+	symbol->component_count = buffer->component_count;
+	symbol->entry_count = buffer->entry_count;
+	symbol->size = symbol->component_size * symbol->component_count *
+		symbol->entry_count;
+
+	symbol->data_handle = buffer_handle;
+	symbol->mem_physical = buffer->mem_physical;
 
 	return 0;
 }
@@ -862,8 +979,12 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 	frame->draw_count++;
 
 	for (i = 0; i < program->vertex_attribute_count; i++) {
-		attribute_upload(state, program->vertex_attributes[i]);
-		vs_info_attach_attribute(frame, draw, program->vertex_attributes[i]);
+		struct symbol *symbol = program->vertex_attributes[i];
+
+		if (symbol->data)
+			attribute_upload(frame, symbol);
+
+		vs_info_attach_attribute(frame, draw, symbol);
 	}
 
 	if (vs_info_attach_varyings(program, frame, draw))

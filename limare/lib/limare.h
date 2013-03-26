@@ -62,6 +62,18 @@ struct limare_frame {
 	int plbu_commands_size;
 };
 
+struct limare_attribute_buffer {
+	int handle;
+
+	int component_size;
+	int component_count;
+	int entry_count;
+
+	/* in AUX space */
+	int mem_offset;
+	unsigned int mem_physical;
+};
+
 struct limare_state {
 	int fd;
 	int kernel_version;
@@ -100,6 +112,11 @@ struct limare_state {
 #define LIMARE_TEXTURE_COUNT 512
 	struct limare_texture *textures[LIMARE_TEXTURE_COUNT];
 	int texture_handles;
+
+#define LIMARE_ATTRIBUTE_BUFFER_COUNT 16
+	struct limare_attribute_buffer *
+		attribute_buffers[LIMARE_ATTRIBUTE_BUFFER_COUNT];
+	int attribute_buffer_handles;
 
 	struct limare_fb *fb;
 };
@@ -143,6 +160,12 @@ int limare_uniform_attach(struct limare_state *state, char *name,
 int limare_attribute_pointer(struct limare_state *state, char *name,
 			     int component_size, int component_count,
 			     int entry_count, void *data);
+int limare_attribute_buffer_upload(struct limare_state *state,
+				   int component_size, int component_count,
+				   int entry_count, void *data);
+int limare_attribute_buffer_attach(struct limare_state *state, char *name,
+				   int buffer_handle);
+
 int limare_draw_arrays(struct limare_state *state, int mode,
 		       int vertex_start, int vertex_count);
 int limare_draw_elements(struct limare_state *state, int mode, int count,
