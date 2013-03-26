@@ -1132,8 +1132,8 @@ limare_program_vertex_shader_attach(struct limare_state *state,
 	program->vertex_shader = binary->shader;
 	binary->shader = NULL;
 	program->vertex_shader_size = binary->shader_size;
-	program->vertex_shader_param =
-		binary->parameters.vertex.varying_something;
+	program->vertex_attribute_prefetch =
+		binary->parameters.vertex.attribute_prefetch;
 
 	program_vertex_shader_symbols_attach(program, binary);
 

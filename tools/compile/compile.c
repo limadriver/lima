@@ -117,7 +117,8 @@ vertex_parameters_dump(struct lima_shader_binary_vertex_parameters *parameters)
 	printf("\t\t.varying_count = 0x%x,\n", parameters->varying_count);
 	printf("\t\t.unknown18 = 0x%x,\n", parameters->unknown18);
 	printf("\t\t.size = 0x%x,\n", parameters->size);
-	printf("\t\t.varying_something = 0x%x,\n", parameters->varying_something);
+	printf("\t\t.attribute_prefetch = 0x%x,\n", parameters->attribute_prefetch);
+
 	printf("\t},\n");
 }
 

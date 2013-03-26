@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -40,7 +40,7 @@ struct lima_shader_binary_vertex_parameters { /* 0x24 */
 	int varying_count; /* 0x14 */
 	int unknown18; /* 0x18 */
 	int size; /* 0x1C, commands are in 4 dwords */
-	int varying_something; /* 0x20 */
+	int attribute_prefetch; /* 0x20 */
 };
 
 struct lima_shader_binary_fragment_parameters { /* 0x30 */

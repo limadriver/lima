@@ -42,7 +42,7 @@ struct limare_program {
 
 	void *vertex_shader;
 	int vertex_shader_size;
-	int vertex_shader_param; /* name me! */
+	int vertex_attribute_prefetch;
 
 	int vertex_mem_offset;
 	int vertex_mem_size;

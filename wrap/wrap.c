@@ -1701,7 +1701,7 @@ __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 		wrap_log("\t\t\t.varying_count = 0x%x,\n", binary->parameters.vertex.varying_count);
 		wrap_log("\t\t\t.unknown18 = 0x%x,\n", binary->parameters.vertex.unknown18);
 		wrap_log("\t\t\t.size = 0x%x,\n", binary->parameters.vertex.size);
-		wrap_log("\t\t\t.varying_something = 0x%x,\n", binary->parameters.vertex.varying_something);
+		wrap_log("\t\t\t.attribute_prefetch = 0x%x,\n", binary->parameters.vertex.attribute_prefetch);
 		wrap_log("\t\t},\n");
 	} else {
 		wrap_log("\t\t.fragment = {\n");

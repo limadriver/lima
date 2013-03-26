@@ -360,8 +360,9 @@ vs_commands_draw_add(struct limare_state *state, struct limare_frame *frame,
 		((program->vertex_shader_size / 16) << 16);
 	i++;
 
-	cmds[i].val = (program->vertex_shader_param - 1) << 20;
-	cmds[i].val |= ((program->vertex_shader_size / 16) - 1) << 10;
+	cmds[i].val = (program->vertex_attribute_prefetch - 1) << 20;
+	cmds[i].val |= ((ALIGN(program->vertex_shader_size, 16) / 16) - 1)
+		<< 10;
 	cmds[i].cmd = LIMA_VS_CMD_SHADER_INFO;
 	i++;
 
