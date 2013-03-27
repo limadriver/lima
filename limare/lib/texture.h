@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2012-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -24,23 +24,33 @@
 #ifndef LIMARE_TEXTURE_H
 #define LIMARE_TEXTURE_H 1
 
+struct texture_level {
+	int level;
+
+	int width;
+	int height;
+
+	int size;
+
+	/* GPU-AUX space */
+	unsigned char *dest;
+	int mem_physical;
+};
+
 struct texture {
 	int width;
 	int height;
 	int format;
 
-	/* convenience */
-	int pitch;
-	int size;
-
-	void *pixels;
-	unsigned int mem_physical;
-
+	/* in AUX space */
 	unsigned int descriptor[0x10];
 	unsigned int descriptor_offset;
+
+	int levels;
+	struct texture_level level[13];
 };
 
 struct texture *texture_create(struct limare_state *state, const void *src,
-			       int width, int height, int format);
+			       int width, int height, int format, int mipmap);
 
 #endif /* LIMARE_TEXTURE_H */

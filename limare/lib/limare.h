@@ -121,7 +121,7 @@ int limare_attribute_pointer(struct limare_state *state, char *name,
 			     int entry_count, void *data);
 int limare_texture_attach(struct limare_state *state, char *uniform_name,
 			  const void *pixels, int width, int height,
-			  int format);
+			  int format, int mipmap);
 int limare_draw_arrays(struct limare_state *state, int mode,
 			int vertex_start, int vertex_count);
 int limare_draw_elements(struct limare_state *state, int mode, int count,

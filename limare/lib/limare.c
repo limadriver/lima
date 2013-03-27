@@ -617,7 +617,8 @@ attribute_upload(struct limare_state *state, struct symbol *symbol)
 
 int
 limare_texture_attach(struct limare_state *state, char *uniform_name,
-		      const void *pixels, int width, int height, int format)
+		      const void *pixels, int width, int height, int format,
+		      int mipmap)
 {
 	struct limare_program *program =
 		state->programs[state->program_current];
@@ -642,7 +643,8 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 		return -1;
 	}
 
-	state->texture = texture_create(state, pixels, width, height, format);
+	state->texture = texture_create(state, pixels,
+					width, height, format, mipmap);
 	if (!state->texture)
 		return -1;
 

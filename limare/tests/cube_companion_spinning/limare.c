@@ -111,7 +111,7 @@ main(int argc, char *argv[])
 
 	limare_texture_attach(state, "in_texture", companion_texture,
 			      COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
-			      COMPANION_TEXTURE_FORMAT);
+			      COMPANION_TEXTURE_FORMAT, 0);
 
 	int i = 0;
 

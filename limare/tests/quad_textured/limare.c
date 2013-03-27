@@ -90,7 +90,7 @@ main(int argc, char *argv[])
 
 	limare_texture_attach(state, "in_texture", companion_texture_flat,
 			      COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
-			      COMPANION_TEXTURE_FORMAT);
+			      COMPANION_TEXTURE_FORMAT, 0);
 
 	limare_frame_new(state);
 
