@@ -318,6 +318,7 @@ stream_uniform_table_create(void *stream, int size)
 	return NULL;
 }
 
+#if 0
 void
 stream_uniform_table_print(struct stream_uniform_table *table)
 {
@@ -343,6 +344,7 @@ stream_uniform_table_print(struct stream_uniform_table *table)
 		uniform = uniform->next;
 	}
 }
+#endif
 
 static struct symbol **
 stream_uniform_table_to_symbols(struct stream_uniform_table *table,
@@ -1169,6 +1171,7 @@ limare_program_fragment_shader_attach(struct limare_state *state,
 	return 0;
 }
 
+#if 0
 static void
 program_symbols_print(struct limare_program *program)
 {
@@ -1202,6 +1205,7 @@ program_symbols_print(struct limare_program *program)
 	for (i = 0; i < program->fragment_uniform_count; i++)
 		symbol_print(program->fragment_uniforms[i]);
 }
+#endif
 
 /*
  * Checks whether vertex and fragment attributes match.
@@ -1337,6 +1341,7 @@ vertex_varyings_reorder(struct limare_program *program)
 	return 0;
 }
 
+#if 0
 static void
 varying_map_print(struct limare_program *program)
 {
@@ -1349,6 +1354,7 @@ varying_map_print(struct limare_program *program)
 		       program->varying_map[i].entries,
 		       program->varying_map[i].entry_size);
 }
+#endif
 
 static int
 varying_map_create(struct limare_program *program)
