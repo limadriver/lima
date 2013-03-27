@@ -39,6 +39,7 @@ struct plb_info {
 
 	int shift_w;
 	int shift_h;
+	int shift_max;
 
 	/* holds the actual primitives */
 	int plb_offset;

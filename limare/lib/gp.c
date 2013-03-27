@@ -129,19 +129,8 @@ plbu_command_queue_create(struct limare_state *state,
 	i++;
 
 	cmds[i].val = plb->shift_w | (plb->shift_h << 16);
-	if (state->type == LIMARE_TYPE_M400) {
-		int block_max;
-
-		if (plb->shift_h > plb->shift_w)
-			block_max = plb->shift_h;
-		else
-			block_max = plb->shift_w;
-
-		if (block_max > 2)
-			block_max = 2;
-
-		cmds[i].val |= block_max << 28;
-	}
+	if (state->type == LIMARE_TYPE_M400)
+		cmds[i].val |= plb->shift_max << 28;
 	cmds[i].cmd = LIMA_PLBU_CMD_BLOCK_STEP;
 	i++;
 

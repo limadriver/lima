@@ -77,6 +77,7 @@ plb_info_create(struct limare_state *state, struct limare_frame *frame)
 {
 	struct plb_info *plb = calloc(1, sizeof(struct plb_info));
 	int width, height, limit, mem_used = 0;
+	int max;
 
 	width = ALIGN(state->width, 16) >> 4;
 	height = ALIGN(state->height, 16) >> 4;
@@ -108,6 +109,16 @@ plb_info_create(struct limare_state *state, struct limare_frame *frame)
 
 	plb->block_w = width;
 	plb->block_h = height;
+
+	if (plb->shift_h > plb->shift_w)
+		max = plb->shift_h;
+	else
+		max = plb->shift_w;
+
+	if (max > 2)
+		plb->shift_max = 2;
+	else if (max)
+		plb->shift_max = 1;
 
 #if 0
 	printf("%s: (%dx%d) == (%d << %d, %d << %d);\n", __func__,

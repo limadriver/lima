@@ -170,8 +170,8 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	struct lima_m400_pp_frame_registers frame_regs = { 0 };
 	struct lima_pp_wb_registers wb_regs = { 0 };
 	struct pp_info *info = frame->pp;
+	struct plb_info *plb = frame->plb;
 	int supersampling = 1;
-	int max_blocking = 0;
 
 	/* frame registers */
 	frame_regs.plbu_array_address = info->plb_physical;
@@ -203,16 +203,8 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	frame_regs.dubya = 0x77;
 	frame_regs.onscreen = supersampling;
 
-	if (info->plb_shift_w > info->plb_shift_h)
-		max_blocking = info->plb_shift_w;
-	else
-		max_blocking = info->plb_shift_h;
-
-	if (max_blocking > 2)
-		max_blocking = 2;
-
-	frame_regs.blocking = (max_blocking << 28) |
-		(info->plb_shift_h << 16) | (info->plb_shift_w);
+	frame_regs.blocking = (plb->shift_max << 28) |
+		(plb->shift_h << 16) | plb->shift_w;
 
 	frame_regs.scale = 0x0C;
 	if (supersampling)
