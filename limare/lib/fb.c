@@ -225,16 +225,18 @@ static void
 fb_switch(struct limare_state *state)
 {
 	struct limare_fb *fb = state->fb;
-	int sync_arg = 0;
+	//int sync_arg = 0;
 
 	if (state->frame_current)
 		fb->fb_var->yoffset = fb->height;
 	else
 		fb->fb_var->yoffset = 0;
 
+#if 0
 	if (ioctl(fb->fd, FBIO_WAITFORVSYNC, &sync_arg))
 		printf("Error: failed to run ioctl on %s: %s\n",
 			FBDEV_DEV, strerror(errno));
+#endif
 
 	if (ioctl(fb->fd, FBIOPAN_DISPLAY, fb->fb_var))
 		printf("Error: failed to run ioctl on %s: %s\n",
