@@ -83,6 +83,205 @@ space_filler_index(int x, int y)
 	return space_filler_indices[y ^ x] | (space_filler_indices[y] << 1);
 }
 
+/*
+ * Again, there seems to be some weirdness with the arm mipmapping code.
+ * The top channel from time to time is rounded up by 1, but if rounding is
+ * added to the code below, it produces vastly different results. Then there
+ * seem to be some positioning issues with the binary code as well.
+ */
+static void
+texture_rgb565_swizzle(struct texture *texture, const unsigned char *pixels)
+{
+	int block_x, block_y, block_pitch;
+	int x, y, rem_x, rem_y, index, source_pitch;;
+	const unsigned char *source;
+	unsigned char *dest;
+
+	block_pitch = ALIGN(texture->width, 16) >> 4;
+	source_pitch = ALIGN(texture->width * 2, 4);
+
+	for (y = 0; y < texture->height; y++) {
+		block_y = y >> 4;
+		rem_y = y & 0x0F;
+
+		for (x = 0; x < texture->width; x++) {
+			block_x = x >> 4;
+			rem_x = x & 0x0F;
+
+			index = space_filler_index(rem_x, rem_y);
+
+			source = &pixels[y * source_pitch + 2 * x];
+			dest = texture->level[0].dest;
+			dest += (2 * 256) * (block_y * block_pitch + block_x);
+			dest += 2 * index;
+
+			dest[0] = source[0];
+			dest[1] = source[1];
+		}
+	}
+}
+
+static void
+texture_rgb565_mipmap(struct texture_level *dst, struct texture_level *src)
+{
+	int x, y, dx, dy, offset;
+	int block_x, block_y, block_pitch;
+	int source_x, source_y, source_pitch; /* in blocks */
+	unsigned short *source;
+	unsigned short *dest;
+
+	block_pitch = ALIGN(dst->width, 16) >> 4;
+	source_pitch = ALIGN(src->width, 16) >> 4;
+
+	if (src->width == 1) {
+		for (y = 0; y < dst->height; y++) {
+			block_y = y >> 4;
+			dy = y & 0x0F;
+			source_y = y >> 3;
+
+			offset = space_filler_index(0, dy);
+
+			dest = (unsigned short *) dst->dest;
+			dest += 256 * (block_pitch * block_y);
+			dest += offset;
+
+			source = (unsigned short *) src->dest;
+			source += 256 * (source_pitch * source_y);
+			source += (offset << 2) & 0xFF;
+
+			dest[0] = ((source[0] & 0x001F) +
+				   (source[3] & 0x001F)) >> 1;
+
+			dest[0] |= (((source[0] & 0x07E0) +
+				     (source[3] & 0x07E0)) >> 1) & 0x07E0;
+
+			dest[0] |= (((source[0] & 0xF800) +
+				     (source[3] & 0xF800)) >> 1) & 0xF800;
+		}
+	} else if (src->height == 1) {
+		for (x = 0; x < dst->width; x++) {
+			block_x = x >> 4;
+			dx = x & 0x0F;
+			source_x = x >> 3;
+
+			offset = space_filler_index(dx, 0);
+
+			dest = (unsigned short *) dst->dest;
+			dest += 256 * block_x;
+			dest += offset;
+
+			source = (unsigned short *) src->dest;
+			source += 256 * source_x;
+			source += (offset << 2) & 0xFF;
+
+			dest[0] = ((source[0] & 0x001F) +
+				   (source[1] & 0x001F)) >> 1;
+
+			dest[0] |= (((source[0] & 0x07E0) +
+				     (source[1] & 0x07E0)) >> 1) & 0x07E0;
+
+			dest[0] |= (((source[0] & 0xF800) +
+				     (source[1] & 0xF800)) >> 1) & 0xF800;
+		}
+	} else {
+		for (y = 0; y < dst->height; y++) {
+			block_y = y >> 4;
+			dy = y & 0x0F;
+			source_y = y >> 3;
+
+			for (x = 0; x < dst->width; x++) {
+				block_x = x >> 4;
+				dx = x & 0x0F;
+				source_x = x >> 3;
+
+				offset = space_filler_index(dx, dy);
+
+				dest = (unsigned short *) dst->dest;
+				dest += 256 * (block_pitch * block_y + block_x);
+				dest += offset;
+
+				source = (unsigned short *) src->dest;
+				source += 256 *
+					(source_pitch * source_y + source_x);
+				source += (offset << 2) & 0xFF;
+
+				dest[0] = ((source[0] & 0x001F) +
+					   (source[1] & 0x001F) +
+					   (source[2] & 0x001F) +
+					   (source[3] & 0x001F)) >> 2;
+
+				dest[0] |= (((source[0] & 0x07E0) +
+					     (source[1] & 0x07E0) +
+					     (source[2] & 0x07E0) +
+					     (source[3] & 0x07E0)) >> 2) &
+					0x07E0;
+
+				dest[0] |= (((source[0] & 0xF800) +
+					     (source[1] & 0xF800) +
+					     (source[2] & 0xF800) +
+					     (source[3] & 0xF800)) >> 2) &
+					0xF800;
+			}
+		}
+	}
+}
+
+static int
+texture_rgb565_create(struct limare_state *state, struct texture *texture,
+		  const void *src)
+{
+	struct texture_level *level;
+	int i, size = 0;
+
+	for (i = 0; i < texture->levels; i++) {
+		int width, height, pitch;
+		level = &texture->level[i];
+
+		level->level = i;
+
+		level->width = texture->width >> i;
+		level->height = texture->height >> i;
+		if (!level->width)
+			level->width = 1;
+		if (!level->height)
+			level->height = 1;
+
+		width = ALIGN(level->width, 16);
+		height = ALIGN(level->height, 16);
+		pitch = ALIGN(width * 2, 4);
+		level->size = ALIGN(pitch * height, 0x400);
+		size += level->size;
+	}
+
+	if ((state->aux_mem_size - state->aux_mem_used) < size) {
+		printf("%s: size (0x%X) exceeds available size (0x%X)\n",
+		       __func__, size,
+		       state->aux_mem_size - state->aux_mem_used);
+		return -1;
+	}
+
+	for (i = 0; i < texture->levels; i++) {
+		level = &texture->level[i];
+
+		level->dest = state->aux_mem_address + state->aux_mem_used;
+		level->mem_physical =
+			state->aux_mem_physical + state->aux_mem_used;
+		state->aux_mem_used += level->size;
+	}
+
+	texture_rgb565_swizzle(texture, src);
+
+	for (i = 1; i < texture->levels; i++)
+		texture_rgb565_mipmap(&texture->level[i], &texture->level[i - 1]);
+
+	return 0;
+}
+
+/*
+ *
+ * 24 bit: like RGB 888.
+ *
+ */
 static void
 texture_24_swizzle(struct texture *texture, const unsigned char *pixels)
 {
@@ -570,7 +769,17 @@ texture_create(struct limare_state *state, const void *src,
 		texture->levels = 1;
 
 	switch (texture->format) {
-	// case LIMA_TEXEL_FORMAT_RGB_555:
+	case LIMA_TEXEL_FORMAT_BGR_565:
+		if (texture_rgb565_create(state, texture, src)) {
+			free(texture);
+			return NULL;
+		}
+
+		flag0 = 0; /* swapped channels */
+		flag1 = 0;
+		layout = 3;
+		break;
+
 	// case LIMA_TEXEL_FORMAT_RGBA_5551:
 	// case LIMA_TEXEL_FORMAT_RGBA_4444:
 	// case LIMA_TEXEL_FORMAT_LA_88:
