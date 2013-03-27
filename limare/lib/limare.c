@@ -32,6 +32,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <time.h>
+#include <pthread.h>
 
 #include <GLES2/gl2.h>
 #define GL_ALPHA_TEST 0x0BC0
@@ -338,6 +339,8 @@ limare_frame_destroy(struct limare_frame *frame)
 	if (frame->pp)
 		pp_info_destroy(frame->pp);
 
+	pthread_mutex_destroy(&frame->mutex);
+
 	free(frame);
 }
 
@@ -345,6 +348,8 @@ struct limare_frame *
 limare_frame_create(struct limare_state *state, int offset, int size)
 {
 	struct limare_frame *frame;
+	pthread_mutexattr_t mattr;
+	int ret;
 
 	frame = calloc(1, sizeof(struct limare_frame));
 	if (!frame)
@@ -352,6 +357,18 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 
 	frame->id = state->frame_count;
 	frame->index = frame->id & 0x01;
+	frame->state = state;
+
+	ret = pthread_mutexattr_init(&mattr);
+	if (ret)
+		printf("%s: pthread_mutexattr_init failed: %s\n",
+		       __func__, strerror(ret));
+
+	pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_ERRORCHECK);
+	ret = pthread_mutex_init(&frame->mutex, &mattr);
+	if (ret)
+		printf("%s: pthread_mutex_init failed: %s\n",
+		       __func__, strerror(ret));
 
 	/* space for our programs and textures. */
 	frame->mem_size = size;
@@ -1266,25 +1283,24 @@ int
 limare_frame_flush(struct limare_state *state)
 {
 	struct limare_frame *frame = state->frames[state->frame_current];
-	int ret;
 
 	if (!frame) {
 		printf("%s: Error: no frame was set up!\n", __func__);
 		return -1;
 	}
 
+	pthread_mutex_lock(&frame->mutex);
+
 	plbu_commands_finish(frame);
-
-	ret = limare_gp_job_start(state, frame);
-	if (ret)
-		return ret;
-
-	ret = limare_pp_job_start(state, frame);
-	if (ret)
-		return ret;
 
 	if (frame->mem_used > state->frame_memory_max)
 		state->frame_memory_max = frame->mem_used;
+
+	frame->render_status = 1;
+
+	pthread_mutex_unlock(&frame->mutex);
+
+	limare_render_start(frame);
 
 	return 0;
 }
@@ -1300,6 +1316,8 @@ limare_finish(struct limare_state *state)
 
 	printf("Auxiliary memory used: %d/%dkB\n",
 		       state->aux_mem_used / 1024, state->aux_mem_size / 1024);
+
+	limare_jobs_end(state);
 
 	fflush(stdout);
 	sleep(1);
@@ -1520,10 +1538,31 @@ limare_depth_buffer_clear(struct limare_state *state)
 int
 limare_frame_new(struct limare_state *state)
 {
+	struct limare_frame *frame;
+
 	state->frame_current = state->frame_count & 0x01;
 
-	if (state->frames[state->frame_current])
-		limare_frame_destroy(state->frames[state->frame_current]);
+	frame = state->frames[state->frame_current];
+	if (frame) {
+		/* make sure that we are no longer flushing. */
+		pthread_mutex_lock(&frame->mutex);
+
+		if (!frame->render_status) {
+			printf("%s: frame %d render not even started!\n",
+			       __func__, frame->id);
+		} else {
+			while (frame->render_status != 2) {
+				pthread_mutex_unlock(&frame->mutex);
+				sched_yield();
+				pthread_mutex_lock(&frame->mutex);
+			}
+		}
+		pthread_mutex_unlock(&frame->mutex);
+
+		state->frames[state->frame_current] = NULL;
+
+		limare_frame_destroy(frame);
+	}
 
 	state->frames[state->frame_current] =
 		limare_frame_create(state,
@@ -1551,7 +1590,7 @@ limare_buffer_clear(struct limare_state *state)
 void
 limare_buffer_swap(struct limare_state *state)
 {
-	limare_fb_flip(state, state->frames[state->frame_current]);
+	/* done as part of the render thread */
 }
 
 int

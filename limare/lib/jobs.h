@@ -28,7 +28,6 @@
 #ifndef LIMARE_JOBS_H
 #define LIMARE_JOBS_H 1
 
-int limare_gp_job_start(struct limare_state *state, struct limare_frame *frame);
 int limare_m200_pp_job_start_direct(struct limare_state *state,
 				    struct limare_frame *frame,
 				    struct lima_m200_pp_frame_registers
@@ -41,5 +40,8 @@ int limare_m400_pp_job_start_direct(struct limare_state *state,
 				    struct lima_pp_wb_registers *wb_regs);
 
 void limare_jobs_init(struct limare_state *state);
+void limare_jobs_end(struct limare_state *state);
+
+void limare_render_start(struct limare_frame *frame);
 
 #endif /* LIMARE_JOBS_H */

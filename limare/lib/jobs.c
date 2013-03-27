@@ -45,17 +45,18 @@
 
 #include "plb.h"
 #include "fb.h"
+#include "pp.h"
 
 static pthread_mutex_t gp_job_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t gp_job_cond = PTHREAD_COND_INITIALIZER;
-static int gp_job_done;
+static unsigned int gp_job_done;
 
 static pthread_mutex_t pp_job_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pp_job_cond = PTHREAD_COND_INITIALIZER;
-static int pp_job_done;
+static unsigned int pp_job_done;
 
 static void
-limare_gp_job_done(void)
+limare_gp_job_done(unsigned int id)
 {
 	int ret;
 
@@ -64,7 +65,7 @@ limare_gp_job_done(void)
 		printf("%s: error locking mutex: %s\n", __func__,
 		       strerror(ret));
 
-        gp_job_done = 1;
+        gp_job_done = id;
 
         pthread_cond_broadcast(&gp_job_cond);
 
@@ -75,8 +76,9 @@ limare_gp_job_done(void)
 }
 
 static void
-limare_gp_job_wait(void)
+limare_gp_job_wait(struct limare_frame *frame)
 {
+	unsigned int job_id = frame->id | 0x80000000;
 	int ret;
 
 	ret = pthread_mutex_lock(&gp_job_mutex);
@@ -84,10 +86,8 @@ limare_gp_job_wait(void)
 		printf("%s: error locking mutex: %s\n", __func__,
 		       strerror(ret));
 
-	while (!gp_job_done)
+	while (gp_job_done < job_id)
 		pthread_cond_wait(&gp_job_cond, &gp_job_mutex);
-
-	gp_job_done = 0;
 
 	ret = pthread_mutex_unlock(&gp_job_mutex);
 	if (ret)
@@ -96,11 +96,11 @@ limare_gp_job_wait(void)
 }
 
 static void
-limare_pp_job_done(void)
+limare_pp_job_done(unsigned int id)
 {
 	pthread_mutex_lock(&pp_job_mutex);
 
-        pp_job_done = 1;
+        pp_job_done = id;
 
         pthread_cond_broadcast(&pp_job_cond);
 
@@ -108,14 +108,14 @@ limare_pp_job_done(void)
 }
 
 static void
-limare_pp_job_wait(void)
+limare_pp_job_wait(struct limare_frame *frame)
 {
+	unsigned int job_id = frame->id | 0xC0000000;
+
 	pthread_mutex_lock(&pp_job_mutex);
 
-	while (!pp_job_done)
+	while (pp_job_done < job_id)
 		pthread_cond_wait(&pp_job_cond, &pp_job_mutex);
-
-	pp_job_done = 0;
 
         pthread_mutex_unlock(&pp_job_mutex);
 }
@@ -158,7 +158,7 @@ limare_notification_thread(void *arg)
 				       wait.data.pp_job_finished.user_job_ptr,
 				       status);
 
-			limare_pp_job_done();
+			limare_pp_job_done(wait.data.pp_job_finished.user_job_ptr);
 		} else if (wait.code.type == _MALI_NOTIFICATION_GP_FINISHED) {
 			_mali_uk_job_status status =
 				wait.data.gp_job_finished.status;
@@ -166,7 +166,7 @@ limare_notification_thread(void *arg)
 			if (status != _MALI_UK_JOB_STATUS_END_SUCCESS)
 				printf("gp job returned 0x%08X\n", status);
 
-			limare_gp_job_done();
+			limare_gp_job_done(wait.data.pp_job_finished.user_job_ptr);
 		}
 	}
 
@@ -221,7 +221,7 @@ limare_gp_job_start_r3p0(struct limare_state *state,
 	return 0;
 }
 
-int
+static int
 limare_gp_job_start(struct limare_state *state, struct limare_frame *frame)
 {
 	struct lima_gp_frame_registers frame_regs = { 0 };
@@ -245,8 +245,6 @@ limare_gp_job_start(struct limare_state *state, struct limare_frame *frame)
 
 	if (ret)
 		return ret;
-
-	limare_gp_job_wait();
 
 	return 0;
 }
@@ -275,8 +273,6 @@ limare_m200_pp_job_start_direct(struct limare_state *state,
 		return errno;
 	}
 
-	limare_pp_job_wait();
-
 	return 0;
 }
 
@@ -304,8 +300,6 @@ limare_m400_pp_job_start_r2p1(struct limare_state *state,
 		return errno;
 	}
 
-	limare_pp_job_wait();
-
 	return 0;
 }
 
@@ -332,8 +326,6 @@ limare_m400_pp_job_start_r3p0(struct limare_state *state,
 		return errno;
 	}
 
-	limare_pp_job_wait();
-
 	return 0;
 }
 
@@ -351,6 +343,227 @@ limare_m400_pp_job_start_direct(struct limare_state *state,
 						     frame_regs, wb_regs);
 }
 
+static void
+limare_render_sequence(struct limare_state *state, struct limare_frame *frame)
+{
+	pthread_mutex_lock(&frame->mutex);
+
+	/*
+	 * First, push the job through the gp.
+	 */
+	limare_gp_job_start(state, frame);
+
+	limare_gp_job_wait(frame);
+
+	/*
+	 * Now we can work on the pp.
+	 */
+	limare_pp_job_start(state, frame);
+
+	limare_pp_job_wait(frame);
+
+        /* wait for display sync, and flip the current fb. */
+	limare_fb_flip(state, frame);
+
+	frame->render_status = 2;
+	pthread_mutex_unlock(&frame->mutex);
+}
+
+static pthread_mutex_t render_0_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t render_0_cond = PTHREAD_COND_INITIALIZER;
+static struct limare_frame *render_0_frame;
+static int render_0_stop;
+
+static pthread_mutex_t render_1_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t render_1_cond = PTHREAD_COND_INITIALIZER;
+static struct limare_frame *render_1_frame;
+static int render_1_stop;
+
+static void *
+limare_render_0_thread(void *arg)
+{
+	struct limare_state *state = arg;
+	int ret;
+
+	ret = pthread_mutex_lock(&render_0_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
+
+	while (!render_0_stop) {
+		while (!render_0_frame && !render_0_stop) {
+			ret = pthread_cond_wait(&render_0_cond,
+						&render_0_mutex);
+			if (ret)
+				printf("%s: cond wait error: %s\n", __func__,
+				       strerror(ret));
+		}
+
+		if (render_0_frame) {
+			limare_render_sequence(state, render_0_frame);
+
+			render_0_frame = NULL;
+		}
+	}
+
+	ret = pthread_mutex_unlock(&render_0_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
+
+	return NULL;
+}
+
+static pthread_t limare_render_0_pthread;
+
+static void
+limare_render_0_start(struct limare_frame *frame)
+{
+	int ret, done = 0;
+
+	while (!done) {
+		ret = pthread_mutex_lock(&render_0_mutex);
+		if (ret)
+			printf("%s: error locking mutex: %s\n", __func__,
+			       strerror(ret));
+
+		if (!render_0_frame) {
+			render_0_frame = frame;
+			done = 1;
+		}
+
+		if (render_0_frame)
+			pthread_cond_broadcast(&render_0_cond);
+
+		ret = pthread_mutex_unlock(&render_0_mutex);
+		if (ret)
+			printf("%s: error locking mutex: %s\n", __func__,
+			       strerror(ret));
+	}
+}
+
+static void
+limare_render_0_stop(void)
+{
+	void *retval;
+	int ret;
+
+	ret = pthread_mutex_lock(&render_0_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
+
+	render_0_stop = 1;
+	pthread_cond_broadcast(&render_0_cond);
+
+	ret = pthread_mutex_unlock(&render_0_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
+
+	ret = pthread_join(limare_render_0_pthread, &retval);
+	if (ret)
+		printf("%s: error joining thread: %s\n", __func__,
+		       strerror(ret));
+}
+
+static void *
+limare_render_1_thread(void *arg)
+{
+	struct limare_state *state = arg;
+	int ret;
+
+	ret = pthread_mutex_lock(&render_1_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
+
+	while (!render_1_stop) {
+		while (!render_1_frame && !render_1_stop) {
+			ret = pthread_cond_wait(&render_1_cond,
+						&render_1_mutex);
+			if (ret)
+				printf("%s: cond wait error: %s\n", __func__,
+				       strerror(ret));
+		}
+
+		if (render_1_frame) {
+			limare_render_sequence(state, render_1_frame);
+
+			render_1_frame = NULL;
+		}
+	}
+
+	ret = pthread_mutex_unlock(&render_1_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
+
+	return NULL;
+}
+
+static pthread_t limare_render_1_pthread;
+
+static void
+limare_render_1_start(struct limare_frame *frame)
+{
+	int ret, done = 0;
+
+	while (!done) {
+		ret = pthread_mutex_lock(&render_1_mutex);
+		if (ret)
+			printf("%s: error locking mutex: %s\n", __func__,
+			       strerror(ret));
+
+		if (!render_1_frame) {
+			render_1_frame = frame;
+			done = 1;
+		}
+
+		if (render_1_frame)
+			pthread_cond_broadcast(&render_1_cond);
+
+		ret = pthread_mutex_unlock(&render_1_mutex);
+		if (ret)
+			printf("%s: error locking mutex: %s\n", __func__,
+			       strerror(ret));
+	}
+}
+
+static void
+limare_render_1_stop(void)
+{
+	void *retval;
+	int ret;
+
+	ret = pthread_mutex_lock(&render_1_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
+
+	render_1_stop = 1;
+	pthread_cond_broadcast(&render_1_cond);
+
+	ret = pthread_mutex_unlock(&render_1_mutex);
+	if (ret)
+		printf("%s: error locking mutex: %s\n", __func__,
+		       strerror(ret));
+
+	ret = pthread_join(limare_render_1_pthread, &retval);
+	if (ret)
+		printf("%s: error joining thread: %s\n", __func__,
+		       strerror(ret));
+}
+
+void
+limare_render_start(struct limare_frame *frame)
+{
+	if (frame->index)
+		limare_render_1_start(frame);
+	else
+		limare_render_0_start(frame);
+}
+
 void
 limare_jobs_init(struct limare_state *state)
 {
@@ -361,4 +574,23 @@ limare_jobs_init(struct limare_state *state)
 	if (ret)
 		printf("%s: error starting thread: %s\n", __func__,
 		       strerror(ret));
+
+	ret = pthread_create(&limare_render_0_pthread, NULL,
+			     limare_render_0_thread, state);
+	if (ret)
+		printf("%s: error starting thread: %s\n", __func__,
+		       strerror(ret));
+
+	ret = pthread_create(&limare_render_1_pthread, NULL,
+			     limare_render_1_thread, state);
+	if (ret)
+		printf("%s: error starting thread: %s\n", __func__,
+		       strerror(ret));
+}
+
+void
+limare_jobs_end(struct limare_state *state)
+{
+	limare_render_0_stop();
+	limare_render_1_stop();
 }

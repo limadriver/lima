@@ -35,6 +35,11 @@ struct limare_frame {
 	int id;
 	int index;
 
+	int render_status;
+
+	struct limare_state *state;
+	pthread_mutex_t mutex;
+
 	unsigned int mem_physical;
 	int mem_size;
 	int mem_used;
