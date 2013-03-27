@@ -269,6 +269,187 @@ texture_24_create(struct limare_state *state, struct texture *texture,
 }
 
 static void
+texture_32_swizzle(struct texture *texture, const unsigned char *pixels)
+{
+	int block_x, block_y, block_pitch;
+	int x, y, rem_x, rem_y, index, source_pitch;;
+	const unsigned char *source;
+	unsigned char *dest;
+
+	block_pitch = ALIGN(texture->width, 16) >> 4;
+	source_pitch = texture->width * 4;
+
+	for (y = 0; y < texture->height; y++) {
+		block_y = y >> 4;
+		rem_y = y & 0x0F;
+
+		for (x = 0; x < texture->width; x++) {
+			block_x = x >> 4;
+			rem_x = x & 0x0F;
+
+			index = space_filler_index(rem_x, rem_y);
+
+			source = &pixels[y * source_pitch + 4 * x];
+			dest = texture->level[0].dest;
+			dest += (4 * 256) * (block_y * block_pitch + block_x);
+			dest += 4 * index;
+
+			dest[0] = source[0];
+			dest[1] = source[1];
+			dest[2] = source[2];
+			dest[3] = source[3];
+		}
+	}
+}
+
+/*
+ * This mipmapping code produces results which are often slightly larger
+ * than the ARM binary driver. This is a rounding difference. We here add up
+ * the same components of the subsequent pixels, and then divide it. The arm
+ * binary predivides the values and then adds them.
+ */
+static void
+texture_32_mipmap(struct texture_level *dst, struct texture_level *src)
+{
+	int x, y, dx, dy, offset;
+	int block_x, block_y, block_pitch;
+	int source_x, source_y, source_pitch; /* in blocks */
+	unsigned char *source;
+	unsigned char *dest;
+
+	block_pitch = ALIGN(dst->width, 16) >> 4;
+	source_pitch = ALIGN(src->width, 16) >> 4;
+
+	if (src->width == 1) {
+		for (y = 0; y < dst->height; y++) {
+			block_y = y >> 4;
+			dy = y & 0x0F;
+			source_y = y >> 3;
+
+			offset = space_filler_index(0, dy);
+
+			dest = dst->dest;
+			dest += (4 * 256) * (block_pitch * block_y);
+			dest += 4 * offset;
+
+			source = src->dest;
+			source += (4 * 256) * (source_pitch * source_y);
+			source += 4 * ((offset << 2) & 0xFF);
+
+			dest[0] = (source[0] + source[12]) / 2;
+			dest[1] = (source[1] + source[13]) / 2;
+			dest[2] = (source[2] + source[14]) / 2;
+			dest[3] = (source[3] + source[15]) / 2;
+		}
+	} else if (src->height == 1) {
+		for (x = 0; x < dst->width; x++) {
+			block_x = x >> 4;
+			dx = x & 0x0F;
+			source_x = x >> 3;
+
+			offset = space_filler_index(dx, 0);
+
+			dest = dst->dest;
+			dest += (4 * 256) * block_x;
+			dest += 4 * offset;
+
+			source = src->dest;
+			source += (4 * 256) * source_x;
+			source += 4 * ((offset << 2) & 0xFF);
+
+			dest[0] = (source[0] + source[4]) / 2;
+			dest[1] = (source[1] + source[5]) / 2;
+			dest[2] = (source[2] + source[6]) / 2;
+			dest[3] = (source[3] + source[7]) / 2;
+		}
+	} else {
+		for (y = 0; y < dst->height; y++) {
+			block_y = y >> 4;
+			dy = y & 0x0F;
+			source_y = y >> 3;
+
+			for (x = 0; x < dst->width; x++) {
+				block_x = x >> 4;
+				dx = x & 0x0F;
+				source_x = x >> 3;
+
+				offset = space_filler_index(dx, dy);
+
+				dest = dst->dest;
+				dest += (4 * 256) *
+					(block_pitch * block_y + block_x);
+				dest += 4 * offset;
+
+				source = src->dest;
+				source += (4 * 256) *
+					(source_pitch * source_y + source_x);
+				source += 4 * ((offset << 2) & 0xFF);
+
+				dest[0] = (source[0] + source[4] +
+					   source[8] + source[12]) / 4;
+				dest[1] = (source[1] + source[5] +
+					   source[9] + source[13]) / 4;
+				dest[2] = (source[2] + source[6] +
+					   source[10] + source[14]) / 4;
+				dest[3] = (source[3] + source[7] +
+					   source[11] + source[15]) / 4;
+			}
+		}
+	}
+}
+
+static int
+texture_32_create(struct limare_state *state, struct texture *texture,
+		  const void *src)
+{
+	struct texture_level *level;
+	int i, size = 0;
+
+	for (i = 0; i < texture->levels; i++) {
+		int width, height, pitch;
+		level = &texture->level[i];
+
+		level->level = i;
+
+		level->width = texture->width >> i;
+		level->height = texture->height >> i;
+		if (!level->width)
+			level->width = 1;
+		if (!level->height)
+			level->height = 1;
+
+		width = ALIGN(level->width, 16);
+		height = ALIGN(level->height, 16);
+		pitch = width * 4;
+		level->size = ALIGN(pitch * height, 0x400);
+		size += level->size;
+	}
+
+	if ((state->aux_mem_size - state->aux_mem_used) < size) {
+		printf("%s: size (0x%X) exceeds available size (0x%X)\n",
+		       __func__, size,
+		       state->aux_mem_size - state->aux_mem_used);
+		return -1;
+	}
+
+	for (i = 0; i < texture->levels; i++) {
+		level = &texture->level[i];
+
+		level->dest = state->aux_mem_address + state->aux_mem_used;
+		level->mem_physical =
+			state->aux_mem_physical + state->aux_mem_used;
+		state->aux_mem_used += level->size;
+	}
+
+	texture_32_swizzle(texture, src);
+
+	for (i = 1; i < texture->levels; i++)
+		texture_32_mipmap(&texture->level[i], &texture->level[i - 1]);
+
+	return 0;
+}
+
+static void
 texture_descriptor_level_attach(struct texture *texture, int i)
 {
 	struct texture_level *level = &texture->level[i];
@@ -403,8 +584,17 @@ texture_create(struct limare_state *state, const void *src,
 		flag1 = 0;
 		layout = 3;
 		break;
-	// case LIMA_TEXEL_FORMAT_RGBA_8888:
+	case LIMA_TEXEL_FORMAT_RGBA_8888:
 	// case LIMA_TEXEL_FORMAT_BGRA_8888:
+		if (texture_32_create(state, texture, src)) {
+			free(texture);
+			return NULL;
+		}
+
+		flag0 = 1;
+		flag1 = 0;
+		layout = 3;
+		break;
 	// case LIMA_TEXEL_FORMAT_RGBA64:
 	// case LIMA_TEXEL_FORMAT_DEPTH_STENCIL_32:
 	default:
