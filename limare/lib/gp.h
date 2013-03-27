@@ -108,10 +108,9 @@ int plbu_info_attach_uniforms(struct limare_frame *frame,
 			      int count, int size);
 int plbu_info_attach_indices(struct limare_frame *frame, struct draw_info *draw,
 			     void *indices, int indices_type, int count);
-int plbu_info_attach_textures(struct limare_frame *frame,
-			      struct draw_info *draw,
-			      struct limare_texture **textures,
-			      int count);
+int plbu_info_attach_textures(struct limare_state *state,
+			      struct limare_frame *frame,
+			      struct draw_info *draw);
 
 int plbu_info_render_state_create(struct limare_program *program,
 				  struct limare_frame *frame,
@@ -126,8 +125,10 @@ struct draw_info {
 
 	struct plbu_info plbu[1];
 
+#define LIMARE_DRAW_TEXTURE_COUNT 8 /* per draw hw limit */
 	int texture_descriptor_count;
 	unsigned int texture_descriptor_list_offset;
+	int texture_handles[LIMARE_DRAW_TEXTURE_COUNT];
 };
 
 struct draw_info *draw_create_new(struct limare_state *state,

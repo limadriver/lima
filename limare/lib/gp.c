@@ -40,7 +40,6 @@
 #include "compiler.h"
 #include "plb.h"
 #include "symbols.h"
-#include "texture.h"
 #include "gp.h"
 #include "jobs.h"
 #include "vs.h"
@@ -48,6 +47,7 @@
 #include "render_state.h"
 #include "hfloat.h"
 #include "from_float.h"
+#include "texture.h"
 #include "program.h"
 
 int
@@ -620,9 +620,30 @@ plbu_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
 
 	for (i = 0; i < count; i++) {
 		struct symbol *symbol = uniforms[i];
+		int j;
 
-		memcpy(address + symbol->component_size * symbol->offset,
-		       symbol->data, symbol->size);
+		if (symbol->value_type != SYMBOL_SAMPLER) {
+			memcpy(address +
+			       symbol->component_size * symbol->offset,
+			       symbol->data, symbol->size);
+			continue;
+		}
+
+		for (j = 0; j < draw->texture_descriptor_count; j++)
+			if (draw->texture_handles[j] == *((int *) symbol->data))
+				break;
+
+		if (symbol->size == 4) {
+			unsigned int *data = address +
+				symbol->component_size * symbol->offset;
+			*data = j;
+		} else if (symbol->size == 2) {
+			unsigned short *data = address +
+				symbol->component_size * symbol->offset;
+			*data = j;
+		} else
+			printf("%s: Error: unhandled size for %s is.\n",
+			       __func__, symbol->name);
 	}
 
 	return 0;
@@ -665,37 +686,80 @@ plbu_info_attach_indices(struct limare_frame *frame, struct draw_info *draw,
 }
 
 int
-plbu_info_attach_textures(struct limare_frame *frame, struct draw_info *draw,
-			  struct limare_texture **textures, int count)
+plbu_info_attach_textures(struct limare_state *state,
+			  struct limare_frame *frame,
+			  struct draw_info *draw)
 {
+	struct limare_program *program =
+		state->programs[state->program_current];
 	unsigned int *list;
 	int i;
 
-	if (!count || !textures[0])
+	/* first a quick pass to see whether we need any textures */
+	for (i = 0; i < program->fragment_uniform_count; i++) {
+		struct symbol *symbol = program->fragment_uniforms[i];
+
+		if (symbol->value_type == SYMBOL_SAMPLER)
+			break;
+	}
+
+	if (i == program->fragment_uniform_count)
 		return 0;
 
-	if (count > 8) {
-		printf("%s: Cannot attach more than 8 texture to a draw\n",
-		       __func__);
-		return -1;
-	}
-
-	if ((frame->mem_size - frame->mem_used) < ALIGN(0x44 * count, 0x40)) {
-		printf("%s: no space for textures\n", __func__);
-		return -1;
-	}
-
-	draw->texture_descriptor_count = count;
+	/* create descriptor list */
 	draw->texture_descriptor_list_offset = frame->mem_used;
+	list = frame->mem_address + frame->mem_used;
+	frame->mem_used += 0x40;
 
-	frame->mem_used += ALIGN(4 * count, 0x40);
+	for (i = 0; i < program->fragment_uniform_count; i++) {
+		struct symbol *symbol = program->fragment_uniforms[i];
+		struct limare_texture *texture;
+		int handle, j;
 
-	list = frame->mem_address + draw->texture_descriptor_list_offset;
+		if (symbol->value_type != SYMBOL_SAMPLER)
+			continue;
 
-	for (i = 0; i < count; i++) {
-		struct limare_texture *texture = textures[i];
+		handle = *((int *) symbol->data);
 
-		list[i] = texture->descriptor_physical;
+		/* first, check whether the texture is in the list already */
+		for (j = 0; j < LIMARE_DRAW_TEXTURE_COUNT; j++) {
+			if (j == draw->texture_descriptor_count)
+				break;
+
+			if (handle == draw->texture_handles[j])
+				break;
+		}
+
+		if (handle == draw->texture_handles[j])
+			continue; /* found, next symbol! */
+		if (j == LIMARE_DRAW_TEXTURE_COUNT) {
+			printf("%s: Error: more than %d textures attached!\n",
+			       __func__, LIMARE_DRAW_TEXTURE_COUNT);
+			return -1;
+		}
+
+		/* find the matching texture */
+		for (j = 0; j < LIMARE_TEXTURE_COUNT; j++) {
+			if (!state->textures[j])
+				continue;
+
+			texture = state->textures[j];
+
+			if (handle == texture->handle)
+				break;
+		}
+
+		if (j == LIMARE_TEXTURE_COUNT) {
+			printf("%s: Error: symbol %s texture handle not "
+			       "found\n", __func__, symbol->name);
+			return -1;
+		}
+
+		j = draw->texture_descriptor_count;
+		draw->texture_handles[j] = handle;
+		list[j] = texture->descriptor_physical;
+
+		draw->texture_descriptor_count++;
 	}
 
 	return 0;
@@ -794,8 +858,8 @@ plbu_info_render_state_create(struct limare_program *program,
 
 	if (draw->texture_descriptor_count) {
 
-		render->textures_address =
-			frame->mem_physical + draw->texture_descriptor_list_offset;
+		render->textures_address = frame->mem_physical +
+			draw->texture_descriptor_list_offset;
 		render->unknown34 |= draw->texture_descriptor_count << 14;
 
 		render->unknown34 |= 0x20;

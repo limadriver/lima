@@ -38,6 +38,8 @@ struct limare_texture_level {
 };
 
 struct limare_texture {
+	int handle;
+
 	int width;
 	int height;
 	int format;

@@ -136,9 +136,11 @@ main(int argc, char *argv[])
 			      &modelviewprojection.m[0][0]);
 	limare_uniform_attach(state, "normalMatrix", 9, normal);
 
-	limare_texture_attach(state, "in_texture", companion_texture_flat,
-                              COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
-			      COMPANION_TEXTURE_FORMAT, 0);
+	int texture = limare_texture_upload(state, companion_texture_flat,
+					    COMPANION_TEXTURE_WIDTH,
+					    COMPANION_TEXTURE_HEIGHT,
+					    COMPANION_TEXTURE_FORMAT, 0);
+	limare_texture_attach(state, "in_texture", texture);
 
 	limare_frame_new(state);
 

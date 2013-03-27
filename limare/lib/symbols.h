@@ -32,13 +32,12 @@ enum symbol_type {
 	SYMBOL_UNIFORM,
 	SYMBOL_ATTRIBUTE,
 	SYMBOL_VARYING,
-	SYMBOL_SAMPLER,
 };
 
 enum symbol_value_type {
 	SYMBOL_FLOAT = 1,
 	SYMBOL_MATRIX = 4,
-	SYMBOL_TEXTURE = 5,
+	SYMBOL_SAMPLER = 5,
 	SYMBOL_CUBEMAP = 6,
 };
 

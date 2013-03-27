@@ -105,9 +105,11 @@ main(int argc, char *argv[])
 	limare_attribute_pointer(state, "in_normal", 4,
 				 3, CUBE_VERTEX_COUNT, cube_normals);
 
-	limare_texture_attach(state, "in_texture", companion_texture_flat,
-			      COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
-			      COMPANION_TEXTURE_FORMAT, 0);
+	int texture = limare_texture_upload(state, companion_texture_flat,
+					    COMPANION_TEXTURE_WIDTH,
+					    COMPANION_TEXTURE_HEIGHT,
+					    COMPANION_TEXTURE_FORMAT, 0);
+	limare_texture_attach(state, "in_texture", texture);
 
 	int i = 0;
 

@@ -91,7 +91,9 @@ struct limare_state {
 	int aux_mem_size;
 	int aux_mem_used;
 
-	struct limare_texture *texture;
+#define LIMARE_TEXTURE_COUNT 512
+	struct limare_texture *textures[LIMARE_TEXTURE_COUNT];
+	int texture_handles;
 
 	struct limare_fb *fb;
 };
@@ -114,14 +116,16 @@ int vertex_shader_attach(struct limare_state *state, const char *source);
 int fragment_shader_attach(struct limare_state *state, const char *source);
 int limare_link(struct limare_state *state);
 
+int limare_texture_upload(struct limare_state *state, const void *pixels,
+			  int width, int height, int format, int mipmap);
+int limare_texture_attach(struct limare_state *state, char *uniform_name,
+			  int texture_handle);
+
 int limare_uniform_attach(struct limare_state *state, char *name,
 			  int count, float *data);
 int limare_attribute_pointer(struct limare_state *state, char *name,
 			     int component_size, int component_count,
 			     int entry_count, void *data);
-int limare_texture_attach(struct limare_state *state, char *uniform_name,
-			  const void *pixels, int width, int height,
-			  int format, int mipmap);
 int limare_draw_arrays(struct limare_state *state, int mode,
 			int vertex_start, int vertex_count);
 int limare_draw_elements(struct limare_state *state, int mode, int count,

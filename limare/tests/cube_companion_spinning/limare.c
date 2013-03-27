@@ -109,9 +109,11 @@ main(int argc, char *argv[])
 	limare_attribute_pointer(state, "in_normal", 4, 3,
 				 COMPANION_ARRAY_COUNT, normals_array);
 
-	limare_texture_attach(state, "in_texture", companion_texture,
-			      COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
-			      COMPANION_TEXTURE_FORMAT, 0);
+	int texture = limare_texture_upload(state, companion_texture,
+					    COMPANION_TEXTURE_WIDTH,
+					    COMPANION_TEXTURE_HEIGHT,
+					    COMPANION_TEXTURE_FORMAT, 0);
+	limare_texture_attach(state, "in_texture", texture);
 
 	int i = 0;
 

@@ -88,9 +88,11 @@ main(int argc, char *argv[])
 
 	limare_attribute_pointer(state, "in_coord", 4, 2, 4, coords);
 
-	limare_texture_attach(state, "in_texture", companion_texture_flat,
-			      COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
-			      COMPANION_TEXTURE_FORMAT, 0);
+	int texture = limare_texture_upload(state, companion_texture_flat,
+					    COMPANION_TEXTURE_WIDTH,
+					    COMPANION_TEXTURE_HEIGHT,
+					    COMPANION_TEXTURE_FORMAT, 0);
+	limare_texture_attach(state, "in_texture", texture);
 
 	limare_frame_new(state);
 
@@ -108,4 +110,3 @@ main(int argc, char *argv[])
 
 	return 0;
 }
-

@@ -144,9 +144,6 @@ symbol_print(struct symbol *symbol)
 	case SYMBOL_VARYING:
 		type = "varying";
 		break;
-	case SYMBOL_SAMPLER:
-		type = "sampler";
-		break;
 	}
 
 	printf("Symbol %s (%s) = {\n", symbol->name, type);

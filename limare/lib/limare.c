@@ -40,12 +40,12 @@
 #include "limare.h"
 #include "fb.h"
 #include "plb.h"
-#include "texture.h"
 #include "gp.h"
 #include "pp.h"
 #include "jobs.h"
 #include "symbols.h"
 #include "compiler.h"
+#include "texture.h"
 #include "hfloat.h"
 #include "program.h"
 
@@ -616,17 +616,53 @@ attribute_upload(struct limare_state *state, struct symbol *symbol)
 }
 
 int
+limare_texture_upload(struct limare_state *state, const void *pixels,
+		      int width, int height, int format, int mipmap)
+{
+	struct limare_texture *texture;
+	int i;
+
+	for (i = 0; i < LIMARE_TEXTURE_COUNT; i++)
+		if (!state->textures[i])
+			break;
+
+	if (i == LIMARE_TEXTURE_COUNT) {
+		printf("%s: all texture slots have been taken!\n", __func__);
+		return -1;
+	}
+
+	texture = limare_texture_create(state, pixels, width, height, format,
+					mipmap);
+	if (!texture)
+		return -1;
+
+	texture->handle = state->texture_handles | 0xC0000000;
+	state->texture_handles++;
+
+	state->textures[i] = texture;
+
+	return texture->handle;
+}
+
+int
 limare_texture_attach(struct limare_state *state, char *uniform_name,
-		      const void *pixels, int width, int height, int format,
-		      int mipmap)
+		      int handle)
 {
 	struct limare_program *program =
 		state->programs[state->program_current];
-	struct symbol *symbol;
-	int unit = 0, i;
+	struct symbol *symbol = NULL;
+	int i;
 
-	if (state->texture) {
-		printf("%s: already have a texture assigned\n", __func__);
+	for (i = 0; i < LIMARE_TEXTURE_COUNT; i++) {
+		if (!state->textures[i])
+			continue;
+
+		if (state->textures[i]->handle == handle)
+			break;
+	}
+
+	if (i == LIMARE_TEXTURE_COUNT) {
+		printf("%s: texture %d not found!\n", __func__, handle);
 		return -1;
 	}
 
@@ -643,21 +679,15 @@ limare_texture_attach(struct limare_state *state, char *uniform_name,
 		return -1;
 	}
 
-	state->texture = limare_texture_create(state, pixels, width, height,
-					       format, mipmap);
-	if (!state->texture)
-		return -1;
-
 	symbol->data_allocated = 1;
-	symbol->data = calloc(1, symbol->size);
+	symbol->data = calloc(1, 4);
 
-	if (symbol->size == 4)
-		*((unsigned int *) symbol->data) = unit;
-	else if (symbol->size == 2)
-		*((unsigned short *) symbol->data) = unit;
-	else
-		printf("%s: Error: unhandled size for %s is.\n",
-		       __func__, symbol->name);
+	*((int *) symbol->data) = handle;
+
+	if (symbol->value_type != SYMBOL_SAMPLER) {
+		printf("symbol %s is not a sampler!\n", symbol->name);
+		return -1;
+	}
 
 	return 0;
 }
@@ -742,6 +772,9 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 				    program->vertex_uniform_size))
 		return -1;
 
+	if (plbu_info_attach_textures(state, frame, draw))
+		return -1;
+
 	if (plbu_info_attach_uniforms(frame, draw,
 				      program->fragment_uniforms,
 				      program->fragment_uniform_count,
@@ -750,9 +783,6 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 
 	if (indices && plbu_info_attach_indices(frame, draw,
 						indices, indices_type, count))
-		return -1;
-
-	if (plbu_info_attach_textures(frame, draw, &state->texture, 1))
 		return -1;
 
 	vs_commands_draw_add(state, frame, program, draw);
