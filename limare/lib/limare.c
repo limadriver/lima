@@ -355,7 +355,7 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 	}
 
 	/* first, set up the plb, this is unchanged between draws. */
-	frame->plb = plb_create(state, frame);
+	frame->plb = plb_info_create(state, frame);
 	if (!frame->plb) {
 		limare_frame_destroy(frame);
 		return NULL;

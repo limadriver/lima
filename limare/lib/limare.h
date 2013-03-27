@@ -47,7 +47,7 @@ struct limare_frame {
 	struct draw_info *draws[LIMARE_DRAW_COUNT];
 	int draw_count;
 
-	struct plb *plb;
+	struct plb_info *plb;
 
 	struct pp_info *pp;
 

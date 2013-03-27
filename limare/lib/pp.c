@@ -44,7 +44,7 @@
 struct pp_info *
 pp_info_create(struct limare_state *state, struct limare_frame *frame)
 {
-	struct plb *plb;
+	struct plb_info *plb;
 	struct pp_info *info;
 	unsigned int quad[5] =
 		{0x00020425, 0x0000000c, 0x01e007cf, 0xb0000000, 0x000005f5};

@@ -35,7 +35,7 @@
  * Generate the plb address stream for the plbu.
  */
 static void
-plb_plbu_stream_create(struct limare_frame *frame, struct plb *plb)
+plb_plbu_stream_create(struct limare_frame *frame, struct plb_info *plb)
 {
 	unsigned int address = frame->mem_physical + plb->plb_offset;
 	unsigned int *stream = frame->mem_address + plb->plbu_offset;
@@ -49,7 +49,7 @@ plb_plbu_stream_create(struct limare_frame *frame, struct plb *plb)
  * Generate the PLB desciptors for the PP.
  */
 static void
-plb_pp_stream_create(struct limare_frame *frame, struct plb *plb)
+plb_pp_stream_create(struct limare_frame *frame, struct plb_info *plb)
 {
 	unsigned int address = frame->mem_physical + plb->plb_offset;
 	unsigned int *stream = frame->mem_address + plb->pp_offset;
@@ -72,10 +72,10 @@ plb_pp_stream_create(struct limare_frame *frame, struct plb *plb)
 	stream[index + 1] = 0xBC000000;
 }
 
-struct plb *
-plb_create(struct limare_state *state, struct limare_frame *frame)
+struct plb_info *
+plb_info_create(struct limare_state *state, struct limare_frame *frame)
 {
-	struct plb *plb = calloc(1, sizeof(struct plb));
+	struct plb_info *plb = calloc(1, sizeof(struct plb_info));
 	int width, height, limit, mem_used = 0;
 
 	width = ALIGN(state->width, 16) >> 4;
@@ -146,7 +146,7 @@ plb_create(struct limare_state *state, struct limare_frame *frame)
 }
 
 void
-plb_destroy(struct plb *plb)
+plb_destroy(struct plb_info *plb)
 {
 	free(plb);
 }

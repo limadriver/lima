@@ -100,7 +100,7 @@ int
 plbu_command_queue_create(struct limare_state *state,
 			  struct limare_frame *frame, int size, int heap_size)
 {
-	struct plb *plb = frame->plb;
+	struct plb_info *plb = frame->plb;
 	struct lima_cmd *cmds;
 	int i = 0;
 

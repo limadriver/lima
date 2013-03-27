@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -28,7 +28,7 @@
 #ifndef LIMARE_PLB_H
 #define LIMARE_PLB_H 1
 
-struct plb {
+struct plb_info {
 	int block_size; /* 0x200 */
 
 	int tiled_w;
@@ -53,7 +53,8 @@ struct plb {
 	int pp_size; /* 16 * (width * height + 1) */
 };
 
-struct plb *plb_create(struct limare_state *state, struct limare_frame *frame);
-void plb_destroy(struct plb *plb);
+struct plb_info *plb_info_create(struct limare_state *state,
+				 struct limare_frame *frame);
+void plb_destroy(struct plb_info *plb);
 
 #endif /* LIMARE_PLB_H */
