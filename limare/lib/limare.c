@@ -317,9 +317,6 @@ limare_frame_destroy(struct limare_frame *frame)
 	for (i = 0; i < frame->draw_count; i++)
 		draw_info_destroy(frame->draws[i]);
 
-	if (frame->plb)
-		plb_destroy(frame->plb);
-
 	if (frame->pp)
 		pp_info_destroy(frame->pp);
 
@@ -354,9 +351,7 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 		return NULL;
 	}
 
-	/* first, set up the plb, this is unchanged between draws. */
-	frame->plb = plb_info_create(state, frame);
-	if (!frame->plb) {
+	if (frame_plb_create(state, frame)) {
 		limare_frame_destroy(frame);
 		return NULL;
 	}
@@ -433,6 +428,10 @@ limare_state_setup(struct limare_state *state, int width, int height,
 		return -1;
 
 	limare_state_init(state, clear_color);
+
+	state->plb = plb_info_create(state);
+	if (!state->plb)
+		return -1;
 
 	return 0;
 }
@@ -925,11 +924,6 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 
 	if (!frame) {
 		printf("%s: Error: no frame was set up!\n", __func__);
-		return -1;
-	}
-
-	if (!frame->plb) {
-		printf("%s: Error: plb member is not set up yet.\n", __func__);
 		return -1;
 	}
 

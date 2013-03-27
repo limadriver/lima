@@ -47,7 +47,13 @@ struct limare_frame {
 	struct draw_info *draws[LIMARE_DRAW_COUNT];
 	int draw_count;
 
-	struct plb_info *plb;
+	/* locations of our plb buffers and pointers in our frame memory */
+	/* holds the actual polygons */
+	int plb_offset;
+	/* holds the addresses so the plbu knows where to store the polygons */
+	int plb_plbu_offset;
+	/* holds the coordinates and addresses of the polygons for the PP */
+	int plb_pp_offset;
 
 	struct pp_info *pp;
 
@@ -96,6 +102,8 @@ struct limare_state {
 
 	int width;
 	int height;
+
+	struct plb_info *plb;
 
 	unsigned int clear_color;
 

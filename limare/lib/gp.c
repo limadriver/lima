@@ -100,7 +100,7 @@ int
 plbu_command_queue_create(struct limare_state *state,
 			  struct limare_frame *frame, int size, int heap_size)
 {
-	struct plb_info *plb = frame->plb;
+	struct plb_info *plb = state->plb;
 	struct lima_cmd *cmds;
 	int i = 0;
 
@@ -142,7 +142,7 @@ plbu_command_queue_create(struct limare_state *state,
 	cmds[i].cmd = LIMA_PLBU_CMD_PLBU_BLOCK_STRIDE;
 	i++;
 
-	cmds[i].val = frame->mem_physical + plb->plbu_offset;
+	cmds[i].val = frame->mem_physical + frame->plb_plbu_offset;
 	if (state->type == LIMARE_TYPE_M200)
 		cmds[i].cmd = LIMA_M200_PLBU_CMD_PLBU_ARRAY_ADDRESS;
 	else if (state->type == LIMARE_TYPE_M400) {

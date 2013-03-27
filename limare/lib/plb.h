@@ -28,6 +28,10 @@
 #ifndef LIMARE_PLB_H
 #define LIMARE_PLB_H 1
 
+/*
+ * PLB info that doesn't change between frames.
+ * The actual space is allocated on the frame memory.
+ */
 struct plb_info {
 	int block_size; /* 0x200 */
 
@@ -42,20 +46,20 @@ struct plb_info {
 	int shift_max;
 
 	/* holds the actual primitives */
-	int plb_offset;
 	int plb_size; /* 0x200 * (width >> (shift_w - 1)) * (height >> (shift_h - 1))) */
 
 	/* holds the addresses so the plbu knows where to store the primitives */
-	int plbu_offset;
 	int plbu_size; /* 4 * width * height */
 
 	/* holds the coordinates and addresses of the primitives for the PP */
-	int pp_offset;
-	int pp_size; /* 16 * (width * height + 1) */
+	int pp_size;
+
+	/* point beyond the end of this list. */
+	unsigned int *pp_template;
 };
 
-struct plb_info *plb_info_create(struct limare_state *state,
-				 struct limare_frame *frame);
+struct plb_info *plb_info_create(struct limare_state *state);
+int frame_plb_create(struct limare_state *state, struct limare_frame *frame);
 void plb_destroy(struct plb_info *plb);
 
 #endif /* LIMARE_PLB_H */

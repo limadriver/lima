@@ -49,12 +49,11 @@ pp_info_create(struct limare_state *state, struct limare_frame *frame)
 	unsigned int quad[5] =
 		{0x00020425, 0x0000000c, 0x01e007cf, 0xb0000000, 0x000005f5};
 
-	if (!frame->plb) {
+	if (!state->plb) {
 		printf("%s: Error: member plb not assigned yet!\n", __func__);
 		return NULL;
 	}
-
-	plb = frame->plb;
+	plb = state->plb;
 
 	if ((frame->mem_size - frame->mem_used) < 0x80) {
 		printf("%s: no space for the pp\n", __func__);
@@ -70,7 +69,7 @@ pp_info_create(struct limare_state *state, struct limare_frame *frame)
 	info->pitch = state->fb->width * 4;
 	info->clear_color = state->clear_color;
 
-	info->plb_physical = frame->mem_physical + plb->pp_offset;
+	info->plb_physical = frame->mem_physical + frame->plb_pp_offset;
 	info->plb_shift_w = plb->shift_w;
 	info->plb_shift_h = plb->shift_h;
 
@@ -170,7 +169,7 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	struct lima_m400_pp_frame_registers frame_regs = { 0 };
 	struct lima_pp_wb_registers wb_regs = { 0 };
 	struct pp_info *info = frame->pp;
-	struct plb_info *plb = frame->plb;
+	struct plb_info *plb = state->plb;
 	int supersampling = 1;
 
 	/* frame registers */
