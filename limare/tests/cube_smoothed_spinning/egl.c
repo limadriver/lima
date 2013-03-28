@@ -1,0 +1,213 @@
+/*
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2012 Arvin Schnell <arvin.schnell@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sub license,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the
+ * next paragraph) shall be included in all copies or substantial portions
+ * of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
+
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#include <errno.h>
+
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
+
+#include "egl_common.h"
+
+#include "esUtil.h"
+#include "cube_mesh.h"
+
+int
+main(int argc, char *argv[])
+{
+	EGLDisplay display;
+	EGLSurface surface;
+	GLuint vertex_shader;
+	GLuint fragment_shader;
+	GLuint program;
+	GLint ret;
+	GLint width, height;
+
+	const char *vertex_shader_source =
+	  "uniform mat4 modelviewMatrix;\n"
+	  "uniform mat4 modelviewprojectionMatrix;\n"
+	  "uniform mat3 normalMatrix;\n"
+	  "\n"
+	  "attribute vec4 in_position;    \n"
+	  "attribute vec3 in_normal;      \n"
+	  "attribute vec4 in_color;       \n"
+	  "\n"
+	  "vec4 lightSource = vec4(10.0, 20.0, 40.0, 0.0);\n"
+	  "                             \n"
+	  "varying vec4 vVaryingColor;         \n"
+	  "                             \n"
+	  "void main()                  \n"
+	  "{                            \n"
+	  "    gl_Position = modelviewprojectionMatrix * in_position;\n"
+	  "    vec3 vEyeNormal = normalMatrix * in_normal;\n"
+	  "    vec4 vPosition4 = modelviewMatrix * in_position;\n"
+	  "    vec3 vPosition3 = vPosition4.xyz / vPosition4.w;\n"
+	  "    vec3 vLightDir = normalize(lightSource.xyz - vPosition3);\n"
+	  "    float diff = max(0.0, dot(vEyeNormal, vLightDir));\n"
+	  "    vVaryingColor = vec4(diff * in_color.rgb, 1.0);\n"
+	  "}                            \n";
+	const char *fragment_shader_source =
+	  "precision mediump float;     \n"
+	  "                             \n"
+	  "varying vec4 vVaryingColor;  \n"
+	  "                             \n"
+	  "void main()                  \n"
+	  "{                            \n"
+	  "    gl_FragColor = vVaryingColor;\n"
+	  "}                            \n";
+
+	buffer_size(&width, &height);
+
+	printf("Buffer dimensions %dx%d\n", width, height);
+	float aspect = (float) height / width;
+
+	display = egl_display_init();
+	surface = egl_surface_init(display, 2, width, height);
+
+	glViewport(0, 0, width, height);
+
+	glClearColor(0.5, 0.5, 0.5, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+
+	vertex_shader = vertex_shader_compile(vertex_shader_source);
+	fragment_shader = fragment_shader_compile(fragment_shader_source);
+
+	program = glCreateProgram();
+	if (!program) {
+		printf("Error: failed to create program!\n");
+		return -1;
+	}
+
+	glAttachShader(program, vertex_shader);
+	glAttachShader(program, fragment_shader);
+
+	glBindAttribLocation(program, 0, "in_position");
+	glBindAttribLocation(program, 1, "in_normal");
+	glBindAttribLocation(program, 2, "in_color");
+
+	glLinkProgram(program);
+
+	glGetProgramiv(program, GL_LINK_STATUS, &ret);
+	if (!ret) {
+		char *log;
+
+		printf("Error: program linking failed!:\n");
+		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &ret);
+
+		if (ret > 1) {
+			log = malloc(ret);
+			glGetProgramInfoLog(program, ret, NULL, log);
+			printf("%s", log);
+		}
+		return -1;
+	}
+
+	glUseProgram(program);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, cube_vertices);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, cube_normals);
+	glEnableVertexAttribArray(1);
+
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, cube_colors);
+	glEnableVertexAttribArray(2);
+
+	framerate_init();
+
+	int i = 0;
+
+	while (1) {
+		i++;
+		if (i == 0xFFFFFFF)
+			i = 0;
+
+		float angle = 0.5 * i;
+
+		ESMatrix modelview;
+		esMatrixLoadIdentity(&modelview);
+		esTranslate(&modelview, 0.0, 0.0, -4.0);
+		esRotate(&modelview, angle * 0.97, 1.0, 0.0, 0.0);
+		esRotate(&modelview, angle * 1.13, 0.0, 1.0, 0.0);
+		esRotate(&modelview, angle * 0.73, 0.0, 0.0, 1.0);
+
+		ESMatrix projection;
+		esMatrixLoadIdentity(&projection);
+		esFrustum(&projection, -1.0, +1.0, -1.0 * aspect, +1.0 * aspect,
+			  1.0, 10.0);
+
+		ESMatrix modelviewprojection;
+		esMatrixLoadIdentity(&modelviewprojection);
+		esMatrixMultiply(&modelviewprojection, &modelview, &projection);
+
+		float normal[9];
+		normal[0] = modelview.m[0][0];
+		normal[1] = modelview.m[0][1];
+		normal[2] = modelview.m[0][2];
+		normal[3] = modelview.m[1][0];
+		normal[4] = modelview.m[1][1];
+		normal[5] = modelview.m[1][2];
+		normal[6] = modelview.m[2][0];
+		normal[7] = modelview.m[2][1];
+		normal[8] = modelview.m[2][2];
+
+		GLint modelviewmatrix_handle =
+			glGetUniformLocation(program, "modelviewMatrix");
+		GLint modelviewprojectionmatrix_handle =
+			glGetUniformLocation(program, "modelviewprojectionMatrix");
+		GLint normalmatrix_handle =
+			glGetUniformLocation(program, "normalMatrix");
+
+		glUniformMatrix4fv(modelviewmatrix_handle,
+				   1, GL_FALSE, &modelview.m[0][0]);
+		glUniformMatrix4fv(modelviewprojectionmatrix_handle,
+				   1, GL_FALSE, &modelviewprojection.m[0][0]);
+		glUniformMatrix3fv(normalmatrix_handle, 1, GL_FALSE, normal);
+
+		glDrawElements(GL_TRIANGLES, CUBE_INDEX_COUNT,
+			       GL_UNSIGNED_BYTE, cube_indices);
+
+		eglSwapBuffers(display, surface);
+
+		framerate_print(512, i);
+
+#if 1
+		if (i >= 6400)
+			break;
+#endif
+	}
+
+	usleep(1000000);
+
+	fflush(stdout);
+
+	return 0;
+}

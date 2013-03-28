@@ -5,6 +5,7 @@ DIRS =	common \
 	quad_flat \
 	triangle_quad \
 	cube_smoothed \
+	cube_smoothed_spinning \
 	quad_textured \
 	cube_textured \
 	cube_textured_spinning \
