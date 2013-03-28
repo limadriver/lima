@@ -14,6 +14,7 @@ DIRS =	common \
 	quad_direct \
 	multiple \
 	cube_companion_bo \
+	cube_companion_bo_indexed \
 
 .PHONY: all clean install $(DIRS)
 

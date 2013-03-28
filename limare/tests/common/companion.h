@@ -29,11 +29,12 @@ extern float companion_normals[COMPANION_VERTEX_COUNT][3];
 
 #define COMPANION_TRIANGLE_COUNT 4052
 extern short companion_triangles[COMPANION_TRIANGLE_COUNT][3];
+#define COMPANION_INDEX_COUNT (COMPANION_TRIANGLE_COUNT * 3)
 
 /*
  * convert mesh from indexed to arrays - alloced arrays.
  */
-#define COMPANION_ARRAY_COUNT (COMPANION_TRIANGLE_COUNT * 3)
+#define COMPANION_ARRAY_COUNT COMPANION_INDEX_COUNT
 
 float *companion_vertices_array(void);
 float *companion_texture_coordinates_array(void);
