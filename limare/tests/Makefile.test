@@ -16,4 +16,5 @@ clean: $(targets:=_clean)
 include $(TOP)Makefile.post
 include ../Makefile.limare
 include ../Makefile.egl
+include ../Makefile.gles1
 include ../Makefile.dump

@@ -236,7 +236,7 @@ ANativeWindow *android_createDisplaySurface(void);
  */
 #define MAX_NUM_CONFIGS 4
 EGLSurface *
-egl_surface_init(EGLDisplay display, int width, int height)
+egl_surface_init(EGLDisplay display, int gles_version, int width, int height)
 {
 	EGLConfig configs[MAX_NUM_CONFIGS];
 	EGLint config_count;
@@ -250,7 +250,11 @@ egl_surface_init(EGLDisplay display, int width, int height)
 
 		EGL_NONE
 	};
-	EGLint context_attributes[] = {
+	EGLint context_gles1_attributes[] = {
+		EGL_CONTEXT_CLIENT_VERSION, 1,
+		EGL_NONE
+	};
+	EGLint context_gles2_attributes[] = {
 		EGL_CONTEXT_CLIENT_VERSION, 2,
 		EGL_NONE
 	};
@@ -286,8 +290,12 @@ egl_surface_init(EGLDisplay display, int width, int height)
 		goto error;
 	}
 
-	context = eglCreateContext(display, configs[i], EGL_NO_CONTEXT,
-				   context_attributes);
+	if (gles_version == 2)
+		context = eglCreateContext(display, configs[i], EGL_NO_CONTEXT,
+					   context_gles2_attributes);
+	else
+		context = eglCreateContext(display, configs[i], EGL_NO_CONTEXT,
+					   context_gles1_attributes);
 	if (context == EGL_NO_CONTEXT)
 		goto error;
 

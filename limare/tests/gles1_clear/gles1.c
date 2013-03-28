@@ -19,21 +19,41 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- *
  */
 
-#ifndef EGL_COMMON_H
-#define EGL_COMMON_H 1
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
 
-void buffer_size(int *width, int *height);
+#include <EGL/egl.h>
+#include <GLES/gl.h>
 
-void gl_error_test(void);
-void egl_error_test(void);
-EGLDisplay egl_display_init(void);
-EGLSurface *egl_surface_init(EGLDisplay display, int gles_version,
-			     int width, int height);
+#include "egl_common.h"
 
-int vertex_shader_compile(const char *source);
-int fragment_shader_compile(const char *source);
+int
+main(int argc, char *argv[])
+{
+	EGLDisplay display;
+	EGLSurface surface;
+	int width, height;
 
-#endif /* EGL_COMMON_H */
+	buffer_size(&width, &height);
+
+	printf("Buffer dimensions %dx%d\n", width, height);
+
+	display = egl_display_init();
+	surface = egl_surface_init(display, 1, width, height);
+
+	/* only a separate color buffer clear triggers depth clear */
+	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	eglSwapBuffers(display, surface);
+
+	usleep(1000000);
+
+	fflush(stdout);
+
+	return 0;
+}
+

@@ -5,15 +5,15 @@ EGL_BMP = /sdcard/egl.wrap.BMP
 EGL_OBJS = egl.o ../common/egl_common.o $(objs)
 
 ifeq ($(OS), android)
-	LIBS = -lEGL_mali -lGLESv2_mali
+	EGL_LIBS = -lEGL_mali -lGLESv2_mali
 else
-	LIBS = -lEGL -lGLESv2
+	EGL_LIBS = -lEGL -lGLESv2
 endif
 
 egl: egl_$(NAME)
 
 egl_$(NAME): $(EGL_OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(EGL_LIBS)
 
 egl_install: egl_$(NAME)
 	$(INSTALL) egl_$(NAME) $(INSTALL_DIR)/egl/$(NAME)

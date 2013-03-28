@@ -15,6 +15,7 @@ DIRS =	common \
 	multiple \
 	cube_companion_bo \
 	cube_companion_bo_indexed \
+	gles1_clear \
 
 .PHONY: all clean install $(DIRS)
 

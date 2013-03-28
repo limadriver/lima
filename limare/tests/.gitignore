@@ -1,4 +1,5 @@
-limare_*
-egl_*
+*/limare_*
+*/egl_*
+*/gles1_*
 *.bmp
 *.log

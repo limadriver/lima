@@ -50,7 +50,7 @@ main(int argc, char *argv[])
 	float aspect = (float) height / width;
 
 	display = egl_display_init();
-	surface = egl_surface_init(display, width, height);
+	surface = egl_surface_init(display, 2, width, height);
 
 	glViewport(0, 0, width, height);
 

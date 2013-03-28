@@ -83,7 +83,7 @@ main(int argc, char *argv[])
 	printf("Buffer dimensions %dx%d\n", width, height);
 
 	display = egl_display_init();
-	surface = egl_surface_init(display, width, height);
+	surface = egl_surface_init(display, 2, width, height);
 
 	vertex_shader = vertex_shader_compile(vertex_shader_source);
 	fragment_shader = fragment_shader_compile(fragment_shader_source);
