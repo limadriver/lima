@@ -67,7 +67,7 @@ pp_info_create(struct limare_state *state, struct limare_frame *frame)
 
 	info->width = state->width;
 	info->height = state->height;
-	info->pitch = state->width * 4;
+	info->pitch = state->fb->width * 4;
 	info->clear_color = state->clear_color;
 
 	info->plb_physical = frame->mem_physical + plb->pp_offset;

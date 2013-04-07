@@ -33,7 +33,6 @@ struct limare_fb {
 	int height;
 	int size;
 
-	int direct;
 	int dual_buffer;
 
 	/* mapped fb */

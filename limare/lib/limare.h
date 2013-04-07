@@ -130,5 +130,6 @@ int limare_new(struct limare_state *state);
 
 void limare_buffer_clear(struct limare_state *state);
 void limare_buffer_swap(struct limare_state *state);
+void limare_buffer_size(struct limare_state *state, int *width, int *height);
 
 #endif /* LIMARE_LIMARE_H */

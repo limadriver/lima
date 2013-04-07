@@ -369,18 +369,19 @@ limare_frame_create(struct limare_state *state, int offset, int size)
 	return frame;
 }
 
+static void
+limare_state_init(struct limare_state *state, unsigned int clear_color)
+{
+	state->clear_color = clear_color;
+}
+
 /* here we still hardcode our memory addresses. */
 int
 limare_state_setup(struct limare_state *state, int width, int height,
-		    unsigned int clear_color)
+		   unsigned int clear_color)
 {
 	if (!state)
 		return -1;
-
-	state->width = width;
-	state->height = height;
-
-	state->clear_color = clear_color;
 
 	/* space for our programs and textures. */
 	state->aux_mem_size = 0x200000;
@@ -409,6 +410,8 @@ limare_state_setup(struct limare_state *state, int width, int height,
 	/* try to grab the necessary space for our image */
 	if (fb_init(state, width, height, 0x0500000))
 		return -1;
+
+	limare_state_init(state, clear_color);
 
 	return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -32,9 +32,6 @@
 #include "esUtil.h"
 #include "cube_mesh.h"
 #include "companion.h"
-
-#define WIDTH 800
-#define HEIGHT 480
 
 int
 main(int argc, char *argv[])
@@ -87,9 +84,13 @@ main(int argc, char *argv[])
 
 	limare_buffer_clear(state);
 
-	ret = limare_state_setup(state, WIDTH, HEIGHT, 0xFF505050);
+	ret = limare_state_setup(state, 0, 0, 0xFF505050);
 	if (ret)
 		return ret;
+
+	int width, height;
+	limare_buffer_size(state, &width, &height);
+	float aspect = (float) height / width;
 
 	vertex_shader_attach(state, vertex_shader_source);
 	fragment_shader_attach(state, fragment_shader_source);
@@ -109,9 +110,6 @@ main(int argc, char *argv[])
 	esTranslate(&modelview, 0.0, 0.0, -4.0);
 	esRotate(&modelview, -30.0, 1.0, 0.0, 0.0);
 	esRotate(&modelview, -45.0, 0.0, 1.0, 0.0);
-
-	GLfloat aspect = (GLfloat)(HEIGHT) / (GLfloat)(WIDTH);
-	printf("aspect: %f\n", aspect);
 
 	ESMatrix projection;
 	esMatrixLoadIdentity(&projection);

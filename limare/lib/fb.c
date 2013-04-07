@@ -51,17 +51,13 @@ void
 fb_destroy(struct limare_state *state)
 {
 	struct limare_fb *fb = state->fb;
+	_mali_uk_unmap_external_mem_s unmap = { 0 };
 
-	if (fb->direct) {
-		_mali_uk_unmap_external_mem_s unmap = { 0 };
+	unmap.cookie = fb->mali_handle;
 
-		unmap.cookie = fb->mali_handle;
-
-		if (ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT, &unmap))
-			printf("Error: failed to unmap external memory: %s\n",
-			       strerror(errno));
-	} else
-		munmap(fb->buffer, fb->buffer_size);
+	if (ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT, &unmap))
+		printf("Error: failed to unmap external memory: %s\n",
+		       strerror(errno));
 
 	munmap(fb->map, fb->map_size);
 
@@ -142,6 +138,11 @@ fb_open(struct limare_state *state)
 		printf("Error: failed to run ioctl on %s: %s\n",
 			FBDEV_DEV, strerror(errno));
 
+	if (fb->map_size >= (2 * fb->size))
+		fb->dual_buffer = 1;
+	else
+		fb->dual_buffer = 0;
+
 	return 0;
 }
 
@@ -172,40 +173,40 @@ fb_init(struct limare_state *state, int width, int height, int offset)
 {
 	struct limare_fb *fb = state->fb;
 
-	if ((fb->width == width) && (fb->height == height)) {
-		fb->direct = 1;
-		if (fb->map_size >= (2 * fb->size))
-			fb->dual_buffer = 1;
+	if (!width || !height) {
+		width = fb->width;
+		height = fb->height;
+	}
+
+	if ((fb->width < width) && (fb->height < height)) {
+		printf("Requested size %dx%d is larger than fb: truncating.\n",
+		       width, height);
+		width = fb->width;
+		height = fb->height;
+	} else if (fb->width < width) {
+		printf("Requested width %d is wider than fb: truncating.\n",
+		       width);
+		width = fb->width;
+	} else if (fb->height < height) {
+		printf("Requested height %d is taller than fb: truncating.\n",
+		       height);
+		height = fb->height;
 	}
 
 	fb->mali_physical[0] = state->mem_base + offset;
-	if (fb->direct) {
+	if (fb->dual_buffer)
 		fb->mali_physical[1] = fb->mali_physical[0] + fb->size;
 
-		if (mali_map_external(state)) {
-			fb->direct = 0;
-			fb->dual_buffer = 0;
-		}
-	}
-
-	if (!fb->direct) {
-		fb->buffer_size = width * height * 4;
-		fb->buffer = mmap(NULL, fb->size, PROT_READ | PROT_WRITE,
-				  MAP_SHARED, state->fd, fb->mali_physical[0]);
-		if (fb->buffer == MAP_FAILED) {
-			printf("Error: failed to mmap offset 0x%X (0x%X): %s\n",
-			       fb->mali_physical[0], fb->buffer_size,
-			       strerror(errno));
-			return -1;
-		}
-	}
+	if (mali_map_external(state))
+		return -1;
 
 	if (fb->dual_buffer)
 		printf("Using dual buffered direct rendering to FB.\n");
-	else if (fb->direct)
-		printf("Using direct rendering to FB.\n");
 	else
-		printf("Using memcpy to FB.\n");
+		printf("Using direct rendering to FB.\n");
+
+	state->width = width;
+	state->height = height;
 
 	return 0;
 }
@@ -243,33 +244,6 @@ fb_switch(struct limare_state *state)
 			FBDEV_DEV, strerror(errno));
 }
 
-static void
-fb_dump_memcpy(struct limare_state *state)
-{
-	struct limare_fb *fb = state->fb;
-	int i;
-
-	if (fb->fd == -1)
-		return;
-
-	if ((fb->width == state->width) && (fb->height == state->height)) {
-		memcpy(fb->map, fb->buffer, fb->size);
-	} else if ((fb->width >= state->width) &&
-		   (fb->height >= state->height)) {
-		int fb_offset, buf_offset;
-
-		for (i = 0, fb_offset = 0, buf_offset = 0;
-		     i < state->height;
-		     i++, fb_offset += 4 * fb->width,
-			     buf_offset += 4 * state->width) {
-			memcpy(fb->map + fb_offset,
-			       fb->buffer + buf_offset,
-			       4 * state->width);
-		}
-	} else
-		printf("%s: dimensions not implemented\n", __func__);
-}
-
 void
 fb_dump(struct limare_state *state)
 {
@@ -277,8 +251,6 @@ fb_dump(struct limare_state *state)
 
 	if (fb->dual_buffer)
 		fb_switch(state);
-	else if (!fb->direct)
-		fb_dump_memcpy(state);
 }
 
 void
@@ -307,4 +279,13 @@ fb_dump_direct(struct limare_state *state, unsigned char *buffer,
 		}
 	} else
 		printf("%s: dimensions not implemented\n", __func__);
+}
+
+void
+limare_buffer_size(struct limare_state *state, int *width, int *height)
+{
+	if (width)
+		*width = state->width;
+	if (height)
+		*height = state->height;
 }

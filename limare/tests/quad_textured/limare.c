@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 Luc Verhaegen <libv@skynet.be>
+ * Copyright 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -35,9 +35,6 @@
 #include "formats.h"
 
 #include "companion.h"
-
-#define WIDTH 400
-#define HEIGHT 240
 
 int
 main(int argc, char *argv[])
@@ -76,7 +73,7 @@ main(int argc, char *argv[])
 
 	limare_buffer_clear(state);
 
-	ret = limare_state_setup(state, WIDTH, HEIGHT, 0xFF505050);
+	ret = limare_state_setup(state, 0, 0, 0xFF505050);
 	if (ret)
 		return ret;
 
