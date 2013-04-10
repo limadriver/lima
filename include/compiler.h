@@ -103,6 +103,33 @@ struct lima_shader_binary_mbs { /* 0x6C */
 	int unknown68; /* 0x68 */
 };
 
+/*
+ * Introduced in r3p2, adds something else still.
+ */
+struct lima_shader_binary_r3p2 { /* 0x6C */
+	int compile_status; /* 0x00 */
+	const char *error_log; /* 0x04 - can be freed */
+	const char *oom_log; /* 0x08 - static */
+	void *shader; /* 0x0C */
+	int shader_size; /* 0x10 */
+	const void *mbs_stream; /* 0x14 */
+	const int mbs_stream_size; /* 0x18 */
+	const void *varying_stream; /* 0x1C */
+	int varying_stream_size; /* 0x20 */
+	const void *uniform_stream; /* 0x24 */
+	int uniform_stream_size; /* 0x28 */
+	const void *attribute_stream; /* 0x2C */
+	int attribute_stream_size; /* 0x30 */
+	const void *something_stream; /* 0x34 */
+	int something_stream_size; /* 0x38 */
+	union {
+		struct lima_shader_binary_vertex_parameters vertex;
+		struct lima_shader_binary_fragment_parameters fragment;
+	} parameters; /* 0x3C - 0x6C */
+	int unknown6C; /* 0x6C */
+	int unknown70; /* 0x70 */
+};
+
 /* from libMali.so */
 int __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 			       const char *source, int *length, int count);

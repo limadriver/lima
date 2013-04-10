@@ -144,7 +144,7 @@ fragment_parameters_dump(struct lima_shader_binary_fragment_parameters *paramete
 void
 dump_shader_binary_mbs(struct lima_shader_binary_mbs *binary, int type)
 {
-	printf("struct lima_shader_binary %p = {\n", binary);
+	printf("struct lima_shader_binary_mbs %p = {\n", binary);
 	printf("\t.compile_status = %d,\n", binary->compile_status);
 	printf("\t.error_log = \"%s\",\n", binary->error_log);
 	printf("\t.shader = {\n");
@@ -204,7 +204,43 @@ dump_shader_binary(struct lima_shader_binary *binary, int type)
 }
 
 void
-dump_shader_mbs(const char *filename, struct lima_shader_binary_mbs *binary)
+dump_shader_binary_r3p2(struct lima_shader_binary_r3p2 *binary, int type)
+{
+	printf("struct lima_shader_binary_r3p2 %p = {\n", binary);
+	printf("\t.compile_status = %d,\n", binary->compile_status);
+	printf("\t.error_log = \"%s\",\n", binary->error_log);
+	printf("\t.shader = {\n");
+	dump_shader(binary->shader, binary->shader_size / 4);
+	printf("\t},\n");
+	printf("\t.shader_size = 0x%x,\n", binary->shader_size);
+	printf("\t.varying_stream = {\n");
+	hexdump(binary->varying_stream, binary->varying_stream_size);
+	printf("\t},\n");
+	printf("\t.varying_stream_size = 0x%x,\n", binary->varying_stream_size);
+	printf("\t.uniform_stream = {\n");
+	hexdump(binary->uniform_stream, binary->uniform_stream_size);
+	printf("\t},\n");
+	printf("\t.uniform_stream_size = 0x%x,\n", binary->uniform_stream_size);
+	printf("\t.attribute_stream = {\n");
+	hexdump(binary->attribute_stream, binary->attribute_stream_size);
+	printf("\t},\n");
+	printf("\t.attribute_stream_size = 0x%x,\n", binary->attribute_stream_size);
+
+	printf("\t.something_stream = {\n");
+	hexdump(binary->something_stream, binary->something_stream_size);
+	printf("\t},\n");
+	printf("\t.something_stream_size = 0x%x,\n", binary->something_stream_size);
+
+	if (type == LIMA_SHADER_VERTEX)
+		vertex_parameters_dump(&binary->parameters.vertex);
+	else
+		fragment_parameters_dump(&binary->parameters.fragment);
+
+	printf("}\n");
+}
+
+void
+dump_shader_mbs(const char *filename, struct lima_shader_binary_r3p2 *binary)
 {
 	char name[1024];
 	int fd, ret;
@@ -229,7 +265,7 @@ dump_shader_mbs(const char *filename, struct lima_shader_binary_mbs *binary)
 int
 main(int argc, char *argv[])
 {
-	struct lima_shader_binary_mbs binary = { 0 };
+	struct lima_shader_binary_r3p2 binary = { 0 };
 	char *filename, *source;
 	int type, fd, size, length, ret;
 
@@ -296,8 +332,11 @@ main(int argc, char *argv[])
 		return ret;
 	}
 
-	if ((((unsigned int *)binary.mbs_stream)[0]) == STREAM_TAG_MBS1) {
-		dump_shader_binary_mbs(&binary, type);
+	if ((((unsigned int *) binary.mbs_stream)[0]) == STREAM_TAG_MBS1) {
+		if (((unsigned int) binary.something_stream) >= 0x100)
+			dump_shader_binary_r3p2(&binary, type);
+		else
+			dump_shader_binary_mbs((struct lima_shader_binary_mbs *) &binary, type);
 		dump_shader_mbs(filename, &binary);
 	} else
 		dump_shader_binary((struct lima_shader_binary *) &binary, type);
