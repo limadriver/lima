@@ -39,8 +39,25 @@
 
 #include "egl_common.h"
 
-struct mali_native_window native_window[1];
+#ifdef _X11_XLIB_H_
+#define WIDTH 480
+#define HEIGHT 480
+#endif /* _X11_XLIB_H_ */
 
+#ifdef _X11_XLIB_H_
+Window native_window;
+#else
+struct mali_native_window native_window[1];
+#endif
+
+#ifdef _X11_XLIB_H_
+void
+buffer_size(int *width, int *height)
+{
+	*width = WIDTH;
+	*height = HEIGHT;
+}
+#else
 void
 buffer_size(int *width, int *height)
 {
@@ -73,6 +90,7 @@ buffer_size(int *width, int *height)
 	} else
 		fprintf(stderr, "Error: FB claims 0x0 dimensions\n");
 }
+#endif /* _X11_XLIB_H_ */
 
 void
 gl_error_test(void)
@@ -134,7 +152,36 @@ egl_display_init(void)
 	EGLDisplay display;
 	int major, minor;
 
+#ifdef _X11_XLIB_H_
+	XSetWindowAttributes XWinAttr;
+	Atom XWMDeleteMessage;
+	Window XRoot;
+
+	Display *XDisplay = XOpenDisplay(NULL);
+	if (!XDisplay) {
+		fprintf(stderr, "Error: failed to open X display.\n");
+		return NULL;
+	}
+
+	XRoot = DefaultRootWindow(XDisplay);
+
+	XWinAttr.event_mask  =  ExposureMask | PointerMotionMask;
+
+	native_window = XCreateWindow(XDisplay, XRoot, 0, 0, WIDTH, HEIGHT, 0,
+				CopyFromParent, InputOutput,
+				CopyFromParent, CWEventMask, &XWinAttr);
+
+	XWMDeleteMessage = XInternAtom(XDisplay, "WM_DELETE_WINDOW", False);
+
+	XMapWindow(XDisplay, native_window);
+	XStoreName(XDisplay, native_window, "lima egl test");
+	XSetWMProtocols(XDisplay, native_window, &XWMDeleteMessage, 1);
+
+	display = eglGetDisplay((EGLNativeDisplayType) XDisplay);
+#else
 	display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+#endif /* _X11_XLIB_H_ */
+
 	if (display == EGL_NO_DISPLAY) {
 		printf("Error: No display found!\n");
 		goto error;
@@ -209,8 +256,10 @@ egl_surface_init(EGLDisplay display, int width, int height)
 	};
 	int i;
 
+#ifndef _X11_XLIB_H_
 	native_window->width = width;
 	native_window->height = height;
+#endif
 
 	if (!eglGetConfigs(display, configs, MAX_NUM_CONFIGS, &config_count)) {
 		printf("eglGetConfigs failed!\n");
