@@ -1295,6 +1295,12 @@ mali_ioctl(int request, void *data)
 	else
 		ret = orig_ioctl(dev_mali_fd, request);
 
+	if (ret == -EPERM) {
+		if ((ioc_type == MALI_IOC_CORE_BASE) &&
+		    (ioc_nr == _MALI_UK_GET_API_VERSION))
+			ioctl_table = dev_mali_ioctls_r3p1;
+	}
+
 	if (ioctl && !ioctl->pre && !ioctl->post) {
 		if (data)
 			wrap_log("/* IOCTL %s(%s) %p = %d */\n",

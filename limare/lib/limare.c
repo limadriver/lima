@@ -75,6 +75,9 @@ limare_fd_open(struct limare_state *state)
 	}
 
 	ret = ioctl(state->fd, MALI_IOC_GET_API_VERSION, &version);
+	if (ret == -EPERM)
+		ret = ioctl(state->fd, MALI_IOC_GET_API_VERSION_R3P1, &version);
+
 	if (ret) {
 		printf("Error: %s: ioctl(GET_API_VERSION) failed: %s\n",
 		       __func__, strerror(-ret));
