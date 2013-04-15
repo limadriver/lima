@@ -26,6 +26,8 @@
 
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 
+#define LIMA_PP_CORE_MAX 8
+
 struct lima_cmd {
 	unsigned int val;
 	unsigned int cmd;
@@ -121,6 +123,7 @@ struct limare_state {
 #define LIMARE_TYPE_M200 200
 #define LIMARE_TYPE_M400 400
 	int type;
+	int pp_core_count;
 
 	unsigned int mem_base;
 

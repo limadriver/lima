@@ -268,5 +268,8 @@ frame_plb_create(struct limare_state *state, struct limare_frame *frame)
 
 	plb_pp_stream_create(frame, plb);
 
+	for (i = 1; i < state->pp_core_count; i++)
+		plb_pp_stream_stop(frame, i);
+
 	return 0;
 }

@@ -216,6 +216,13 @@ limare_gpu_detect(struct limare_state *state)
 	else
 		fprintf(stderr, "Unhandled Mali hw!\n");
 
+	if (pp_number.number_of_cores > LIMA_PP_CORE_MAX) {
+		printf("Error: Detected more (%d) PP cores than we support "
+		       "(%d).\n", pp_number.number_of_cores, LIMA_PP_CORE_MAX);
+		state->pp_core_count = LIMA_PP_CORE_MAX;
+	} else
+		state->pp_core_count = pp_number.number_of_cores;
+
 	return 0;
 }
 
