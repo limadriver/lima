@@ -201,12 +201,12 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	frame_regs.height = info->height - 1;
 
 	if (frame) {
-		if ((frame->mem_size - frame->mem_used) > 0x10000) {
+		if ((frame->mem_size - frame->mem_used) > 0x400) {
 			frame_regs.fragment_stack_address =
 				frame->mem_physical + frame->mem_used;
 			frame_regs.fragment_stack_size = 0x10001;
 
-			frame->mem_used += 0x10000;
+			frame->mem_used += 0x400;
 		} else
 			printf("%s: no space left!\n", __func__);
 	}
