@@ -39,13 +39,10 @@
 #include "linux/mali_ioctl.h"
 
 #include "limare.h"
+#include "version.h"
 #include "fb.h"
 
-#ifdef ANDROID
-#define FBDEV_DEV "/dev/graphics/fb0"
-#else
-#define FBDEV_DEV "/dev/fb0"
-#endif
+static char *fbdev_dev;
 
 void
 fb_destroy(struct limare_state *state)
@@ -89,10 +86,21 @@ fb_open(struct limare_state *state)
 		return errno;
 	}
 
-	fb->fd = open(FBDEV_DEV, O_RDWR);
+#ifndef ANDROID
+	if ((state->kernel_version == MALI_DRIVER_VERSION_R3P2) &&
+	    (state->pp_core_count == 4))
+		/* Assume that we are an odroid running over HDMI */
+		fbdev_dev = "/dev/fb6";
+	else
+		fbdev_dev = "/dev/fb0";
+#else
+	fbdev_dev = "/dev/graphics/fb0"
+#endif /* ANDROID */
+
+	fb->fd = open(fbdev_dev, O_RDWR);
 	if (fb->fd == -1) {
 		printf("Error: failed to open %s: %s\n",
-			FBDEV_DEV, strerror(errno));
+		       fbdev_dev, strerror(errno));
 		free(fb);
 		return errno;
 	}
@@ -100,7 +108,7 @@ fb_open(struct limare_state *state)
 	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, fb_var) ||
 	    ioctl(fb->fd, FBIOGET_FSCREENINFO, &fix)) {
 		printf("Error: failed to run ioctl on %s: %s\n",
-			FBDEV_DEV, strerror(errno));
+			fbdev_dev, strerror(errno));
 		close(fb->fd);
 		free(fb);
 		return errno;
@@ -125,7 +133,7 @@ fb_open(struct limare_state *state)
 		       fb->fd, 0);
 	if (fb->map == MAP_FAILED) {
 		printf("Error: failed to run mmap on %s: %s\n",
-			FBDEV_DEV, strerror(errno));
+			fbdev_dev, strerror(errno));
 		close(fb->fd);
 		free(fb);
 		return errno;
@@ -143,7 +151,7 @@ fb_open(struct limare_state *state)
 
 		if (ioctl(fb->fd, FBIOPAN_DISPLAY, fb_var))
 			printf("Error: failed to run pan ioctl on %s: %s\n",
-			       FBDEV_DEV, strerror(errno));
+			       fbdev_dev, strerror(errno));
 	}
 
 	fb->fb_var = fb_var;
@@ -254,12 +262,12 @@ limare_fb_flip(struct limare_state *state, struct limare_frame *frame)
 #if 0
 	if (ioctl(fb->fd, FBIO_WAITFORVSYNC, &sync_arg))
 		printf("Error: failed to run ioctl on %s: %s\n",
-			FBDEV_DEV, strerror(errno));
+			fbdev_dev, strerror(errno));
 #endif
 
 	if (ioctl(fb->fd, FBIOPAN_DISPLAY, fb->fb_var))
 		printf("Error: failed to run ioctl on %s: %s\n",
-			FBDEV_DEV, strerror(errno));
+			fbdev_dev, strerror(errno));
 }
 
 void
