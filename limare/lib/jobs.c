@@ -125,15 +125,19 @@ limare_notification_thread(void *arg)
 {
 	struct limare_state *state = arg;
 	static _mali_uk_wait_for_notification_s wait = { 0 };
+	int request;
 	int ret;
+
+	if (state->kernel_version < MALI_DRIVER_VERSION_R3P1)
+		request = MALI_IOC_WAIT_FOR_NOTIFICATION;
+	else
+		request = MALI_IOC_WAIT_FOR_NOTIFICATION_R3P1;
 
 	while (1) {
 		while (1) {
 			do {
 				wait.code.timeout = 500;
-				ret = ioctl(state->fd,
-					    MALI_IOC_WAIT_FOR_NOTIFICATION,
-					    &wait);
+				ret = ioctl(state->fd, request, &wait);
 				if (ret == -1) {
 					printf("%s: Error: wait failed: %s\n",
 					       __func__, strerror(errno));

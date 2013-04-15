@@ -132,6 +132,7 @@ typedef enum
 #define MALI_IOC_GET_SYSTEM_INFO_SIZE       _IOR (MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO_SIZE, _mali_uk_get_system_info_s *)
 #define MALI_IOC_GET_SYSTEM_INFO            _IOR (MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO, _mali_uk_get_system_info_s *)
 #define MALI_IOC_WAIT_FOR_NOTIFICATION      _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION, _mali_uk_wait_for_notification_s *)
+#define MALI_IOC_WAIT_FOR_NOTIFICATION_R3P1 _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION_R3P1, _mali_uk_wait_for_notification_s *)
 #define MALI_IOC_GET_API_VERSION            _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION, _mali_uk_get_api_version_s *)
 #define MALI_IOC_GET_API_VERSION_R3P1       _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION_R3P1, _mali_uk_get_api_version_s *)
 

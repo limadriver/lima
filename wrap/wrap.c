@@ -359,7 +359,8 @@ ioctl(int fd, unsigned long request, ...)
 		va_end(args);
 
 		if (fd == dev_mali_fd) {
-			if (request == MALI_IOC_WAIT_FOR_NOTIFICATION)
+			if ((request == MALI_IOC_WAIT_FOR_NOTIFICATION) ||
+			    (request == MALI_IOC_WAIT_FOR_NOTIFICATION_R3P1))
 				yield = 1;
 
 			ret = mali_ioctl(request, ptr);
