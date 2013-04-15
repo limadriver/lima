@@ -1071,7 +1071,44 @@ limare_shader_compile(struct limare_state *state, int type, const char *source)
 		return NULL;
 	}
 
-	if (state->kernel_version >= MALI_DRIVER_VERSION_R3P0) {
+	if (state->kernel_version >= MALI_DRIVER_VERSION_R3P2) {
+		struct lima_shader_binary_r3p2 mbs_binary[1] = {{ 0 }};
+
+		ret = __mali_compile_essl_shader((struct lima_shader_binary *)
+						 mbs_binary, type, source,
+						 &length, 1);
+		if (ret) {
+			if (mbs_binary->error_log)
+				printf("%s: compilation failed: %s\n",
+				       __func__, mbs_binary->error_log);
+			else
+				printf("%s: compilation failed: %s\n",
+				       __func__, mbs_binary->oom_log);
+
+			free((void *) mbs_binary->error_log);
+			free(mbs_binary->shader);
+			free((void *) mbs_binary->mbs_stream);
+			free((void *) mbs_binary->varying_stream);
+			free((void *) mbs_binary->uniform_stream);
+			free((void *) mbs_binary->attribute_stream);
+			return NULL;
+		}
+
+		/* we are not using the mbs */
+		free((void *) mbs_binary->mbs_stream);
+
+		binary->compile_status = mbs_binary->compile_status;
+		binary->shader = mbs_binary->shader;
+		binary->shader_size = mbs_binary->shader_size;
+		binary->varying_stream = mbs_binary->varying_stream;
+		binary->varying_stream_size = mbs_binary->varying_stream_size;
+		binary->uniform_stream = mbs_binary->uniform_stream;
+		binary->uniform_stream_size = mbs_binary->uniform_stream_size;
+		binary->attribute_stream = mbs_binary->attribute_stream;
+		binary->attribute_stream_size = mbs_binary->attribute_stream_size;
+
+		binary->parameters.fragment = mbs_binary->parameters.fragment;
+	} else if (state->kernel_version >= MALI_DRIVER_VERSION_R3P0) {
 		struct lima_shader_binary_mbs mbs_binary[1] = {{ 0 }};
 
 		ret = __mali_compile_essl_shader((struct lima_shader_binary *)
