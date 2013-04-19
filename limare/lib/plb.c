@@ -71,14 +71,22 @@ hilbert_coords(int n, int d, int *x, int *y)
 /*
  * Pre-generate the PLB desciptors for the PP.
  */
+
+
 static void
 plb_pp_template_create(struct plb_info *plb)
 {
+	struct pp_pattern {
+		int x;
+		int y;
+		unsigned int offset;
+	};
+	struct pp_pattern *pattern;
 	unsigned int *stream;
-	int size = plb->tiled_w * plb->tiled_h * 4;
+	int size = plb->tiled_w * plb->tiled_h;
 	int max, dim, count, i, index;
 
-	stream = calloc(size + 4, sizeof(unsigned int));
+	pattern = calloc(size, sizeof(struct pp_pattern));
 
 	if (plb->tiled_w < plb->tiled_h)
 		max = plb->tiled_h;
@@ -95,28 +103,34 @@ plb_pp_template_create(struct plb_info *plb)
 		hilbert_coords(max, i, &x, &y);
 
 		if ((x < plb->tiled_w) && (y < plb->tiled_h)) {
-			int offset = ((y >> plb->shift_h) * plb->block_w +
-				      (x >> plb->shift_w)) * plb->block_size;
+			pattern[index].x = x;
+			pattern[index].y = y;
+			pattern[index].offset =
+				((y >> plb->shift_h) * plb->block_w +
+				 (x >> plb->shift_w)) * plb->block_size;
 
-			stream[index + 0] = 0;
-			stream[index + 1] = 0xB8000000 | x | (y << 8);
-			stream[index + 2] = 0xE0000002 |
-				((offset >> 3) & ~0xE0000003);
-			stream[index + 3] = 0xB0000000;
-
-			index += 4;
-			if (index > size) {
-				printf("Error: plb stream overrun!\n");
-				break;
-			}
+			index++;
 		}
+	}
+
+	stream = calloc(size + 1, 4 * sizeof(unsigned int));
+
+	for (i = 0, index = 0; i < size; i++) {
+		stream[index + 0] = 0;
+		stream[index + 1] = 0xB8000000 |
+			pattern[i].x | (pattern[i].y << 8);
+		stream[index + 2] = 0xE0000002 |
+			((pattern[i].offset >> 3) & ~0xE0000003);
+		stream[index + 3] = 0xB0000000;
+
+		index += 4;
 	}
 
 	stream[index + 0] = 0;
 	stream[index + 1] = 0xBC000000;
 
 	plb->pp_template = stream;
-	plb->pp_size = (size / 4) + 1;
+	plb->pp_size = size + 1;
 }
 
 struct plb_info *
