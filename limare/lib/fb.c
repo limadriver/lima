@@ -174,6 +174,7 @@ int
 fb_init(struct limare_state *state, int width, int height, int offset)
 {
 	struct limare_fb *fb = state->fb;
+	int ret;
 
 	if (!width || !height) {
 		width = fb->width;
@@ -209,6 +210,14 @@ fb_init(struct limare_state *state, int width, int height, int offset)
 
 	state->width = width;
 	state->height = height;
+
+	/* and now, unblank */
+	ret = ioctl(fb->fd, FBIOBLANK, FB_BLANK_UNBLANK);
+	if (ret) {
+		printf("Error: failed to run unblank FB: %s\n",
+		       strerror(errno));
+		return ret;
+	}
 
 	return 0;
 }
