@@ -33,27 +33,41 @@ typedef enum
 	/** Core functions */
 
     _MALI_UK_OPEN                    = 0, /**< _mali_ukk_open() */
-    _MALI_UK_CLOSE,                       /**< _mali_ukk_close() */
-    _MALI_UK_GET_SYSTEM_INFO_SIZE,        /**< _mali_ukk_get_system_info_size() */
-    _MALI_UK_GET_SYSTEM_INFO,             /**< _mali_ukk_get_system_info() */
-    _MALI_UK_WAIT_FOR_NOTIFICATION,       /**< _mali_ukk_wait_for_notification() */
-    _MALI_UK_GET_API_VERSION,             /**< _mali_ukk_get_api_version() */
+    _MALI_UK_CLOSE                   = 1, /**< _mali_ukk_close() */
+    _MALI_UK_GET_SYSTEM_INFO_SIZE    = 2, /**< _mali_ukk_get_system_info_size() */
+    _MALI_UK_GET_SYSTEM_INFO         = 3, /**< _mali_ukk_get_system_info() */
+    _MALI_UK_WAIT_FOR_NOTIFICATION   = 4, /**< _mali_ukk_wait_for_notification() */
+    _MALI_UK_GET_API_VERSION         = 5, /**< _mali_ukk_get_api_version() */
+
+    /* Why one shouldn't use enums _everywhere_ */
+    _MALI_UK_WAIT_FOR_NOTIFICATION_R3P1 = 2, /**< _mali_ukk_wait_for_notification() */
+    _MALI_UK_GET_API_VERSION_R3P1    = 3, /**< _mali_ukk_get_api_version() */
 
 	/** Memory functions */
 
     _MALI_UK_INIT_MEM                = 0, /**< _mali_ukk_init_mem() */
-    _MALI_UK_TERM_MEM,                    /**< _mali_ukk_term_mem() */
-    _MALI_UK_GET_BIG_BLOCK,               /**< _mali_ukk_get_big_block() */
-    _MALI_UK_FREE_BIG_BLOCK,              /**< _mali_ukk_free_big_block() */
-    _MALI_UK_MAP_MEM,                     /**< _mali_ukk_mem_mmap() */
-    _MALI_UK_UNMAP_MEM,                   /**< _mali_ukk_mem_munmap() */
-    _MALI_UK_QUERY_MMU_PAGE_TABLE_DUMP_SIZE, /**< _mali_ukk_mem_get_mmu_page_table_dump_size() */
-    _MALI_UK_DUMP_MMU_PAGE_TABLE,         /**< _mali_ukk_mem_dump_mmu_page_table() */
-    _MALI_UK_ATTACH_UMP_MEM,             /**< _mali_ukk_attach_ump_mem() */
-    _MALI_UK_RELEASE_UMP_MEM,           /**< _mali_ukk_release_ump_mem() */
-    _MALI_UK_MAP_EXT_MEM,                 /**< _mali_uku_map_external_mem() */
-    _MALI_UK_UNMAP_EXT_MEM,               /**< _mali_uku_unmap_external_mem() */
-    _MALI_UK_VA_TO_MALI_PA,               /**< _mali_uku_va_to_mali_pa() */
+    _MALI_UK_TERM_MEM                = 1, /**< _mali_ukk_term_mem() */
+    _MALI_UK_GET_BIG_BLOCK           = 2, /**< _mali_ukk_get_big_block() */
+    _MALI_UK_FREE_BIG_BLOCK          = 3, /**< _mali_ukk_free_big_block() */
+    _MALI_UK_MAP_MEM                 = 4, /**< _mali_ukk_mem_mmap() */
+    _MALI_UK_UNMAP_MEM               = 5, /**< _mali_ukk_mem_munmap() */
+    _MALI_UK_QUERY_MMU_PAGE_TABLE_DUMP_SIZE = 6, /**< _mali_ukk_mem_get_mmu_page_table_dump_size() */
+    _MALI_UK_DUMP_MMU_PAGE_TABLE     = 7, /**< _mali_ukk_mem_dump_mmu_page_table() */
+
+    _MALI_UK_ATTACH_UMP_MEM          = 8, /**< _mali_ukk_attach_ump_mem() */
+    _MALI_UK_RELEASE_UMP_MEM         = 9, /**< _mali_ukk_release_ump_mem() */
+    _MALI_UK_MAP_EXT_MEM             = 10, /**< _mali_uku_map_external_mem() */
+    _MALI_UK_UNMAP_EXT_MEM           = 11, /**< _mali_uku_unmap_external_mem() */
+    _MALI_UK_VA_TO_MALI_PA           = 12, /**< _mali_uku_va_to_mali_pa() */
+
+    _MALI_UK_ATTACH_DMA_BUF_R3P1     = 8, /**< _mali_ukk_attach_dma_buf() */
+    _MALI_UK_RELEASE_DMA_BUF_R3P1    = 9, /**< _mali_ukk_release_dma_buf() */
+    _MALI_UK_DMA_BUF_GET_SIZE_R3P1   = 10, /**< _mali_ukk_dma_buf_get_size() */
+    _MALI_UK_ATTACH_UMP_MEM_R3P1     = 11, /**< _mali_ukk_attach_ump_mem() */
+    _MALI_UK_RELEASE_UMP_MEM_R3P1    = 12, /**< _mali_ukk_release_ump_mem() */
+    _MALI_UK_MAP_EXT_MEM_R3P1        = 13, /**< _mali_uku_map_external_mem() */
+    _MALI_UK_UNMAP_EXT_MEM_R3P1      = 14, /**< _mali_uku_unmap_external_mem() */
+    _MALI_UK_VA_TO_MALI_PA_R3P1      = 15, /**< _mali_uku_va_to_mali_pa() */
 
     /** Common functions for each core */
 
