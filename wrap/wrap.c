@@ -1530,6 +1530,7 @@ mali_wrap_bmp_dump(void)
 		       (unsigned int) address);
 }
 
+#if 0
 /*
  *
  * Wrapper for __mali_compile_essl_shader
@@ -1730,3 +1731,4 @@ __mali_compile_essl_shader(struct lima_shader_binary *binary, int type,
 
 	return ret;
 }
+#endif
