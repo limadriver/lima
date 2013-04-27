@@ -1139,6 +1139,29 @@ dev_mali_pp_job_start_post(void *data)
 		dev_mali200_pp_job_start_post(data);
 }
 
+static struct ioc_type {
+	int type;
+	char *name;
+} ioc_types[] = {
+	{MALI_IOC_CORE_BASE, "MALI_IOC_CORE_BASE"},
+	{MALI_IOC_MEMORY_BASE, "MALI_IOC_MEMORY_BASE"},
+	{MALI_IOC_PP_BASE, "MALI_IOC_PP_BASE"},
+	{MALI_IOC_GP_BASE, "MALI_IOC_GP_BASE"},
+	{0, NULL},
+};
+
+static char *
+ioc_type_name(int type)
+{
+	int i;
+
+	for (i = 0; ioc_types[i].name; i++)
+		if (ioc_types[i].type == type)
+			break;
+
+	return ioc_types[i].name;
+}
+
 static struct dev_mali_ioctl_table {
 	int type;
 	int nr;
@@ -1192,9 +1215,17 @@ mali_ioctl(int request, void *data)
 		}
 	}
 
-	if (!ioctl)
-		wrap_log("/* Error: No mali ioctl wrapping implemented for %02X:%02X */\n",
-		       ioc_type, ioc_nr);
+	if (!ioctl) {
+		char *name = ioc_type_name(ioc_type);
+
+		if (name)
+			wrap_log("/* Error: No mali ioctl wrapping implemented for %s:%02X */\n",
+				 name, ioc_nr);
+		else
+			wrap_log("/* Error: No mali ioctl wrapping implemented for %02X:%02X */\n",
+				 ioc_type, ioc_nr);
+
+	}
 
 	if (ioctl && ioctl->pre)
 		ioctl->pre(data);
