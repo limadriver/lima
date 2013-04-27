@@ -1162,13 +1162,16 @@ ioc_type_name(int type)
 	return ioc_types[i].name;
 }
 
-static struct dev_mali_ioctl_table {
+struct dev_mali_ioctl_table {
 	int type;
 	int nr;
 	char *name;
 	void (*pre)(void *data);
 	void (*post)(void *data);
-} dev_mali_ioctls[] = {
+};
+
+static struct dev_mali_ioctl_table
+dev_mali_ioctls[] = {
 	{MALI_IOC_CORE_BASE, _MALI_UK_OPEN, "CORE, OPEN", NULL, NULL},
 	{MALI_IOC_CORE_BASE, _MALI_UK_CLOSE, "CORE, CLOSE", NULL, NULL},
 	{MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO_SIZE, "CORE, GET_SYSTEM_INFO_SIZE",
@@ -1181,6 +1184,7 @@ static struct dev_mali_ioctl_table {
 	 dev_mali_get_api_version_pre, dev_mali_get_api_version_post},
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM",
 	 NULL, dev_mali_memory_init_mem_post},
+
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_MAP_EXT_MEM, "MEMORY, MAP_EXT_MEM",
 	 NULL, dev_mali_memory_map_ext_mem_post},
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_UNMAP_EXT_MEM, "MEMORY, UNMAP_EXT_MEM",
@@ -1197,6 +1201,32 @@ static struct dev_mali_ioctl_table {
 	{ 0, 0, NULL, NULL, NULL}
 };
 
+static struct dev_mali_ioctl_table
+dev_mali_ioctls_r3p1[] = {
+	{MALI_IOC_CORE_BASE, _MALI_UK_OPEN, "CORE, OPEN", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_CLOSE, "CORE, CLOSE", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION_R3P1, "CORE, WAIT_FOR_NOTIFICATION",
+	 dev_mali_wait_for_notification_pre, dev_mali_wait_for_notification_post},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION_R3P1, "CORE, GET_API_VERSION",
+	 dev_mali_get_api_version_pre, dev_mali_get_api_version_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM",
+	 NULL, dev_mali_memory_init_mem_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_MAP_EXT_MEM_R3P1, "MEMORY, MAP_EXT_MEM",
+	 NULL, dev_mali_memory_map_ext_mem_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_UNMAP_EXT_MEM_R3P1, "MEMORY, UNMAP_EXT_MEM",
+	 NULL, dev_mali_memory_unmap_ext_mem_post},
+	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB",
+	 dev_mali_pp_job_start_pre, dev_mali_pp_job_start_post},
+	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R3P0, "PP, GET_CORE_VERSION_R3P0",
+	 NULL, dev_mali_pp_core_version_post},
+	{MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, "GP, START_JOB",
+	 dev_mali_gp_job_start_pre, dev_mali_gp_job_start_post},
+
+	{ 0, 0, NULL, NULL, NULL}
+};
+
+struct dev_mali_ioctl_table *ioctl_table;
+
 static int
 mali_ioctl(int request, void *data)
 {
@@ -1207,10 +1237,18 @@ mali_ioctl(int request, void *data)
 	int i;
 	int ret;
 
-	for (i = 0; dev_mali_ioctls[i].name; i++) {
-		if ((dev_mali_ioctls[i].type == ioc_type) &&
-		    (dev_mali_ioctls[i].nr == ioc_nr)) {
-			ioctl = &dev_mali_ioctls[i];
+	if (!ioctl_table) {
+		if ((ioc_type == MALI_IOC_CORE_BASE) &&
+		    (ioc_nr == _MALI_UK_GET_API_VERSION_R3P1))
+			ioctl_table = dev_mali_ioctls_r3p1;
+		else
+			ioctl_table = dev_mali_ioctls;
+	}
+
+	for (i = 0; ioctl_table[i].name; i++) {
+		if ((ioctl_table[i].type == ioc_type) &&
+		    (ioctl_table[i].nr == ioc_nr)) {
+			ioctl = &ioctl_table[i];
 			break;
 		}
 	}
