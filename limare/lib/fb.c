@@ -49,10 +49,15 @@ fb_destroy(struct limare_state *state)
 {
 	struct limare_fb *fb = state->fb;
 	_mali_uk_unmap_external_mem_s unmap = { 0 };
+	int ret;
 
 	unmap.cookie = fb->mali_handle;
 
-	if (ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT, &unmap))
+	if (state->kernel_version < MALI_DRIVER_VERSION_R3P1)
+		ret = ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT, &unmap);
+	else
+		ret = ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT_R3P1, &unmap);
+	if (ret)
 		printf("Error: failed to unmap external memory: %s\n",
 		       strerror(errno));
 
@@ -165,13 +170,18 @@ mali_map_external(struct limare_state *state)
 {
 	struct limare_fb *fb = state->fb;
 	_mali_uk_map_external_mem_s map = { 0 };
-
+	int ret;
 
 	map.phys_addr = fb->fb_physical;
 	map.size = fb->map_size;
 	map.mali_address = fb->mali_physical[0];
 
-	if (ioctl(state->fd, MALI_IOC_MEM_MAP_EXT, &map)) {
+	if (state->kernel_version < MALI_DRIVER_VERSION_R3P1)
+		ret = ioctl(state->fd, MALI_IOC_MEM_MAP_EXT, &map);
+	else
+		ret = ioctl(state->fd, MALI_IOC_MEM_MAP_EXT_R3P1, &map);
+
+	if (ret) {
 		printf("Error: failed to map external memory: %s\n",
 		       strerror(errno));
 		return -1;
