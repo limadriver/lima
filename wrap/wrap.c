@@ -60,7 +60,7 @@ static void mali_wrap_bmp_dump(void);
 static pthread_mutex_t serializer[1] = { PTHREAD_MUTEX_INITIALIZER };
 
 unsigned int render_address;
-int render_pitch;
+int render_width;
 int render_height;
 int render_format;
 
@@ -744,7 +744,7 @@ dev_mali_wait_for_notification_post(void *data)
 	if (notification->code.type == _MALI_NOTIFICATION_PP_FINISHED) {
 		printf("Finished frame %d\n", frame_count);
 
-		wrap_log("int dump_render_width = %d;\n", render_pitch / 4);
+		wrap_log("int dump_render_width = %d;\n", render_width);
 		wrap_log("int dump_render_height = %d;\n\n", render_height);
 
 		/* We finished a frame, we dump the result */
@@ -889,7 +889,7 @@ dev_mali200_pp_job_start_pre(void *data)
 	 * We will dump it as a bmp once we're done.
 	 */
 	render_address = job->wb[0].address;
-	render_pitch = job->wb[0].pitch * 8;
+	render_width = job->wb[0].pitch * 2;
 	if (job->frame.height)
 		render_height = job->frame.height + 1;
 	else
@@ -955,7 +955,7 @@ dev_mali400_pp_job_start_r2p1_pre(void *data)
 	 * We will dump it as a bmp once we're done.
 	 */
 	render_address = job->wb[0].address;
-	render_pitch = job->wb[0].pitch * 8;
+	render_width = job->wb[0].pitch * 2;
 	if (job->frame.height)
 		render_height = job->frame.height + 1;
 	else
@@ -1044,7 +1044,7 @@ dev_mali400_pp_job_start_r3p0_pre(void *data)
 	 * We will dump it as a bmp once we're done.
 	 */
 	render_address = job->wb0.address;
-	render_pitch = job->wb0.pitch * 8;
+	render_width = job->wb0.pitch * 2;
 	if (job->frame.height)
 		render_height = job->frame.height + 1;
 	else
@@ -1503,7 +1503,7 @@ mali_wrap_bmp_dump(void)
 	char buffer[1024];
 
 	printf("%s: attempting to dump frame %04d from address 0x%08X (%dx%d)\n",
-	       __func__, frame_count, render_address, render_pitch, render_height);
+	       __func__, frame_count, render_address, render_width, render_height);
 
 	snprintf(buffer, sizeof(buffer), "/home/libv/lima/dump/lima.wrap.%04d.bmp",
 		 frame_count);
@@ -1525,7 +1525,7 @@ mali_wrap_bmp_dump(void)
 		render_height = 480;
 	}
 
-	if (wrap_bmp_dump(address, 0, render_pitch / 4, render_height, buffer))
+	if (wrap_bmp_dump(address, 0, render_width, render_height, buffer))
 		printf("Failed to dump on frame %04d (0x%08X)\n", frame_count,
 		       (unsigned int) address);
 }
