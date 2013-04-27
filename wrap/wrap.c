@@ -889,12 +889,23 @@ dev_mali200_pp_job_start_pre(void *data)
 	 * We will dump it as a bmp once we're done.
 	 */
 	render_address = job->wb[0].address;
-	render_width = job->wb[0].pitch * 2;
+
+	render_format = job->wb[0].pixel_format;
+	switch (job->wb[0].pixel_format) {
+	case LIMA_PIXEL_FORMAT_RGB_565:
+		render_width = job->wb[0].pitch * 4;
+		break;
+	case LIMA_PIXEL_FORMAT_RGBA_8888:
+		render_width = job->wb[0].pitch * 2;
+		break;
+	default:
+		wrap_log("Error: unhandled wb format!\n");
+	}
+
 	if (job->frame.height)
 		render_height = job->frame.height + 1;
 	else
 		render_height = job->frame.supersampled_height + 1;
-	render_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 
 	//mali_memory_dump();
 }
@@ -955,12 +966,23 @@ dev_mali400_pp_job_start_r2p1_pre(void *data)
 	 * We will dump it as a bmp once we're done.
 	 */
 	render_address = job->wb[0].address;
-	render_width = job->wb[0].pitch * 2;
+
+	render_format = job->wb[0].pixel_format;
+	switch (job->wb[0].pixel_format) {
+	case LIMA_PIXEL_FORMAT_RGB_565:
+		render_width = job->wb[0].pitch * 4;
+		break;
+	case LIMA_PIXEL_FORMAT_RGBA_8888:
+		render_width = job->wb[0].pitch * 2;
+		break;
+	default:
+		wrap_log("Error: unhandled wb format!\n");
+	}
+
 	if (job->frame.height)
 		render_height = job->frame.height + 1;
 	else
 		render_height = job->frame.supersampled_height + 1;
-	render_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 
 	//mali_memory_dump();
 }
@@ -1044,12 +1066,23 @@ dev_mali400_pp_job_start_r3p0_pre(void *data)
 	 * We will dump it as a bmp once we're done.
 	 */
 	render_address = job->wb0.address;
-	render_width = job->wb0.pitch * 2;
+
+	render_format = job->wb0.pixel_format;
+	switch (job->wb0.pixel_format) {
+	case LIMA_PIXEL_FORMAT_RGB_565:
+		render_width = job->wb0.pitch * 4;
+		break;
+	case LIMA_PIXEL_FORMAT_RGBA_8888:
+		render_width = job->wb0.pitch * 2;
+		break;
+	default:
+		wrap_log("Error: unhandled wb format!\n");
+	}
+
 	if (job->frame.height)
 		render_height = job->frame.height + 1;
 	else
 		render_height = job->frame.supersampled_height + 1;
-	render_format = LIMA_PIXEL_FORMAT_RGBA_8888;
 
 	//mali_memory_dump();
 }
@@ -1514,7 +1547,11 @@ mali_wrap_bmp_dump(void)
 		return;
 	}
 
-	if (render_format != LIMA_PIXEL_FORMAT_RGBA_8888) {
+	switch (render_format) {
+	case LIMA_PIXEL_FORMAT_RGBA_8888:
+	case LIMA_PIXEL_FORMAT_RGB_565:
+		break;
+	default:
 		printf("%s: Pixel format 0x%x is currently not implemented\n",
 		       __func__, render_format);
 		return;
@@ -1525,7 +1562,7 @@ mali_wrap_bmp_dump(void)
 		render_height = 480;
 	}
 
-	if (wrap_bmp_dump(address, 0, render_width, render_height, buffer))
+	if (wrap_bmp_dump(address, render_width, render_height, render_format, buffer))
 		printf("Failed to dump on frame %04d (0x%08X)\n", frame_count,
 		       (unsigned int) address);
 }
