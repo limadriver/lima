@@ -51,6 +51,8 @@ static int mali_ioctl(int request, void *data);
 static int mali_address_add(void *address, unsigned int size,
 			    unsigned int physical);
 static int mali_address_remove(void *address, int size);
+static int ump_id_add(unsigned int id, unsigned int size, void *address);
+static int ump_physical_add(unsigned int id, unsigned int physical);
 static int mali_external_add(unsigned int address, unsigned int physical,
 			     unsigned int size, unsigned int cookie);
 static int mali_external_remove(unsigned int cookie);
@@ -230,6 +232,7 @@ libc_dlsym(const char *name)
 }
 
 static int dev_mali_fd;
+static int dev_ump_fd;
 
 /*
  *
@@ -241,10 +244,14 @@ open(const char* path, int flags, ...)
 {
 	mode_t mode = 0;
 	int ret;
-	int hello = 0;
+	int mali = 0;
+	int ump = 0;
 
 	if (!strcmp(path, "/dev/mali")) {
-		hello = 1;
+		mali = 1;
+		serialized_start(__func__);
+	} else if (!strcmp(path, "/dev/ump")) {
+		ump = 1;
 	    	serialized_start(__func__);
 	}
 
@@ -263,13 +270,15 @@ open(const char* path, int flags, ...)
 	} else {
 		ret = orig_open(path, flags);
 
-		if ((ret != -1) && hello) {
-			dev_mali_fd = ret;
-			wrap_log("/* OPEN */\n");
+		if (ret != -1) {
+			if (mali)
+				dev_mali_fd = ret;
+			else if (ump)
+				dev_ump_fd = ret;
 		}
 	}
 
-	if (hello)
+	if (mali || ump)
 		serialized_stop();
 
 	return ret;
@@ -382,7 +391,8 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 		wrap_log("/* MMAP 0x%08lx (0x%08x) = %p */\n\n", offset, length, ret);
 		mali_address_add(ret, length, offset);
 		memset(ret, 0, length);
-	}
+	} else if (fd == dev_ump_fd)
+		ump_id_add(offset, length, ret);
 
 	serialized_stop();
 
@@ -595,6 +605,14 @@ dev_mali_memory_init_mem_post(void *data)
 	wrap_log("};\n");
 
 	wrap_log("#endif /* Memory Init */\n\n");
+}
+
+static void
+dev_mali_memory_attach_ump_mem_post(void *data)
+{
+	_mali_uk_attach_ump_mem_s *ump = data;
+
+	ump_physical_add(ump->secure_id, ump->mali_address);
 }
 
 static void
@@ -1211,6 +1229,10 @@ dev_mali_ioctls_r3p1[] = {
 	 dev_mali_get_api_version_pre, dev_mali_get_api_version_post},
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM",
 	 NULL, dev_mali_memory_init_mem_post},
+
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_ATTACH_UMP_MEM_R3P1, "MEMORY, ATTACH_UMP_MEM",
+	 NULL, dev_mali_memory_attach_ump_mem_post},
+
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_MAP_EXT_MEM_R3P1, "MEMORY, MAP_EXT_MEM",
 	 NULL, dev_mali_memory_map_ext_mem_post},
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_UNMAP_EXT_MEM_R3P1, "MEMORY, UNMAP_EXT_MEM",
@@ -1471,6 +1493,70 @@ mali_external_remove(unsigned int cookie)
 	return -1;
 }
 
+#define UMP_ADDRESSES 0x10
+
+static struct ump_address {
+	void *address; /* mapped address */
+	unsigned int id;
+	unsigned int size;
+	unsigned int physical; /* actual address */
+} ump_addresses[UMP_ADDRESSES];
+
+static int
+ump_id_add(unsigned int id, unsigned int size, void *address)
+{
+	int i;
+
+	id >>= 12;
+
+	for (i = 0; i < UMP_ADDRESSES; i++)
+		if (!ump_addresses[i].id) {
+			ump_addresses[i].id = id;
+			ump_addresses[i].size = size;
+			ump_addresses[i].address = address;
+			return 0;
+		}
+
+	printf("%s: No more free slots for 0x%08X (0x%x)!\n",
+	       __func__, id, size);
+	return -1;
+}
+
+static int
+ump_physical_add(unsigned int id, unsigned int physical)
+{
+	int i;
+
+	for (i = 0; i < UMP_ADDRESSES; i++)
+		if (ump_addresses[i].id == id) {
+			ump_addresses[i].physical = physical;
+			return 0;
+		}
+
+	printf("%s: Error: id 0x%08X not found!\n", __func__, id);
+	return -1;
+}
+
+#if 0
+static int
+ump_id_remove(unsigned int id, int size)
+{
+	int i;
+
+	for (i = 0; i < UMP_ADDRESSES; i++)
+		if ((ump_addresses[i].id == address) &&
+		    (ump_addresses[i].size == size)) {
+			ump_addresses[i].address = NULL;
+			ump_addresses[i].id = 0;
+			ump_addresses[i].size = 0;
+			ump_addresses[i].physical = 0;
+			return 0;
+		}
+
+	return -1;
+}
+#endif
+
 static void *
 mali_address_retrieve(unsigned int physical)
 {
@@ -1495,6 +1581,14 @@ mali_address_retrieve(unsigned int physical)
 		     >= physical))
 			return mali_addresses[i].address +
 				(mali_addresses[i].physical - physical);
+
+
+	for (i = 0; i < UMP_ADDRESSES; i++)
+		if ((ump_addresses[i].physical <= physical) &&
+		    ((ump_addresses[i].physical + ump_addresses[i].size)
+		     >= physical))
+			return ump_addresses[i].address +
+				(ump_addresses[i].physical - physical);
 
 	return NULL;
 }

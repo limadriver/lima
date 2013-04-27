@@ -845,3 +845,15 @@ typedef struct
     void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
 	u32 cookie;                     /**< [out] identifier for mapped memory object in kernel space  */
 } _mali_uk_unmap_external_mem_s;
+
+/** @note This is identical to _mali_uk_map_external_mem_s above, however phys_addr is replaced by secure_id */
+typedef struct
+{
+	void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+	u32 secure_id;                  /**< [in] secure id */
+	u32 size;                       /**< [in] size */
+	u32 mali_address;               /**< [in] mali address to map the physical memory to */
+	u32 rights;                     /**< [in] rights necessary for accessing memory (see \ref mali_mem_rights) */
+	u32 flags;                      /**< [in] flags, see \ref _MALI_MAP_EXTERNAL_FLAG macro definitions */
+	u32 cookie;                     /**< [out] identifier for mapped memory object in kernel space  */
+} _mali_uk_attach_ump_mem_s;
