@@ -47,6 +47,8 @@ struct limare_fb {
 	int fb_physical;
 	int mali_physical[2];
 
+	unsigned int ump_id;
+
 	int mali_handle;
 
 	struct fb_var_screeninfo *fb_var;

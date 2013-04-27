@@ -47,6 +47,7 @@
 #include "linux/ioctl.h"
 #include "bmp.h"
 
+static int fb_ioctl(int request, void *data);
 static int mali_ioctl(int request, void *data);
 static int mali_address_add(void *address, unsigned int size,
 			    unsigned int physical);
@@ -68,6 +69,10 @@ int render_format;
 
 static int mali_type = 400;
 static int mali_version;
+
+static int fb_ump_id;
+static int fb_ump_size;
+static void *fb_ump_address;
 
 #if 0
 /*
@@ -233,6 +238,7 @@ libc_dlsym(const char *name)
 
 static int dev_mali_fd;
 static int dev_ump_fd;
+static int dev_fb_fd;
 
 /*
  *
@@ -246,6 +252,7 @@ open(const char* path, int flags, ...)
 	int ret;
 	int mali = 0;
 	int ump = 0;
+	int fb = 0;
 
 	if (!strcmp(path, "/dev/mali")) {
 		mali = 1;
@@ -253,6 +260,8 @@ open(const char* path, int flags, ...)
 	} else if (!strcmp(path, "/dev/ump")) {
 		ump = 1;
 	    	serialized_start(__func__);
+	} else if (!strncmp(path, "/dev/fb", 7)) {
+		fb = 1;
 	}
 
 	if (!orig_open)
@@ -275,6 +284,8 @@ open(const char* path, int flags, ...)
 				dev_mali_fd = ret;
 			else if (ump)
 				dev_ump_fd = ret;
+			else if (fb)
+				dev_fb_fd = ret;
 		}
 	}
 
@@ -352,11 +363,15 @@ ioctl(int fd, unsigned long request, ...)
 				yield = 1;
 
 			ret = mali_ioctl(request, ptr);
-		} else
+		} else if (fd == dev_fb_fd)
+			ret = fb_ioctl(request, ptr);
+		else
 			ret = orig_ioctl(fd, request, ptr);
 	} else {
 		if (fd == dev_mali_fd)
 			ret = mali_ioctl(request, NULL);
+		else if (fd == dev_fb_fd)
+			ret = fb_ioctl(request, NULL);
 		else
 			ret = orig_ioctl(fd, request);
 	}
@@ -392,7 +407,9 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 		mali_address_add(ret, length, offset);
 		memset(ret, 0, length);
 	} else if (fd == dev_ump_fd)
-		ump_id_add(offset, length, ret);
+		ump_id_add(offset >> 12, length, ret);
+	else if (fd == dev_fb_fd)
+		fb_ump_address = ret;
 
 	serialized_stop();
 
@@ -445,6 +462,37 @@ fflush(FILE *stream)
 
 	return ret;
 }
+
+/*
+ * Parse FB ioctls.
+ */
+static int
+fb_ioctl(int request, void *data)
+{
+	int ret;
+
+	if (data)
+		ret = orig_ioctl(dev_fb_fd, request, data);
+	else
+		ret = orig_ioctl(dev_fb_fd, request);
+
+#define GET_UMP_SECURE_ID_BUF1   _IOWR('m', 311, unsigned int)
+
+	if (request == FBIOGET_FSCREENINFO) {
+		struct fb_fix_screeninfo *fix = data;
+
+		fb_ump_size = fix->smem_len;
+	} else if (request == GET_UMP_SECURE_ID_BUF1) {
+		unsigned int *id = data;
+
+		fb_ump_id = *id;
+
+		ump_id_add(fb_ump_id, fb_ump_size, fb_ump_address);
+	}
+
+	return ret;
+}
+
 
 /*
  *
@@ -623,7 +671,9 @@ dev_mali_memory_map_ext_mem_post(void *data, int ret)
 	printf("map_ext_mem: ctx %p, phys_addr 0x%08X, size 0x%08X, address 0x%08X, rights 0x%08X, flags 0x%08X, cookie 0x%08X\n",
 	       ext->ctx, ext->phys_addr, ext->size, ext->mali_address, ext->rights, ext->flags, ext->cookie);
 
-	mali_external_add(ext->mali_address, ext->phys_addr, ext->size, ext->cookie);
+	if (!ret)
+		mali_external_add(ext->mali_address, ext->phys_addr,
+				  ext->size, ext->cookie);
 }
 
 static void
@@ -1513,8 +1563,6 @@ ump_id_add(unsigned int id, unsigned int size, void *address)
 {
 	int i;
 
-	id >>= 12;
-
 	for (i = 0; i < UMP_ADDRESSES; i++)
 		if (!ump_addresses[i].id) {
 			ump_addresses[i].id = id;
@@ -1592,9 +1640,13 @@ mali_address_retrieve(unsigned int physical)
 	for (i = 0; i < UMP_ADDRESSES; i++)
 		if ((ump_addresses[i].physical <= physical) &&
 		    ((ump_addresses[i].physical + ump_addresses[i].size)
-		     >= physical))
-			return ump_addresses[i].address +
-				(ump_addresses[i].physical - physical);
+		     >= physical)) {
+			if (ump_addresses[i].address)
+				return ump_addresses[i].address +
+					(ump_addresses[i].physical - physical);
+			else
+				return NULL;
+		}
 
 	return NULL;
 }

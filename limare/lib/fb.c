@@ -48,18 +48,38 @@ void
 fb_destroy(struct limare_state *state)
 {
 	struct limare_fb *fb = state->fb;
-	_mali_uk_unmap_external_mem_s unmap = { 0 };
 	int ret;
 
-	unmap.cookie = fb->mali_handle;
+	if (fb->ump_id != -1) {
+		_mali_uk_release_ump_mem_s release = { 0 };
 
-	if (state->kernel_version < MALI_DRIVER_VERSION_R3P1)
-		ret = ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT, &unmap);
-	else
-		ret = ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT_R3P1, &unmap);
-	if (ret)
-		printf("Error: failed to unmap external memory: %s\n",
-		       strerror(errno));
+		release.cookie = fb->mali_handle;
+
+		if (state->kernel_version < MALI_DRIVER_VERSION_R3P1)
+			ret = ioctl(state->fd, MALI_IOC_MEM_RELEASE_UMP,
+				    &release);
+		else
+			ret = ioctl(state->fd, MALI_IOC_MEM_RELEASE_UMP_R3P1,
+				    &release);
+		if (ret)
+			printf("Error: failed to release UMP memory: %s\n",
+			       strerror(errno));
+
+	} else {
+		_mali_uk_unmap_external_mem_s unmap = { 0 };
+
+		unmap.cookie = fb->mali_handle;
+
+		if (state->kernel_version < MALI_DRIVER_VERSION_R3P1)
+			ret = ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT, &unmap);
+		else
+			ret = ioctl(state->fd, MALI_IOC_MEM_UNMAP_EXT_R3P1,
+				    &unmap);
+
+		if (ret)
+			printf("Error: failed to unmap external memory: %s\n",
+			       strerror(errno));
+	}
 
 	munmap(fb->map, fb->map_size);
 
@@ -90,6 +110,8 @@ fb_open(struct limare_state *state)
 		free(fb);
 		return errno;
 	}
+
+	fb->ump_id = -1;
 
 #ifndef ANDROID
 	if ((state->kernel_version == MALI_DRIVER_VERSION_R3P2) &&
@@ -132,13 +154,13 @@ fb_open(struct limare_state *state)
 		fb->size = fb_var->xres * fb_var->yres * 4;
 
 	fb->fb_physical = fix.smem_start;
-
 	fb->map_size = fix.smem_len;
-	fb->map = mmap(0, fb->map_size, PROT_READ | PROT_WRITE, MAP_SHARED,
-		       fb->fd, 0);
+
+	fb->map = mmap(0, fb->map_size, PROT_READ | PROT_WRITE,
+		       MAP_SHARED, fb->fd, 0);
 	if (fb->map == MAP_FAILED) {
-		printf("Error: failed to run mmap on %s: %s\n",
-			fbdev_dev, strerror(errno));
+		printf("Error: failed to run mmap on %s: %s (%d)\n",
+		       fbdev_dev, strerror(errno), errno);
 		close(fb->fd);
 		free(fb);
 		return errno;
@@ -181,13 +203,45 @@ mali_map_external(struct limare_state *state)
 	else
 		ret = ioctl(state->fd, MALI_IOC_MEM_MAP_EXT_R3P1, &map);
 
+	if (ret)
+		return ret;
+
+	fb->mali_handle = map.cookie;
+
+	return 0;
+}
+
+static int
+mali_map_ump(struct limare_state *state)
+{
+	struct limare_fb *fb = state->fb;
+	_mali_uk_attach_ump_mem_s ump = { 0 };
+	int ret;
+
+#define GET_UMP_SECURE_ID_BUF1   _IOWR('m', 311, unsigned int)
+	ret = ioctl(fb->fd, GET_UMP_SECURE_ID_BUF1, &fb->ump_id);
 	if (ret) {
-		printf("Error: failed to map external memory: %s\n",
+		printf("Error: failed to run GET_UMP_SECURE_ID_BUF1 ioctl "
+		       "on %s: %s\n",  fbdev_dev, strerror(errno));
+		return ret;
+	}
+
+	ump.secure_id = fb->ump_id;
+	ump.size = fb->map_size;
+	ump.mali_address = fb->mali_physical[0];
+
+	if (state->kernel_version < MALI_DRIVER_VERSION_R3P1)
+		ret = ioctl(state->fd, MALI_IOC_MEM_ATTACH_UMP, &ump);
+	else
+		ret = ioctl(state->fd, MALI_IOC_MEM_ATTACH_UMP_R3P1, &ump);
+
+	if (ret) {
+		printf("Error: failed to attach ump memory: %s\n",
 		       strerror(errno));
 		return -1;
 	}
 
-	fb->mali_handle = map.cookie;
+	fb->mali_handle = ump.cookie;
 
 	return 0;
 }
@@ -222,8 +276,15 @@ fb_init(struct limare_state *state, int width, int height, int offset)
 	if (fb->dual_buffer)
 		fb->mali_physical[1] = fb->mali_physical[0] + fb->size;
 
-	if (mali_map_external(state))
-		return -1;
+	ret = mali_map_external(state);
+	if (ret == -1)
+		ret = mali_map_ump(state);
+
+	if (ret) {
+		printf("Error: failed to map FB to mali: %s\n",
+		       strerror(errno));
+		return ret;
+	}
 
 	if (fb->dual_buffer)
 		printf("Using dual buffered direct rendering to FB.\n");
