@@ -14,7 +14,7 @@ clean:
 	rm -f *.so
 
 libMali_wrap.so: $(OBJS)
-	$(CC) -shared -Wl -o $@ $^ -ldl
+	$(CC) -shared -o $@ $^ -ldl
 
 install: libMali_wrap.so
 	$(INSTALL) libMali_wrap.so $(prefix)/lib/
