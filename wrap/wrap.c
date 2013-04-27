@@ -1502,7 +1502,7 @@ mali_wrap_bmp_dump(void)
 	void *address = mali_address_retrieve(render_address);
 	char buffer[1024];
 
-	printf("%s: attempting to dump frame %04d from address 0x%08X (%dx%d)\n",
+	printf("%s: dumping frame %04d from address 0x%08X (%dx%d)\n",
 	       __func__, frame_count, render_address, render_width, render_height);
 
 	snprintf(buffer, sizeof(buffer), "/home/libv/lima/dump/lima.wrap.%04d.bmp",
