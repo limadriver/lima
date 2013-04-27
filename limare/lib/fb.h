@@ -31,6 +31,7 @@ struct limare_fb {
 	/* one single fb */
 	int width;
 	int height;
+	int bpp;
 	int size;
 
 	int dual_buffer;

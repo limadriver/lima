@@ -117,6 +117,7 @@ limare_m200_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	struct lima_m200_pp_frame_registers frame_regs = { 0 };
 	struct lima_pp_wb_registers wb_regs = { 0 };
 	struct pp_info *info = frame->pp;
+	struct limare_fb *fb = state->fb;
 	int supersampling = 1;
 
 	/* frame registers */
@@ -160,10 +161,15 @@ limare_m200_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 		wb_regs.address = state->fb->mali_physical[frame->index];
 	else
 		wb_regs.address = state->fb->mali_physical[0];
-	wb_regs.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
-	wb_regs.downsample_factor = 0;
-	wb_regs.pixel_layout = 0;
-	wb_regs.pitch = info->pitch / 8;
+
+	if (fb->bpp == 16) {
+		wb_regs.pixel_format = LIMA_PIXEL_FORMAT_RGB_565;
+		wb_regs.pitch = info->pitch / 16;
+	} else {
+		wb_regs.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
+		wb_regs.pitch = info->pitch / 8;
+	}
+
 	wb_regs.mrt_bits = 0;
 	wb_regs.mrt_pitch = 0;
 	wb_regs.zero = 0;
@@ -180,6 +186,7 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	struct lima_pp_wb_registers wb_regs = { 0 };
 	struct pp_info *info = frame->pp;
 	struct plb_info *plb = state->plb;
+	struct limare_fb *fb = state->fb;
 	int supersampling = 1;
 
 	/* frame registers */
@@ -229,7 +236,10 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 		frame_regs.scale |= 0x100;
 
 	/* always set to this on newer drivers */
-	frame_regs.foureight = 0x8888;
+	if (fb->bpp == 16)
+		frame_regs.foureight = 0x8565;
+	else
+		frame_regs.foureight = 0x8888;
 
 	/* write back registers */
 	wb_regs.type = LIMA_PP_WB_TYPE_COLOR;
@@ -237,10 +247,14 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 		wb_regs.address = state->fb->mali_physical[frame->index];
 	else
 		wb_regs.address = state->fb->mali_physical[0];
-	wb_regs.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
-	wb_regs.downsample_factor = 0;
-	wb_regs.pixel_layout = 0;
-	wb_regs.pitch = info->pitch / 8;
+
+	if (fb->bpp == 16) {
+		wb_regs.pixel_format = LIMA_PIXEL_FORMAT_RGB_565;
+		wb_regs.pitch = info->pitch / 16;
+	} else {
+		wb_regs.pixel_format = LIMA_PIXEL_FORMAT_RGBA_8888;
+		wb_regs.pitch = info->pitch / 8;
+	}
 	/* todo: infrastructure to read fbdev and see whether, we need to swap R/B */
 	//wb.mrt_bits = 4; /* set to RGBA instead of BGRA */
 	wb_regs.mrt_bits = 2;

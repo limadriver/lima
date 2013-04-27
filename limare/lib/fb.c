@@ -112,7 +112,11 @@ fb_open(struct limare_state *state)
 
 	fb->width = fb_var->xres;
 	fb->height = fb_var->yres;
-	fb->size = fb_var->xres * fb_var->yres * 4;
+	fb->bpp = fb_var->bits_per_pixel;
+	if (fb->bpp == 16)
+		fb->size = fb_var->xres * fb_var->yres * 2;
+	else
+		fb->size = fb_var->xres * fb_var->yres * 4;
 
 	fb->fb_physical = fix.smem_start;
 
