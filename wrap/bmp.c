@@ -73,7 +73,7 @@ bmp_header_write(int fd, int width, int height)
 	struct dib_header dib_header = {
 		.size = sizeof(struct dib_header),
 		.width = width,
-		.height = height,
+		.height = -height,
 		.planes = 1,
 		.bpp = 32,
 		.compression = 3,
