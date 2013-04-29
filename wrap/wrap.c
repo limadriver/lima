@@ -484,7 +484,7 @@ dev_mali_get_api_version_pre(void *data)
 }
 
 static void
-dev_mali_get_api_version_post(void *data)
+dev_mali_get_api_version_post(void *data, int ret)
 {
 	_mali_uk_get_api_version_s *version = data;
 
@@ -505,7 +505,7 @@ dev_mali_get_api_version_post(void *data)
 }
 
 static void
-dev_mali_get_system_info_size_post(void *data)
+dev_mali_get_system_info_size_post(void *data, int ret)
 {
 	_mali_uk_get_system_info_size_s *size = data;
 
@@ -539,7 +539,7 @@ dev_mali_get_system_info_pre(void *data)
 }
 
 static void
-dev_mali_get_system_info_post(void *data)
+dev_mali_get_system_info_post(void *data, int ret)
 {
 	_mali_uk_get_system_info_s *info = data;
 	struct _mali_core_info *core;
@@ -591,7 +591,7 @@ dev_mali_get_system_info_post(void *data)
 }
 
 static void
-dev_mali_memory_init_mem_post(void *data)
+dev_mali_memory_init_mem_post(void *data, int ret)
 {
 	_mali_uk_init_mem_s *mem = data;
 
@@ -608,7 +608,7 @@ dev_mali_memory_init_mem_post(void *data)
 }
 
 static void
-dev_mali_memory_attach_ump_mem_post(void *data)
+dev_mali_memory_attach_ump_mem_post(void *data, int ret)
 {
 	_mali_uk_attach_ump_mem_s *ump = data;
 
@@ -616,7 +616,7 @@ dev_mali_memory_attach_ump_mem_post(void *data)
 }
 
 static void
-dev_mali_memory_map_ext_mem_post(void *data)
+dev_mali_memory_map_ext_mem_post(void *data, int ret)
 {
 	_mali_uk_map_external_mem_s *ext = data;
 
@@ -627,7 +627,7 @@ dev_mali_memory_map_ext_mem_post(void *data)
 }
 
 static void
-dev_mali_memory_unmap_ext_mem_post(void *data)
+dev_mali_memory_unmap_ext_mem_post(void *data, int ret)
 {
 	_mali_uk_map_external_mem_s *ext = data;
 
@@ -638,7 +638,7 @@ dev_mali_memory_unmap_ext_mem_post(void *data)
 }
 
 static void
-dev_mali_pp_core_version_post(void *data)
+dev_mali_pp_core_version_post(void *data, int ret)
 {
 	_mali_uk_get_pp_core_version_s *version = data;
 
@@ -679,7 +679,7 @@ dev_mali_wait_for_notification_pre(void *data)
  * At this point, we do not care about the performance counters.
  */
 static void
-dev_mali_wait_for_notification_post(void *data)
+dev_mali_wait_for_notification_post(void *data, int ret)
 {
 	_mali_uk_wait_for_notification_s *notification = data;
 
@@ -832,7 +832,7 @@ dev_mali_gp_job_start_pre(void *data)
 
 
 static void
-dev_mali_gp_job_start_r2p1_post(void *data)
+dev_mali_gp_job_start_r2p1_post(void *data, int ret)
 {
 	struct lima_gp_job_start_r2p1 *job = data;
 
@@ -848,10 +848,10 @@ dev_mali_gp_job_start_r2p1_post(void *data)
 }
 
 static void
-dev_mali_gp_job_start_post(void *data)
+dev_mali_gp_job_start_post(void *data, int ret)
 {
 	if (mali_version < MALI_DRIVER_VERSION_R3P0)
-		dev_mali_gp_job_start_r2p1_post(data);
+		dev_mali_gp_job_start_r2p1_post(data, ret);
 }
 
 static void
@@ -1118,7 +1118,7 @@ dev_mali_pp_job_start_pre(void *data)
 }
 
 static void
-dev_mali200_pp_job_start_post(void *data)
+dev_mali200_pp_job_start_post(void *data, int ret)
 {
 	struct lima_m200_pp_job_start *job = data;
 
@@ -1133,7 +1133,7 @@ dev_mali200_pp_job_start_post(void *data)
 }
 
 static void
-dev_mali400_pp_job_start_r2p1_post(void *data)
+dev_mali400_pp_job_start_r2p1_post(void *data, int ret)
 {
 	struct lima_m400_pp_job_start_r2p1 *job = data;
 
@@ -1148,13 +1148,13 @@ dev_mali400_pp_job_start_r2p1_post(void *data)
 }
 
 static void
-dev_mali_pp_job_start_post(void *data)
+dev_mali_pp_job_start_post(void *data, int ret)
 {
 	if (mali_type == 400) {
 		if (mali_version < MALI_DRIVER_VERSION_R3P0)
-			dev_mali400_pp_job_start_r2p1_post(data);
+			dev_mali400_pp_job_start_r2p1_post(data, ret);
 	} else
-		dev_mali200_pp_job_start_post(data);
+		dev_mali200_pp_job_start_post(data, ret);
 }
 
 static struct ioc_type {
@@ -1185,7 +1185,7 @@ struct dev_mali_ioctl_table {
 	int nr;
 	char *name;
 	void (*pre)(void *data);
-	void (*post)(void *data);
+	void (*post)(void *data, int ret);
 };
 
 static struct dev_mali_ioctl_table
@@ -1305,7 +1305,7 @@ mali_ioctl(int request, void *data)
 	}
 
 	if (ioctl && ioctl->post)
-		ioctl->post(data);
+		ioctl->post(data, ret);
 
 	return ret;
 }
