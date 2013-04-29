@@ -1157,13 +1157,228 @@ dev_mali400_pp_job_start_r3p0_pre(void *data)
 }
 
 static void
+dev_mali400_pp_job_start_r3p1_pre(void *data)
+{
+	struct lima_m400_pp_job_start_r3p1 *job = data;
+	int i;
+
+	wrap_log("/* IOCTL MALI_IOC_PP_START_JOB IN; */\n");
+
+	wrap_log("struct lima_m400_pp_job_start_r3p1 pp_job = {\n");
+
+	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
+	wrap_log("\t.priority = 0x%x,\n", job->priority);
+
+	wrap_log("\t.frame.plbu_array_address = 0x%x,\n", job->frame.plbu_array_address);
+	wrap_log("\t.frame.render_address = 0x%x,\n", job->frame.render_address);
+	wrap_log("\t.frame.flags = 0x%x,\n", job->frame.flags);
+	wrap_log("\t.frame.clear_value_depth = 0x%x,\n", job->frame.clear_value_depth);
+	wrap_log("\t.frame.clear_value_stencil = 0x%x,\n", job->frame.clear_value_stencil);
+	wrap_log("\t.frame.clear_value_color = 0x%x,\n", job->frame.clear_value_color);
+	wrap_log("\t.frame.clear_value_color_1 = 0x%x,\n", job->frame.clear_value_color_1);
+	wrap_log("\t.frame.clear_value_color_2 = 0x%x,\n", job->frame.clear_value_color_2);
+	wrap_log("\t.frame.clear_value_color_3 = 0x%x,\n", job->frame.clear_value_color_3);
+	wrap_log("\t.frame.width = 0x%x,\n", job->frame.width);
+	wrap_log("\t.frame.height = 0x%x,\n", job->frame.height);
+	wrap_log("\t.frame.fragment_stack_address = 0x%x,\n", job->frame.fragment_stack_address);
+	wrap_log("\t.frame.fragment_stack_size = 0x%x,\n", job->frame.fragment_stack_size);
+	wrap_log("\t.frame.one = 0x%x,\n", job->frame.one);
+	wrap_log("\t.frame.supersampled_height = 0x%x,\n", job->frame.supersampled_height);
+	wrap_log("\t.frame.dubya = 0x%x,\n", job->frame.dubya);
+	wrap_log("\t.frame.onscreen = 0x%x,\n", job->frame.onscreen);
+	wrap_log("\t.frame.blocking = 0x%x,\n", job->frame.blocking);
+	wrap_log("\t.frame.scale = 0x%x,\n", job->frame.scale);
+	wrap_log("\t.frame.foureight = 0x%x,\n", job->frame.foureight);
+
+	for (i = 0; i < 7; i++)
+		wrap_log("\t.addr_frame[%d] = 0x%x,\n", i, job->addr_frame[i]);
+	for (i = 0; i < 7; i++)
+		wrap_log("\t.addr_stack[%d] = 0x%x,\n", i, job->addr_stack[i]);
+
+	wrap_log("\t.wb0.type = 0x%x,\n", job->wb0.type);
+	wrap_log("\t.wb0.address = 0x%x,\n", job->wb0.address);
+	wrap_log("\t.wb0.pixel_format = 0x%x,\n", job->wb0.pixel_format);
+	wrap_log("\t.wb0.downsample_factor = 0x%x,\n", job->wb0.downsample_factor);
+	wrap_log("\t.wb0.pixel_layout = 0x%x,\n", job->wb0.pixel_layout);
+	wrap_log("\t.wb0.pitch = 0x%x,\n", job->wb0.pitch);
+	wrap_log("\t.wb0.mrt_bits = 0x%x,\n", job->wb0.mrt_bits);
+	wrap_log("\t.wb0.mrt_pitch = 0x%x,\n", job->wb0.mrt_pitch);
+	wrap_log("\t.wb0.zero = 0x%x,\n", job->wb0.zero);
+
+	wrap_log("\t.wb1.address = 0x%x,\n", job->wb1.address);
+	wrap_log("\t.wb1.pixel_format = 0x%x,\n", job->wb1.pixel_format);
+	wrap_log("\t.wb1.downsample_factor = 0x%x,\n", job->wb1.downsample_factor);
+	wrap_log("\t.wb1.pixel_layout = 0x%x,\n", job->wb1.pixel_layout);
+	wrap_log("\t.wb1.pitch = 0x%x,\n", job->wb1.pitch);
+	wrap_log("\t.wb1.mrt_bits = 0x%x,\n", job->wb1.mrt_bits);
+	wrap_log("\t.wb1.mrt_pitch = 0x%x,\n", job->wb1.mrt_pitch);
+	wrap_log("\t.wb1.zero = 0x%x,\n", job->wb1.zero);
+
+	wrap_log("\t.wb2.address = 0x%x,\n", job->wb2.address);
+	wrap_log("\t.wb2.pixel_format = 0x%x,\n", job->wb2.pixel_format);
+	wrap_log("\t.wb2.downsample_factor = 0x%x,\n", job->wb2.downsample_factor);
+	wrap_log("\t.wb2.pixel_layout = 0x%x,\n", job->wb2.pixel_layout);
+	wrap_log("\t.wb2.pitch = 0x%x,\n", job->wb2.pitch);
+	wrap_log("\t.wb2.mrt_bits = 0x%x,\n", job->wb2.mrt_bits);
+	wrap_log("\t.wb2.mrt_pitch = 0x%x,\n", job->wb2.mrt_pitch);
+	wrap_log("\t.wb2.zero = 0x%x,\n", job->wb2.zero);
+
+	wrap_log("\t.num_cores = 0x%x,\n", job->num_cores);
+
+	wrap_log("\t.frame_builder_id = 0x%x,\n", job->frame_builder_id);
+	wrap_log("\t.flush_id = 0x%x,\n", job->flush_id);
+	wrap_log("\t.flags = 0x%x,\n", job->flags);
+
+	wrap_log("};\n");
+
+	/*
+	 * Now store where our final render is headed, and what it looks like.
+	 * We will dump it as a bmp once we're done.
+	 */
+	render_address = job->wb0.address;
+
+	render_format = job->wb0.pixel_format;
+	switch (job->wb0.pixel_format) {
+	case LIMA_PIXEL_FORMAT_RGB_565:
+		render_width = job->wb0.pitch * 4;
+		break;
+	case LIMA_PIXEL_FORMAT_RGBA_8888:
+		render_width = job->wb0.pitch * 2;
+		break;
+	default:
+		wrap_log("Error: unhandled wb format!\n");
+	}
+
+	if (job->frame.height)
+		render_height = job->frame.height + 1;
+	else
+		render_height = job->frame.supersampled_height + 1;
+
+	//mali_memory_dump();
+}
+
+
+static void
+dev_mali400_pp_job_start_r3p2_pre(void *data)
+{
+	struct lima_m400_pp_job_start_r3p2 *job = data;
+	int i;
+
+	wrap_log("/* IOCTL MALI_IOC_PP_START_JOB IN; */\n");
+
+	wrap_log("struct lima_m400_pp_job_start_r3p2 pp_job = {\n");
+
+	wrap_log("\t.user_job_ptr = 0x%x,\n", job->user_job_ptr);
+	wrap_log("\t.priority = 0x%x,\n", job->priority);
+
+	wrap_log("\t.frame.plbu_array_address = 0x%x,\n", job->frame.plbu_array_address);
+	wrap_log("\t.frame.render_address = 0x%x,\n", job->frame.render_address);
+	wrap_log("\t.frame.flags = 0x%x,\n", job->frame.flags);
+	wrap_log("\t.frame.clear_value_depth = 0x%x,\n", job->frame.clear_value_depth);
+	wrap_log("\t.frame.clear_value_stencil = 0x%x,\n", job->frame.clear_value_stencil);
+	wrap_log("\t.frame.clear_value_color = 0x%x,\n", job->frame.clear_value_color);
+	wrap_log("\t.frame.clear_value_color_1 = 0x%x,\n", job->frame.clear_value_color_1);
+	wrap_log("\t.frame.clear_value_color_2 = 0x%x,\n", job->frame.clear_value_color_2);
+	wrap_log("\t.frame.clear_value_color_3 = 0x%x,\n", job->frame.clear_value_color_3);
+	wrap_log("\t.frame.width = 0x%x,\n", job->frame.width);
+	wrap_log("\t.frame.height = 0x%x,\n", job->frame.height);
+	wrap_log("\t.frame.fragment_stack_address = 0x%x,\n", job->frame.fragment_stack_address);
+	wrap_log("\t.frame.fragment_stack_size = 0x%x,\n", job->frame.fragment_stack_size);
+	wrap_log("\t.frame.one = 0x%x,\n", job->frame.one);
+	wrap_log("\t.frame.supersampled_height = 0x%x,\n", job->frame.supersampled_height);
+	wrap_log("\t.frame.dubya = 0x%x,\n", job->frame.dubya);
+	wrap_log("\t.frame.onscreen = 0x%x,\n", job->frame.onscreen);
+	wrap_log("\t.frame.blocking = 0x%x,\n", job->frame.blocking);
+	wrap_log("\t.frame.scale = 0x%x,\n", job->frame.scale);
+	wrap_log("\t.frame.foureight = 0x%x,\n", job->frame.foureight);
+
+	for (i = 0; i < 7; i++)
+		wrap_log("\t.addr_frame[%d] = 0x%x,\n", i, job->addr_frame[i]);
+	for (i = 0; i < 7; i++)
+		wrap_log("\t.addr_stack[%d] = 0x%x,\n", i, job->addr_stack[i]);
+
+	wrap_log("\t.wb0.type = 0x%x,\n", job->wb0.type);
+	wrap_log("\t.wb0.address = 0x%x,\n", job->wb0.address);
+	wrap_log("\t.wb0.pixel_format = 0x%x,\n", job->wb0.pixel_format);
+	wrap_log("\t.wb0.downsample_factor = 0x%x,\n", job->wb0.downsample_factor);
+	wrap_log("\t.wb0.pixel_layout = 0x%x,\n", job->wb0.pixel_layout);
+	wrap_log("\t.wb0.pitch = 0x%x,\n", job->wb0.pitch);
+	wrap_log("\t.wb0.mrt_bits = 0x%x,\n", job->wb0.mrt_bits);
+	wrap_log("\t.wb0.mrt_pitch = 0x%x,\n", job->wb0.mrt_pitch);
+	wrap_log("\t.wb0.zero = 0x%x,\n", job->wb0.zero);
+
+	wrap_log("\t.wb1.address = 0x%x,\n", job->wb1.address);
+	wrap_log("\t.wb1.pixel_format = 0x%x,\n", job->wb1.pixel_format);
+	wrap_log("\t.wb1.downsample_factor = 0x%x,\n", job->wb1.downsample_factor);
+	wrap_log("\t.wb1.pixel_layout = 0x%x,\n", job->wb1.pixel_layout);
+	wrap_log("\t.wb1.pitch = 0x%x,\n", job->wb1.pitch);
+	wrap_log("\t.wb1.mrt_bits = 0x%x,\n", job->wb1.mrt_bits);
+	wrap_log("\t.wb1.mrt_pitch = 0x%x,\n", job->wb1.mrt_pitch);
+	wrap_log("\t.wb1.zero = 0x%x,\n", job->wb1.zero);
+
+	wrap_log("\t.wb2.address = 0x%x,\n", job->wb2.address);
+	wrap_log("\t.wb2.pixel_format = 0x%x,\n", job->wb2.pixel_format);
+	wrap_log("\t.wb2.downsample_factor = 0x%x,\n", job->wb2.downsample_factor);
+	wrap_log("\t.wb2.pixel_layout = 0x%x,\n", job->wb2.pixel_layout);
+	wrap_log("\t.wb2.pitch = 0x%x,\n", job->wb2.pitch);
+	wrap_log("\t.wb2.mrt_bits = 0x%x,\n", job->wb2.mrt_bits);
+	wrap_log("\t.wb2.mrt_pitch = 0x%x,\n", job->wb2.mrt_pitch);
+	wrap_log("\t.wb2.zero = 0x%x,\n", job->wb2.zero);
+
+	wrap_log("\t.dlbu_regs[0] = 0x%x,\n", job->dlbu_regs[0]);
+	wrap_log("\t.dlbu_regs[1] = 0x%x,\n", job->dlbu_regs[1]);
+	wrap_log("\t.dlbu_regs[2] = 0x%x,\n", job->dlbu_regs[2]);
+	wrap_log("\t.dlbu_regs[3] = 0x%x,\n", job->dlbu_regs[3]);
+
+	wrap_log("\t.num_cores = 0x%x,\n", job->num_cores);
+
+	wrap_log("\t.frame_builder_id = 0x%x,\n", job->frame_builder_id);
+	wrap_log("\t.flush_id = 0x%x,\n", job->flush_id);
+	wrap_log("\t.flags = 0x%x,\n", job->flags);
+
+	wrap_log("\t.fence = 0x%x,\n", job->fence);
+	wrap_log("\t.stream = 0x%x,\n", job->stream);
+
+	wrap_log("};\n");
+
+	/*
+	 * Now store where our final render is headed, and what it looks like.
+	 * We will dump it as a bmp once we're done.
+	 */
+	render_address = job->wb0.address;
+
+	render_format = job->wb0.pixel_format;
+	switch (job->wb0.pixel_format) {
+	case LIMA_PIXEL_FORMAT_RGB_565:
+		render_width = job->wb0.pitch * 4;
+		break;
+	case LIMA_PIXEL_FORMAT_RGBA_8888:
+		render_width = job->wb0.pitch * 2;
+		break;
+	default:
+		wrap_log("Error: unhandled wb format!\n");
+	}
+
+	if (job->frame.height)
+		render_height = job->frame.height + 1;
+	else
+		render_height = job->frame.supersampled_height + 1;
+
+	//mali_memory_dump();
+}
+
+static void
 dev_mali_pp_job_start_pre(void *data)
 {
 	if (mali_type == 400) {
 		if (mali_version < MALI_DRIVER_VERSION_R3P0)
 			dev_mali400_pp_job_start_r2p1_pre(data);
-		else
+		else if (mali_version < MALI_DRIVER_VERSION_R3P1)
 			dev_mali400_pp_job_start_r3p0_pre(data);
+		else if (mali_version < MALI_DRIVER_VERSION_R3P2)
+			dev_mali400_pp_job_start_r3p1_pre(data);
+		else
+			dev_mali400_pp_job_start_r3p2_pre(data);
 	} else
 		dev_mali200_pp_job_start_pre(data);
 }

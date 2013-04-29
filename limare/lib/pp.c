@@ -33,6 +33,7 @@
 #include <sys/ioctl.h>
 #include <string.h>
 
+#include "version.h"
 #include "formats.h"
 #include "ioctl_registers.h"
 #include "limare.h"
@@ -262,8 +263,37 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	wb_regs.mrt_pitch = 0;
 	wb_regs.zero = 0;
 
-	return limare_m400_pp_job_start_direct(state, frame,
-					       &frame_regs, &wb_regs);
+	if (state->kernel_version < MALI_DRIVER_VERSION_R3P0)
+		return limare_m400_pp_job_start_r2p1(state, frame,
+						     &frame_regs, &wb_regs);
+	else {
+		unsigned int frame_addr[7] = {0};
+		unsigned int stack_addr[7] = {0};
+		int i;
+
+		for (i = 1; i < state->pp_core_count; i++)
+			frame_addr[i - 1] =
+				frame->mem_physical + frame->plb_pp_offset[i];
+
+		if (state->kernel_version < MALI_DRIVER_VERSION_R3P1)
+			return limare_m400_pp_job_start_r3p0(state, frame,
+							     &frame_regs,
+							     frame_addr,
+							     stack_addr,
+							     &wb_regs);
+		else if (state->kernel_version < MALI_DRIVER_VERSION_R3P2)
+			return limare_m400_pp_job_start_r3p1(state, frame,
+							     &frame_regs,
+							     frame_addr,
+							     stack_addr,
+							     &wb_regs);
+		else
+			return limare_m400_pp_job_start_r3p2(state, frame,
+							     &frame_regs,
+							     frame_addr,
+							     stack_addr,
+							     &wb_regs);
+	}
 }
 
 int

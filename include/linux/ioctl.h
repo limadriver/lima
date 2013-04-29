@@ -159,4 +159,45 @@ struct lima_m400_pp_job_start_r3p0 {
 	unsigned int flush_id;
 };
 
+struct lima_m400_pp_job_start_r3p1 {
+	unsigned int fd;
+	unsigned int user_job_ptr;
+	unsigned int priority;
+	struct lima_m400_pp_frame_registers frame;
+	unsigned int addr_frame[7];
+	unsigned int addr_stack[7];
+	struct lima_pp_wb_registers wb0;
+	struct lima_pp_wb_registers wb1;
+	struct lima_pp_wb_registers wb2;
+	unsigned int num_cores;
+	unsigned int perf_counter_flag;
+	unsigned int perf_counter_src0;
+	unsigned int perf_counter_src1;
+	unsigned int frame_builder_id;
+	unsigned int flush_id;
+	unsigned int flags;
+};
+
+struct lima_m400_pp_job_start_r3p2 {
+	unsigned int fd;
+	unsigned int user_job_ptr;
+	unsigned int priority;
+	struct lima_m400_pp_frame_registers frame;
+	unsigned int addr_frame[7];
+	unsigned int addr_stack[7];
+	struct lima_pp_wb_registers wb0;
+	struct lima_pp_wb_registers wb1;
+	struct lima_pp_wb_registers wb2;
+	unsigned int dlbu_regs[4];
+	unsigned int num_cores;
+	unsigned int perf_counter_flag;
+	unsigned int perf_counter_src0;
+	unsigned int perf_counter_src1;
+	unsigned int frame_builder_id;
+	unsigned int flush_id;
+	unsigned int flags;
+	int fence;
+	int stream;
+};
+
 #endif /* LIMA_IOCTL_H */
