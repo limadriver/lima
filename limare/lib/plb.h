@@ -53,9 +53,7 @@ struct plb_info {
 
 	/* holds the coordinates and addresses of the primitives for the PP */
 	int pp_size;
-
-	/* point beyond the end of this list. */
-	unsigned int *pp_template;
+	unsigned int *pp_template[LIMA_PP_CORE_MAX];
 };
 
 struct plb_info *plb_info_create(struct limare_state *state);

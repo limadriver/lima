@@ -389,7 +389,7 @@ limare_m400_pp_job_start_r3p0(struct limare_state *state,
 	memcpy(&job.addr_stack, addr_stack, 7 * 4);
 
 	job.wb0 = *wb_regs;
-	job.num_cores = 1;
+	job.num_cores = state->pp_core_count;
 
 	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB_R3P0, &job);
 	if (ret == -1) {
@@ -421,7 +421,7 @@ limare_m400_pp_job_start_r3p1(struct limare_state *state,
 	memcpy(&job.addr_stack, addr_stack, 7 * 4);
 
 	job.wb0 = *wb_regs;
-	job.num_cores = 1;
+	job.num_cores = state->pp_core_count;
 
 	ret = ioctl(state->fd, LIMA_M400_PP_START_JOB_R3P0, &job);
 	if (ret == -1) {
@@ -453,7 +453,7 @@ limare_m400_pp_job_start_r3p2(struct limare_state *state,
 	memcpy(&job.addr_stack, addr_stack, 7 * 4);
 
 	job.wb0 = *wb_regs;
-	job.num_cores = 1;
+	job.num_cores = state->pp_core_count;
 	job.fence = -1;
 	job.stream = -1;
 
