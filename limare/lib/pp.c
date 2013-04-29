@@ -77,7 +77,6 @@ pp_info_create(struct limare_state *state, struct limare_frame *frame)
 	info->pitch = state->fb->width * 4;
 	info->clear_color = state->clear_color;
 
-	info->plb_physical = frame->mem_physical + frame->plb_pp_offset;
 	info->plb_shift_w = plb->shift_w;
 	info->plb_shift_h = plb->shift_h;
 
@@ -121,7 +120,8 @@ limare_m200_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	int supersampling = 1;
 
 	/* frame registers */
-	frame_regs.plbu_array_address = info->plb_physical;
+	frame_regs.plbu_array_address =
+		frame->mem_physical + frame->plb_pp_offset[0];
 	frame_regs.render_address = info->render_physical;
 
 	frame_regs.flags = LIMA_PP_FRAME_FLAGS_ACTIVE;
@@ -190,7 +190,8 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 	int supersampling = 1;
 
 	/* frame registers */
-	frame_regs.plbu_array_address = info->plb_physical;
+	frame_regs.plbu_array_address =
+		frame->mem_physical + frame->plb_pp_offset[0];
 	frame_regs.render_address = info->render_physical;
 
 	frame_regs.flags = LIMA_PP_FRAME_FLAGS_ACTIVE;

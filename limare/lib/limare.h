@@ -60,7 +60,7 @@ struct limare_frame {
 	/* holds the addresses so the plbu knows where to store the polygons */
 	int plb_plbu_offset;
 	/* holds the coordinates and addresses of the polygons for the PP */
-	int plb_pp_offset;
+	int plb_pp_offset[LIMA_PP_CORE_MAX];
 
 	struct pp_info *pp;
 

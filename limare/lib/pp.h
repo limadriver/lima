@@ -34,7 +34,6 @@ struct pp_info
 	int height;
 	int pitch;
 
-	unsigned int plb_physical;
 	int plb_shift_w;
 	int plb_shift_h;
 
