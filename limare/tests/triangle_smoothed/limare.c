@@ -38,12 +38,12 @@ main(int argc, char *argv[])
 	struct limare_state *state;
 	int ret;
 
-	float vertices[] = { 0.0, -0.6, 0.0,
-			     0.4, 0.6, 0.0,
-			     -0.4, 0.6, 0.0};
-	float colors[] = {0.0, 1.0, 0.0, 1.0,
-			  0.0, 0.0, 1.0, 1.0,
-			  1.0, 0.0, 0.0, 1.0};
+	float vertices[] = { -0.4, -0.6, 0.0,
+			     0.0, 0.6, 0.0,
+			     0.4, -0.6, 0.0};
+	float colors[] = {1.0, 0.0, 0.0, 1.0,
+			  0.0, 1.0, 0.0, 1.0,
+			  0.0, 0.0, 1.0, 1.0};
 
 	const char *vertex_shader_source =
 		"attribute vec4 aPosition;    \n"

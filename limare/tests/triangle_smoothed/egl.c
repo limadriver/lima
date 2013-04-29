@@ -60,9 +60,9 @@ main(int argc, char *argv[])
 		"{                            \n"
 		"    gl_FragColor = vColor;   \n"
 		"}                            \n";
-	GLfloat vVertices[] = {  0.0f,  0.5f, 0.0f,
-			      -0.5f, -0.5f, 0.0f,
-			       0.5f, -0.5f, 0.0f };
+	GLfloat vVertices[] = {  -0.4f,  -0.6f, 0.0f,
+			       0.0f, 0.6f, 0.0f,
+			       0.4f, -0.6f, 0.0f };
 	GLfloat vColors[] = {1.0f, 0.0f, 0.0f, 1.0f,
 			     0.0f, 1.0f, 0.0f, 1.0f,
 			     0.0f, 0.0f, 1.0f, 1.0f};
