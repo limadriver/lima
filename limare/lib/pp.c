@@ -267,13 +267,29 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 		return limare_m400_pp_job_start_r2p1(state, frame,
 						     &frame_regs, &wb_regs);
 	else {
+		/* as defined in the pp job submission struct */
 		unsigned int frame_addr[7] = {0};
 		unsigned int stack_addr[7] = {0};
 		int i;
 
-		for (i = 1; i < state->pp_core_count; i++)
-			frame_addr[i - 1] =
-				frame->mem_physical + frame->plb_pp_offset[i];
+		if (frame) {
+			for (i = 1; i < state->pp_core_count; i++)
+				frame_addr[i - 1] = frame->mem_physical +
+					frame->plb_pp_offset[i];
+
+			for (i = 1; i < state->pp_core_count; i++) {
+				if ((frame->mem_size - frame->mem_used) >
+				    0x400) {
+					stack_addr[i - 1] =
+						frame->mem_physical +
+						frame->mem_used;
+
+					frame->mem_used += 0x400;
+				} else
+					printf("%s: no space left!\n",
+					       __func__);
+			}
+		}
 
 		if (state->kernel_version < MALI_DRIVER_VERSION_R3P1)
 			return limare_m400_pp_job_start_r3p0(state, frame,
