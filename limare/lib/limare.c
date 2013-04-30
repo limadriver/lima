@@ -1038,8 +1038,12 @@ limare_draw(struct limare_state *state, int mode, int start, int count,
 		return -1;
 	}
 
-	draw = draw_create_new(state, frame, mode, attributes_vertex_count,
-			       start, count);
+	if (indices_buffer)
+		draw = draw_create_new(state, frame, mode,
+				       attributes_vertex_count, start, count);
+	else
+		draw = draw_create_new(state, frame, mode, count, start, count);
+
 	frame->draws[frame->draw_count] = draw;
 	frame->draw_count++;
 
