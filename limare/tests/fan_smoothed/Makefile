@@ -1,5 +1,5 @@
 NAME = fan_smoothed
 
-targets = limare
+targets = egl limare
 
 include ../Makefile.test
