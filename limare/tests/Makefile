@@ -18,16 +18,13 @@ DIRS =	common \
 	cube_companion_bo_indexed \
 	gles1_clear \
 
-.PHONY: all clean install $(DIRS)
+.PHONY: all clean $(DIRS)
 
 all: MAKE = make all
 all: $(DIRS)
 
 $(DIRS):
 	$(MAKE) -C $@
-
-install: MAKE = make install
-install: $(DIRS)
 
 clean: MAKE = make clean
 clean: $(DIRS)
