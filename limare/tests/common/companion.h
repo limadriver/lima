@@ -22,7 +22,7 @@
 /*
  * mesh, indexed
  */
-#define COMPANION_VERTEX_COUNT 4761
+#define COMPANION_VERTEX_COUNT 4820
 extern float companion_vertices[COMPANION_VERTEX_COUNT][3];
 extern float companion_texture_coordinates[COMPANION_VERTEX_COUNT][2];
 extern float companion_normals[COMPANION_VERTEX_COUNT][3];
