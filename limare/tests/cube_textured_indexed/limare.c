@@ -16,10 +16,6 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-/*
- * Draws a single smoothed triangle.
- */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -40,43 +36,42 @@ main(int argc, char *argv[])
 	int ret;
 
 	const char *vertex_shader_source =
-	  "uniform mat4 modelviewMatrix;\n"
-	  "uniform mat4 modelviewprojectionMatrix;\n"
-	  "uniform mat3 normalMatrix;\n"
-	  "\n"
-	  "attribute vec4 in_position;    \n"
-	  "attribute vec3 in_normal;      \n"
-	  "attribute vec2 in_coord;       \n"
-	  "\n"
-	  "vec4 lightSource = vec4(10.0, 20.0, 40.0, 0.0);\n"
-	  "                             \n"
-	  "varying vec4 vVaryingColor;  \n"
-	  "varying vec2 coord;          \n"
-	  "                             \n"
-	  "void main()                  \n"
-	  "{                            \n"
-	  "    gl_Position = modelviewprojectionMatrix * in_position;\n"
-	  "    vec3 vEyeNormal = normalMatrix * in_normal;\n"
-	  "    vec4 vPosition4 = modelviewMatrix * in_position;\n"
-	  "    vec3 vPosition3 = vPosition4.xyz / vPosition4.w;\n"
-	  "    vec3 vLightDir = normalize(lightSource.xyz - vPosition3);\n"
-	  "    float diff = max(0.0, dot(vEyeNormal, vLightDir));\n"
-	  "    vVaryingColor = vec4(diff * vec3(1.0, 1.0, 1.0), 1.0);\n"
-	  "    coord = in_coord;        \n"
-	  "}                            \n";
-
+		"uniform mat4 modelviewMatrix;\n"
+		"uniform mat4 modelviewprojectionMatrix;\n"
+		"uniform mat3 normalMatrix;\n"
+		"\n"
+		"attribute vec4 in_position;    \n"
+		"attribute vec3 in_normal;      \n"
+		"attribute vec2 in_coord;       \n"
+		"\n"
+		"vec4 lightSource = vec4(10.0, 20.0, 40.0, 0.0);\n"
+		"                             \n"
+		"varying vec4 vVaryingColor;  \n"
+		"varying vec2 coord;          \n"
+		"                             \n"
+		"void main()                  \n"
+		"{                            \n"
+		"    gl_Position = modelviewprojectionMatrix * in_position;\n"
+		"    vec3 vEyeNormal = normalMatrix * in_normal;\n"
+		"    vec4 vPosition4 = modelviewMatrix * in_position;\n"
+		"    vec3 vPosition3 = vPosition4.xyz / vPosition4.w;\n"
+		"    vec3 vLightDir = normalize(lightSource.xyz - vPosition3);\n"
+		"    float diff = max(0.0, dot(vEyeNormal, vLightDir));\n"
+		"    vVaryingColor = vec4(diff * vec3(1.0, 1.0, 1.0), 1.0);\n"
+		"    coord = in_coord;        \n"
+		"}                            \n";
 	const char *fragment_shader_source =
-	  "precision mediump float;     \n"
-	  "                             \n"
-	  "varying vec4 vVaryingColor;  \n"
-	  "varying vec2 coord;          \n"
-	  "                             \n"
-	  "uniform sampler2D in_texture; \n"
-	  "                             \n"
-	  "void main()                  \n"
-	  "{                            \n"
-	  "    gl_FragColor = vVaryingColor * texture2D(in_texture, coord);\n"
-	  "}                            \n";
+		"precision mediump float;     \n"
+		"                             \n"
+		"varying vec4 vVaryingColor;  \n"
+		"varying vec2 coord;          \n"
+		"                             \n"
+		"uniform sampler2D in_texture; \n"
+		"                             \n"
+		"void main()                  \n"
+		"{                            \n"
+		"    gl_FragColor = vVaryingColor * texture2D(in_texture, coord);\n"
+		"}                            \n";
 
 	state = limare_init();
 	if (!state)
@@ -110,6 +105,12 @@ main(int argc, char *argv[])
 	limare_attribute_pointer(state, "in_normal", LIMARE_ATTRIB_FLOAT,
 				 3, 0, CUBE_VERTEX_COUNT, cube_normals);
 
+	int texture = limare_texture_upload(state, companion_texture_flat,
+					    COMPANION_TEXTURE_WIDTH,
+					    COMPANION_TEXTURE_HEIGHT,
+					    COMPANION_TEXTURE_FORMAT, 0);
+	limare_texture_attach(state, "in_texture", texture);
+
 	ESMatrix modelview;
 	esMatrixLoadIdentity(&modelview);
 	esTranslate(&modelview, 0.0, 0.0, -4.0);
@@ -136,16 +137,11 @@ main(int argc, char *argv[])
 	normal[7] = modelview.m[2][1];
 	normal[8] = modelview.m[2][2];
 
-	limare_uniform_attach(state, "modelviewMatrix", 16, &modelview.m[0][0]);
+	limare_uniform_attach(state, "modelviewMatrix", 16,
+			      &modelview.m[0][0]);
 	limare_uniform_attach(state, "modelviewprojectionMatrix", 16,
 			      &modelviewprojection.m[0][0]);
 	limare_uniform_attach(state, "normalMatrix", 9, normal);
-
-	int texture = limare_texture_upload(state, companion_texture_flat,
-					    COMPANION_TEXTURE_WIDTH,
-					    COMPANION_TEXTURE_HEIGHT,
-					    COMPANION_TEXTURE_FORMAT, 0);
-	limare_texture_attach(state, "in_texture", texture);
 
 	limare_frame_new(state);
 
@@ -155,7 +151,9 @@ main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	limare_frame_flush(state);
+	ret = limare_frame_flush(state);
+	if (ret)
+		return ret;
 
 	limare_buffer_swap(state);
 

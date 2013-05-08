@@ -130,38 +130,38 @@ main(int argc, char *argv[])
 	 */
 #if 1
 	const char *constant_vertex_shader_source =
-	  "uniform mat4 modelviewMatrix;\n"
-	  "uniform mat4 modelviewprojectionMatrix;\n"
-	  "uniform mat3 normalMatrix;\n"
-	  "\n"
-	  "attribute vec4 in_position;    \n"
-	  "attribute vec3 in_normal;      \n"
-	  "\n"
-	  "vec4 lightSource = vec4(10.0, 20.0, 40.0, 0.0);\n"
-	  "                             \n"
-	  "varying vec4 vVaryingColor;  \n"
-	  "                             \n"
-	  "void main()                  \n"
-	  "{                            \n"
-	  "    gl_Position = modelviewprojectionMatrix * in_position;\n"
-	  "    vec3 vEyeNormal = normalMatrix * in_normal;\n"
-	  "    vec4 vPosition4 = modelviewMatrix * in_position;\n"
-	  "    vec3 vPosition3 = vPosition4.xyz / vPosition4.w;\n"
-	  "    vec3 vLightDir = normalize(lightSource.xyz - vPosition3);\n"
-	  "    float diff = max(0.0, dot(vEyeNormal, vLightDir));\n"
-	  "    vVaryingColor = vec4(diff * vec3(1.0, 1.0, 1.0), 1.0);\n"
-	  "}                            \n";
+		"uniform mat4 modelviewMatrix;\n"
+		"uniform mat4 modelviewprojectionMatrix;\n"
+		"uniform mat3 normalMatrix;\n"
+		"\n"
+		"attribute vec4 in_position;    \n"
+		"attribute vec3 in_normal;      \n"
+		"\n"
+		"vec4 lightSource = vec4(10.0, 20.0, 40.0, 0.0);\n"
+		"                             \n"
+		"varying vec4 vVaryingColor;  \n"
+		"                             \n"
+		"void main()                  \n"
+		"{                            \n"
+		"    gl_Position = modelviewprojectionMatrix * in_position;\n"
+		"    vec3 vEyeNormal = normalMatrix * in_normal;\n"
+		"    vec4 vPosition4 = modelviewMatrix * in_position;\n"
+		"    vec3 vPosition3 = vPosition4.xyz / vPosition4.w;\n"
+		"    vec3 vLightDir = normalize(lightSource.xyz - vPosition3);\n"
+		"    float diff = max(0.0, dot(vEyeNormal, vLightDir));\n"
+		"    vVaryingColor = vec4(diff * vec3(1.0, 1.0, 1.0), 1.0);\n"
+		"}                            \n";
 	const char *constant_fragment_shader_source =
-	  "precision mediump float;     \n"
-	  "                             \n"
-	  "varying vec4 vVaryingColor;  \n"
-	  "                             \n"
-	  "vec4 color = vec4(0.5, 0.5, 0.5, 1.0);\n"
-	  "                             \n"
-	  "void main()                  \n"
-	  "{                            \n"
-	  "    gl_FragColor = vVaryingColor * color;\n"
-	  "}                            \n";
+		"precision mediump float;     \n"
+		"                             \n"
+		"varying vec4 vVaryingColor;  \n"
+		"                             \n"
+		"vec4 color = vec4(0.5, 0.5, 0.5, 1.0);\n"
+		"                             \n"
+		"void main()                  \n"
+		"{                            \n"
+		"    gl_FragColor = vVaryingColor * color;\n"
+		"}                            \n";
 
 	int constant_program = limare_program_new(state);
 
@@ -226,7 +226,7 @@ main(int argc, char *argv[])
 	 */
 #if 1
 	const char *flat_vertex_shader_source =
-	  "uniform mat4 modelviewMatrix;\n"
+		"uniform mat4 modelviewMatrix;\n"
 		"uniform mat4 modelviewprojectionMatrix;\n"
 		"uniform mat3 normalMatrix;\n"
 		"\n"

@@ -19,11 +19,6 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- *
- */
-
-/*
- * Template file for replaying a dumped stream.
  */
 
 #include <stdlib.h>
@@ -42,30 +37,41 @@ main(int argc, char *argv[])
 	struct limare_state *state;
 	int ret;
 
-	float vertices[] = { -0.6, -1, 0.0,
-			      0.6, -1, 0.0,
-			     -0.6,  1, 0.0,
-			      0.6,  1, 0.0 };
-	float coords[] = {0, 0, 1, 0, 0, 1, 1, 1};
-
-	const char *vertex_shader_source =
+	const char* vertex_shader_source =
 		"attribute vec4 in_vertex;\n"
 		"attribute vec2 in_coord;\n"
+		"\n"
 		"varying vec2 coord;\n"
+		"\n"
 		"void main()\n"
 		"{\n"
 		"    gl_Position = in_vertex;\n"
 		"    coord = in_coord;\n"
 		"}\n";
-
-	const char *fragment_shader_source =
+	const char* fragment_shader_source =
 		"precision mediump float;\n"
+		"\n"
 		"varying vec2 coord;\n"
+		"\n"
 		"uniform sampler2D in_texture;\n"
+		"\n"
 		"void main()\n"
 		"{\n"
 		"    gl_FragColor = texture2D(in_texture, coord);\n"
 		"}\n";
+
+	float vertices[4][3] = {
+		{-0.6, -1,  0},
+		{ 0.6, -1,  0},
+		{-0.6,  1,  0},
+		{ 0.6,  1,  0}
+	};
+	float coords[4][2] = {
+		{0, 1},
+		{1, 1},
+		{0, 0},
+		{1, 0}
+	};
 
 	state = limare_init();
 	if (!state)
@@ -81,9 +87,7 @@ main(int argc, char *argv[])
 	vertex_shader_attach(state, program, vertex_shader_source);
 	fragment_shader_attach(state, program, fragment_shader_source);
 
-	ret = limare_link(state);
-	if (ret)
-		return ret;
+	limare_link(state);
 
 	limare_attribute_pointer(state, "in_vertex", LIMARE_ATTRIB_FLOAT,
 				 3, 0, 4, vertices);

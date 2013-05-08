@@ -19,11 +19,6 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- *
- */
-
-/*
- * Draws a smoothed triangle strip.
  */
 
 #include <stdlib.h>
@@ -39,30 +34,17 @@ main(int argc, char *argv[])
 	struct limare_state *state;
 	int ret;
 
-	float vertices[] = { -0.7,  0.7, 0.0,
-			     -0.7,  0.2, 0.0,
-			      0.0, -0.2, 0.0,
-			      0.0, -0.7, 0.0,
-			      0.7,  0.7, 0.0,
-			      0.7,  0.2, 0.0};
-	float colors[] = {1.0, 0.0, 0.0, 1.0,
-			  1.0, 1.0, 0.0, 1.0,
-			  1.0, 0.0, 1.0, 1.0,
-			  0.0, 1.0, 0.0, 1.0,
-			  0.0, 0.0, 1.0, 1.0,
-			  0.0, 1.0, 1.0, 1.0};
-
 	const char *vertex_shader_source =
 		"attribute vec4 aPosition;    \n"
 		"attribute vec4 aColor;       \n"
 		"                             \n"
 		"varying vec4 vColor;         \n"
-                "                             \n"
-                "void main()                  \n"
-                "{                            \n"
+		"                             \n"
+		"void main()                  \n"
+		"{                            \n"
 		"    vColor = aColor;         \n"
-                "    gl_Position = aPosition; \n"
-                "}                            \n";
+		"    gl_Position = aPosition; \n"
+		"}                            \n";
 	const char *fragment_shader_source =
 		"precision mediump float;     \n"
 		"                             \n"
@@ -72,6 +54,19 @@ main(int argc, char *argv[])
 		"{                            \n"
 		"    gl_FragColor = vColor;   \n"
 		"}                            \n";
+
+	float vertices[] = {-0.7,  0.7, 0.0,
+			    -0.7,  0.2, 0.0,
+			     0.0, -0.2, 0.0,
+			     0.0, -0.7, 0.0,
+			     0.7,  0.7, 0.0,
+			     0.7,  0.2, 0.0};
+	float colors[] = {1.0, 0.0, 0.0, 1.0,
+			  1.0, 1.0, 0.0, 1.0,
+			  1.0, 0.0, 1.0, 1.0,
+			  0.0, 1.0, 0.0, 1.0,
+			  0.0, 0.0, 1.0, 1.0,
+			  0.0, 1.0, 1.0, 1.0};
 
 	state = limare_init();
 	if (!state)

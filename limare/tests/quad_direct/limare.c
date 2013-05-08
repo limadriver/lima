@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Luc Verhaegen <libv@skynet.be>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -19,11 +19,6 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- *
- */
-
-/*
- * Template file for replaying a dumped stream.
  */
 
 #include <stdlib.h>
@@ -39,20 +34,13 @@ main(int argc, char *argv[])
 	struct limare_state *state;
 	int ret;
 
-	float vertices[] = { -0.45, -0.75, 0.0,
-			      0.45, -0.75, 0.0,
-			     //-0.45,  0.75, 0.0, /* culled with CCW culling. */
-			      0.45,  0.75, 0.0};
-
 	const char *vertex_shader_source =
-		//"precision mediump float;     \n"
 		"attribute vec4 aPosition;    \n"
 		"                             \n"
                 "void main()                  \n"
                 "{                            \n"
                 "    gl_Position = aPosition; \n"
                 "}                            \n";
-
 	const char *fragment_shader_source =
 		"precision mediump float;     \n"
 		"                             \n"
@@ -60,6 +48,11 @@ main(int argc, char *argv[])
 		"{                            \n"
 		"    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); \n"
 		"}                            \n";
+
+	float vertices[] = {-0.45, -0.75, 0.0,
+			     0.45, -0.75, 0.0,
+			    //-0.45,  0.75, 0.0, /* culled with CCW culling. */
+			     0.45,  0.75, 0.0};
 
 	state = limare_init();
 	if (!state)

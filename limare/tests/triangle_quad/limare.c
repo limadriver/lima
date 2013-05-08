@@ -19,11 +19,6 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- *
- */
-
-/*
- * Template file for replaying a dumped stream.
  */
 
 #include <stdlib.h>
@@ -39,36 +34,35 @@ main(int argc, char *argv[])
 	struct limare_state *state;
 	int ret;
 
-	float vertices[] = {
-		/* triangle */
-		-0.5, -0.50, 0.0,
-		-0.2,  0.50, 0.0,
-		-0.8,  0.50, 0.0,
-		/* quad */
-		0.2, -0.50, 0.0,
-		0.8, -0.50, 0.0,
-		0.2,  0.50, 0.0,
-		0.8,  0.50, 0.0 };
-	float triangle_color[] = {0.0, 1.0, 0.0, 1.0 };
-	float quad_color[] = {1.0, 0.0, 0.0, 1.0 };
-
 	const char *vertex_shader_source =
-		//"precision mediump float;     \n"
 		"attribute vec4 aPosition;    \n"
 		"                             \n"
                 "void main()                  \n"
                 "{                            \n"
                 "    gl_Position = aPosition; \n"
                 "}                            \n";
-
 	const char *fragment_shader_source =
 		"precision mediump float;     \n"
+		"                             \n"
 		"uniform vec4 uColor;         \n"
 		"                             \n"
 		"void main()                  \n"
 		"{                            \n"
 		"    gl_FragColor = uColor;   \n"
 		"}                            \n";
+
+	float vertices[] = {
+		/* triangle */
+		-0.8, -0.50, 0.0,
+		-0.5,  0.50, 0.0,
+		-0.2, -0.50, 0.0,
+		/* quad */
+		 0.2, -0.50, 0.0,
+		 0.8, -0.50, 0.0,
+		 0.2,  0.50, 0.0,
+		 0.8,  0.50, 0.0};
+	float triangle_color[] = {0.0, 1.0, 0.0, 1.0};
+	float quad_color[] = {1.0, 0.0, 0.0, 1.0};
 
 	state = limare_init();
 	if (!state)
@@ -89,9 +83,9 @@ main(int argc, char *argv[])
 	limare_attribute_pointer(state, "aPosition", LIMARE_ATTRIB_FLOAT,
 				 3, 0, 7, vertices);
 
-	limare_uniform_attach(state, "uColor", 4, triangle_color);
-
 	limare_frame_new(state);
+
+	limare_uniform_attach(state, "uColor", 4, triangle_color);
 
 	ret = limare_draw_arrays(state, GL_TRIANGLES, 0, 3);
 	if (ret)
@@ -113,4 +107,3 @@ main(int argc, char *argv[])
 
 	return 0;
 }
-

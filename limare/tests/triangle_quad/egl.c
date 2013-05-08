@@ -40,18 +40,17 @@ main(int argc, char *argv[])
 	GLuint program;
 	GLint ret;
 	GLint width, height;
-	int uniform_location;
+
 	const char *vertex_shader_source =
-		"precision mediump float;     \n"
 		"attribute vec4 aPosition;    \n"
 		"                             \n"
                 "void main()                  \n"
                 "{                            \n"
                 "    gl_Position = aPosition; \n"
                 "}                            \n";
-
 	const char *fragment_shader_source =
 		"precision mediump float;     \n"
+		"                             \n"
 		"uniform vec4 uColor;         \n"
 		"                             \n"
 		"void main()                  \n"
@@ -61,16 +60,16 @@ main(int argc, char *argv[])
 
 	GLfloat vertices[] = {
 		/* triangle */
-		-0.8,  0.50, 0.0,
-		-0.2,  0.50, 0.0,
-		-0.5, -0.50, 0.0,
+		-0.8, -0.50, 0.0,
+		-0.2, -0.50, 0.0,
+		-0.5,  0.50, 0.0,
 		/* quad */
-		0.2, -0.50, 0.0,
-		0.8, -0.50, 0.0,
-		0.2,  0.50, 0.0,
-		0.8,  0.50, 0.0 };
-	GLfloat triangle_color[] = {0.0, 1.0, 0.0, 1.0 };
-	GLfloat quad_color[] = {1.0, 0.0, 0.0, 1.0 };
+		 0.2, -0.50, 0.0,
+		 0.8, -0.50, 0.0,
+		 0.2,  0.50, 0.0,
+		 0.8,  0.50, 0.0};
+	GLfloat triangle_color[] = {0.0, 1.0, 0.0, 1.0};
+	GLfloat quad_color[] = {1.0, 0.0, 0.0, 1.0};
 
 	buffer_size(&width, &height);
 
@@ -78,6 +77,11 @@ main(int argc, char *argv[])
 
 	display = egl_display_init();
 	surface = egl_surface_init(display, 2, width, height);
+
+	glViewport(0, 0, width, height);
+
+	glClearColor(0.5, 0.5, 0.5, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	vertex_shader = vertex_shader_compile(vertex_shader_source);
 	fragment_shader = fragment_shader_compile(fragment_shader_source);
@@ -108,31 +112,20 @@ main(int argc, char *argv[])
 			printf("%s", log);
 		}
 		return -1;
-	} else
-		printf("program linking succeeded!\n");
+	}
 
 	glUseProgram(program);
-
-	glViewport(0, 0, width, height);
-
-	/* clear the color buffer */
-	glClearColor(0.3125, 0.3125, 0.3125, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
 	glEnableVertexAttribArray(0);
 
-	/* now set up our uniform. */
-	uniform_location = glGetUniformLocation(program, "uColor");
+	int uniform_location = glGetUniformLocation(program, "uColor");
 
 	glUniform4fv(uniform_location, 1, triangle_color);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	glUniform4fv(uniform_location, 1, quad_color);
 	glDrawArrays(GL_TRIANGLE_STRIP, 3, 4);
-
-
-	glFlush();
 
 	eglSwapBuffers(display, surface);
 

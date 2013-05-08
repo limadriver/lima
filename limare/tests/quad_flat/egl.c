@@ -40,28 +40,29 @@ main(int argc, char *argv[])
 	GLuint program;
 	GLint ret;
 	GLint width, height;
+
 	const char *vertex_shader_source =
-		"precision mediump float;     \n"
 		"attribute vec4 aPosition;    \n"
 		"                             \n"
-                "void main()                  \n"
-                "{                            \n"
-                "    gl_Position = aPosition; \n"
-                "}                            \n";
-
+		"void main()                  \n"
+		"{                            \n"
+		"    gl_Position = aPosition; \n"
+		"}                            \n";
 	const char *fragment_shader_source =
 		"precision mediump float;     \n"
+		"                             \n"
 		"uniform vec4 uColor;         \n"
 		"                             \n"
 		"void main()                  \n"
 		"{                            \n"
 		"    gl_FragColor = uColor;   \n"
 		"}                            \n";
-	GLfloat vVertices[] = { -0.45, -0.75, 0.0,
-			         0.45, -0.75, 0.0,
-				-0.45,  0.75, 0.0,
-				 0.45,  0.75, 0.0 };
-	GLfloat uColor[] = {1.0, 0.0, 0.0, 1.0 };
+
+	GLfloat vVertices[] = {-0.45, -0.75, 0.0,
+			        0.45, -0.75, 0.0,
+			       -0.45,  0.75, 0.0,
+			        0.45,  0.75, 0.0};
+	GLfloat uColor[] = {1.0, 0.0, 0.0, 1.0};
 
 	buffer_size(&width, &height);
 
@@ -69,6 +70,11 @@ main(int argc, char *argv[])
 
 	display = egl_display_init();
 	surface = egl_surface_init(display, 2, width, height);
+
+	glViewport(0, 0, width, height);
+
+	glClearColor(0.5, 0.5, 0.5, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	vertex_shader = vertex_shader_compile(vertex_shader_source);
 	fragment_shader = fragment_shader_compile(fragment_shader_source);
@@ -99,28 +105,15 @@ main(int argc, char *argv[])
 			printf("%s", log);
 		}
 		return -1;
-	} else
-		printf("program linking succeeded!\n");
+	}
 
 	glUseProgram(program);
-
-	glViewport(0, 0, width, height);
-
-	/* clear the color buffer */
-	glClearColor(0.5, 0.5, 0.5, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vVertices);
 	glEnableVertexAttribArray(0);
 
-	/* now set up our uniform. */
-	{
-		int location;
-
-		location = glGetUniformLocation(program, "uColor");
-
-		glUniform4fv(location, 1, uColor);
-	}
+	int location = glGetUniformLocation(program, "uColor");
+	glUniform4fv(location, 1, uColor);
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 

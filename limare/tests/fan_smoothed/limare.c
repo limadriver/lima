@@ -19,11 +19,6 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- *
- */
-
-/*
- * Draws a smoothed triangle fan.
  */
 
 #include <stdlib.h>
@@ -39,30 +34,17 @@ main(int argc, char *argv[])
 	struct limare_state *state;
 	int ret;
 
-	float vertices[] = {  0.0,  0.8, 0.0,
-			     -0.8,  0.4, 0.0,
-			     -0.6, -0.5, 0.0,
-			      0.0, -0.8, 0.0,
-			      0.6, -0.5, 0.0,
-			      0.8,  0.4, 0.0 };
-	float colors[] = {1.0, 1.0, 1.0, 1.0,
-			  1.0, 0.0, 0.0, 1.0,
-			  1.0, 1.0, 0.0, 1.0,
-			  0.0, 1.0, 0.0, 1.0,
-			  0.0, 1.0, 1.0, 1.0,
-			  0.0, 0.0, 1.0, 1.0};
-
 	const char *vertex_shader_source =
 		"attribute vec4 aPosition;    \n"
 		"attribute vec4 aColor;       \n"
 		"                             \n"
 		"varying vec4 vColor;         \n"
-                "                             \n"
-                "void main()                  \n"
-                "{                            \n"
+		"                             \n"
+		"void main()                  \n"
+		"{                            \n"
 		"    vColor = aColor;         \n"
-                "    gl_Position = aPosition; \n"
-                "}                            \n";
+		"    gl_Position = aPosition; \n"
+		"}                            \n";
 	const char *fragment_shader_source =
 		"precision mediump float;     \n"
 		"                             \n"
@@ -72,6 +54,19 @@ main(int argc, char *argv[])
 		"{                            \n"
 		"    gl_FragColor = vColor;   \n"
 		"}                            \n";
+
+	float vertices[] = { 0.0,  0.8, 0.0,
+			    -0.8,  0.4, 0.0,
+			    -0.6, -0.5, 0.0,
+			     0.0, -0.8, 0.0,
+			     0.6, -0.5, 0.0,
+			     0.8,  0.4, 0.0};
+	float colors[] = {1.0, 1.0, 1.0, 1.0,
+			  1.0, 0.0, 0.0, 1.0,
+			  1.0, 1.0, 0.0, 1.0,
+			  0.0, 1.0, 0.0, 1.0,
+			  0.0, 1.0, 1.0, 1.0,
+			  0.0, 0.0, 1.0, 1.0};
 
 	state = limare_init();
 	if (!state)
@@ -86,6 +81,7 @@ main(int argc, char *argv[])
 	int program = limare_program_new(state);
 	vertex_shader_attach(state, program, vertex_shader_source);
 	fragment_shader_attach(state, program, fragment_shader_source);
+
 	limare_link(state);
 
 	limare_attribute_pointer(state, "aPosition", LIMARE_ATTRIB_FLOAT,

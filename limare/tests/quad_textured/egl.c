@@ -23,15 +23,14 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+#include <stdlib.h>
 
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
 #include "egl_common.h"
+
 #include "companion.h"
 
 int
@@ -46,36 +45,40 @@ main(int argc, char *argv[])
 	GLint width, height;
 	GLuint texture;
 
-	static const char* vertex_shader_source =
+	const char* vertex_shader_source =
 		"attribute vec4 in_vertex;\n"
 		"attribute vec2 in_coord;\n"
+		"\n"
 		"varying vec2 coord;\n"
+		"\n"
 		"void main()\n"
 		"{\n"
 		"    gl_Position = in_vertex;\n"
 		"    coord = in_coord;\n"
 		"}\n";
-
-	static const char* fragment_shader_source =
+	const char* fragment_shader_source =
 		"precision mediump float;\n"
+		"\n"
 		"varying vec2 coord;\n"
+		"\n"
 		"uniform sampler2D in_texture;\n"
+		"\n"
 		"void main()\n"
 		"{\n"
 		"    gl_FragColor = texture2D(in_texture, coord);\n"
 		"}\n";
 
-	static const GLfloat aVertices[4][3] = {
-		{ -0.6, -1,  0 },
-		{  0.6, -1,  0 },
-		{ -0.6,  1,  0 },
-		{  0.6,  1,  0 }
+	const GLfloat aVertices[4][3] = {
+		{-0.6, -1,  0},
+		{ 0.6, -1,  0},
+		{-0.6,  1,  0},
+		{ 0.6,  1,  0}
 	};
-	static const GLfloat aCoords[4][2] = {
-		{ 0, 1 },
-		{ 1, 1 },
-		{ 0, 0 },
-		{ 1, 0 }
+	const GLfloat aCoords[4][2] = {
+		{0, 1},
+		{1, 1},
+		{0, 0},
+		{1, 0}
 	};
 
 	buffer_size(&width, &height);
@@ -84,6 +87,11 @@ main(int argc, char *argv[])
 
 	display = egl_display_init();
 	surface = egl_surface_init(display, 2, width, height);
+
+	glViewport(0, 0, width, height);
+
+	glClearColor(0.5, 0.5, 0.5, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	vertex_shader = vertex_shader_compile(vertex_shader_source);
 	fragment_shader = fragment_shader_compile(fragment_shader_source);
@@ -115,16 +123,11 @@ main(int argc, char *argv[])
 			printf("%s", log);
 		}
 		return -1;
-	} else
-		printf("program linking succeeded!\n");
+	}
 
 	glUseProgram(program);
 
-	glViewport(0, 0, width, height);
-
-	/* clear the color buffer */
-	glClearColor(0.5, 0.5, 0.5, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glActiveTexture(GL_TEXTURE0);
 
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -138,18 +141,16 @@ main(int argc, char *argv[])
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
 		     COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT, 0,
 		     GL_RGB, GL_UNSIGNED_BYTE, companion_texture_flat);
+	//glGenerateMipmap(GL_TEXTURE_2D);
+
+	GLint texture_loc = glGetUniformLocation(program, "in_texture");
+	glUniform1i(texture_loc, 0); // 0 -> GL_TEXTURE0 in glActiveTexture
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, aVertices);
 	glEnableVertexAttribArray(0);
 
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, aCoords);
 	glEnableVertexAttribArray(1);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-
-	GLint texture_loc = glGetUniformLocation(program, "in_texture");
-	glUniform1i(texture_loc, 0); // 0 -> GL_TEXTURE0 in glActiveTexture
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
