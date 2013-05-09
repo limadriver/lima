@@ -50,7 +50,7 @@ main(int argc, char *argv[])
 	  "attribute vec3 in_normal;      \n"
 	  "attribute vec2 in_coord;       \n"
 	  "\n"
-	  "vec4 lightSource = vec4(-2.0, -2.0, 20.0, 0.0);\n"
+	  "vec4 lightSource = vec4(10.0, 20.0, 40.0, 0.0);\n"
 	  "                             \n"
 	  "varying vec4 vVaryingColor;  \n"
 	  "varying vec2 coord;          \n"
@@ -123,18 +123,17 @@ main(int argc, char *argv[])
 
 		ESMatrix modelview;
 		esMatrixLoadIdentity(&modelview);
-		esTranslate(&modelview, 0.0f, -0.75f, -8.0f);
-		esRotate(&modelview, angle * 0.97f, 1.0f, 0.0f, 0.0f);
-		esRotate(&modelview, angle * 1.13f, 0.0f, 1.0f, 0.0f);
-		esRotate(&modelview, angle * 0.73f, 0.0f, 0.0f, 1.0f);
-		//esScale(&modelview, 0.47f, 0.47f, 0.47f);
+		esTranslate(&modelview, 0.0, 0.0, -4.0);
+		esRotate(&modelview, angle * 0.97, 1.0, 0.0, 0.0);
+		esRotate(&modelview, angle * 1.13, 0.0, 1.0, 0.0);
+		esRotate(&modelview, angle * 0.73, 0.0, 0.0, 1.0);
 
 		GLfloat aspect = (GLfloat)(HEIGHT) / (GLfloat)(WIDTH);
 
 		ESMatrix projection;
 		esMatrixLoadIdentity(&projection);
-		esFrustum(&projection, -2.2f, +2.2f, -2.2f * aspect, +2.2f * aspect,
-			  2.0f, 10.0f);
+		esFrustum(&projection, -1.0, +1.0, -1.0 * aspect, +1.0 * aspect,
+			  1.0, 10.0);
 
 		ESMatrix modelviewprojection;
 		esMatrixLoadIdentity(&modelviewprojection);
