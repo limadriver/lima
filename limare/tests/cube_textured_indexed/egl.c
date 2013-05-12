@@ -32,6 +32,7 @@
 #include "egl_common.h"
 
 #include "esUtil.h"
+#include "cube_mesh.h"
 #include "companion.h"
 
 
@@ -86,144 +87,6 @@ main(int argc, char *argv[])
 	  "    gl_FragColor = vVaryingColor * texture2D(in_texture, coord);\n"
 	  "}                            \n";
 
-	GLfloat vVertices[] = {
-	  // front
-	  -1.0f, -1.0f, +1.0f, // point blue
-	  +1.0f, -1.0f, +1.0f, // point magenta
-	  -1.0f, +1.0f, +1.0f, // point cyan
-	  +1.0f, +1.0f, +1.0f, // point white
-	  // back
-	  +1.0f, -1.0f, -1.0f, // point red
-	  -1.0f, -1.0f, -1.0f, // point black
-	  +1.0f, +1.0f, -1.0f, // point yellow
-	  -1.0f, +1.0f, -1.0f, // point green
-	  // right
-	  +1.0f, -1.0f, +1.0f, // point magenta
-	  +1.0f, -1.0f, -1.0f, // point red
-	  +1.0f, +1.0f, +1.0f, // point white
-	  +1.0f, +1.0f, -1.0f, // point yellow
-	  // left
-	  -1.0f, -1.0f, -1.0f, // point black
-	  -1.0f, -1.0f, +1.0f, // point blue
-	  -1.0f, +1.0f, -1.0f, // point green
-	  -1.0f, +1.0f, +1.0f, // point cyan
-	  // top
-	  -1.0f, +1.0f, +1.0f, // point cyan
-	  +1.0f, +1.0f, +1.0f, // point white
-	  -1.0f, +1.0f, -1.0f, // point green
-	  +1.0f, +1.0f, -1.0f, // point yellow
-	  // bottom
-	  -1.0f, -1.0f, -1.0f, // point black
-	  +1.0f, -1.0f, -1.0f, // point red
-	  -1.0f, -1.0f, +1.0f, // point blue
-	  +1.0f, -1.0f, +1.0f  // point magenta
-	};
-
-	GLfloat vCoords[] = {
-	  // front
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // back
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // right
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // left
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // top
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // bottom
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	};
-
-	GLfloat vNormals[] = {
-	  // front
-	  +0.0f, +0.0f, +1.0f, // forward
-	  +0.0f, +0.0f, +1.0f, // forward
-	  +0.0f, +0.0f, +1.0f, // forward
-	  +0.0f, +0.0f, +1.0f, // forward
-	  // back
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  // top
-	  +0.0f, +1.0f, +0.0f, // up
-	  +0.0f, +1.0f, +0.0f, // up
-	  +0.0f, +1.0f, +0.0f, // up
-	  +0.0f, +1.0f, +0.0f, // up
-	  // bottom
-	  +0.0f, -1.0f, +0.0f, // down
-	  +0.0f, -1.0f, +0.0f, // down
-	  +0.0f, -1.0f, +0.0f, // down
-	  +0.0f, -1.0f, +0.0f  // down
-	};
-
-	unsigned char indices_triangle[] = {
-		0,  1,  2,
-		3,  2,  1,
-
-		4,  5,  6,
-		7,  6,  5,
-
-		8,  9, 10,
-		11, 10, 9,
-
-		12, 13, 14,
-		15, 14, 13,
-
-		16, 17, 18,
-		19, 18, 17,
-
-		20, 21, 22,
-		23, 22, 21,
-	};
-
-#if 0
-	unsigned char indices_strip[] = {
-		0,  1,  2, 3,
-
-		4,
-
-		4,  5,  6,
-		7,  6,  5,
-
-		8,  9, 10, 11,
-
-		12, 13, 14, 15,
-
-		16, 17, 18, 19,
-
-		20, 21, 22, 23,
-	};
-#endif
-
 	buffer_size(&width, &height);
 
 	printf("Buffer dimensions %dx%d\n", width, height);
@@ -274,13 +137,14 @@ main(int argc, char *argv[])
 	glClearColor(0.5, 0.5, 0.5, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vVertices);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, cube_vertices);
 	glEnableVertexAttribArray(0);
 
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, vNormals);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, cube_normals);
 	glEnableVertexAttribArray(1);
 
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, vCoords);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0,
+			      cube_texture_coordinates);
 	glEnableVertexAttribArray(2);
 
 	ESMatrix modelview;
@@ -345,13 +209,8 @@ main(int argc, char *argv[])
 
 	glEnable(GL_CULL_FACE);
 
-#if 0
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-#elif 1
-	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_BYTE, indices_triangle);
-#else
-	glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_BYTE, indices_strip);
-#endif
+	glDrawElements(GL_TRIANGLES, CUBE_INDEX_COUNT,
+		       GL_UNSIGNED_BYTE, cube_indices);
 
 	eglSwapBuffers(display, surface);
 

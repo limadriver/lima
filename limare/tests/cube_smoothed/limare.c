@@ -28,6 +28,7 @@
 #include "limare.h"
 
 #include "esUtil.h"
+#include "cube_mesh.h"
 
 #define WIDTH 800
 #define HEIGHT 480
@@ -72,105 +73,6 @@ main(int argc, char *argv[])
 	  "    gl_FragColor = vVaryingColor;   \n"
 	  "}                            \n";
 
-	GLfloat vVertices[] = {
-	  // front
-	  -1.0f, -1.0f, +1.0f, // point blue
-	  +1.0f, -1.0f, +1.0f, // point magenta
-	  -1.0f, +1.0f, +1.0f, // point cyan
-	  +1.0f, +1.0f, +1.0f, // point white
-	  // back
-	  +1.0f, -1.0f, -1.0f, // point red
-	  -1.0f, -1.0f, -1.0f, // point black
-	  +1.0f, +1.0f, -1.0f, // point yellow
-	  -1.0f, +1.0f, -1.0f, // point green
-	  // right
-	  +1.0f, -1.0f, +1.0f, // point magenta
-	  +1.0f, -1.0f, -1.0f, // point red
-	  +1.0f, +1.0f, +1.0f, // point white
-	  +1.0f, +1.0f, -1.0f, // point yellow
-	  // left
-	  -1.0f, -1.0f, -1.0f, // point black
-	  -1.0f, -1.0f, +1.0f, // point blue
-	  -1.0f, +1.0f, -1.0f, // point green
-	  -1.0f, +1.0f, +1.0f, // point cyan
-	  // top
-	  -1.0f, +1.0f, +1.0f, // point cyan
-	  +1.0f, +1.0f, +1.0f, // point white
-	  -1.0f, +1.0f, -1.0f, // point green
-	  +1.0f, +1.0f, -1.0f, // point yellow
-	  // bottom
-	  -1.0f, -1.0f, -1.0f, // point black
-	  +1.0f, -1.0f, -1.0f, // point red
-	  -1.0f, -1.0f, +1.0f, // point blue
-	  +1.0f, -1.0f, +1.0f  // point magenta
-	};
-
-	GLfloat vColors[] = {
-	  // front
-	  0.0f,  0.0f,  1.0f, // blue
-	  1.0f,  0.0f,  1.0f, // magenta
-	  0.0f,  1.0f,  1.0f, // cyan
-	  1.0f,  1.0f,  1.0f, // white
-	  // back
-	  1.0f,  0.0f,  0.0f, // red
-	  0.0f,  0.0f,  0.0f, // black
-	  1.0f,  1.0f,  0.0f, // yellow
-	  0.0f,  1.0f,  0.0f, // green
-	  // right
-	  1.0f,  0.0f,  1.0f, // magenta
-	  1.0f,  0.0f,  0.0f, // red
-	  1.0f,  1.0f,  1.0f, // white
-	  1.0f,  1.0f,  0.0f, // yellow
-	  // left
-	  0.0f,  0.0f,  0.0f, // black
-	  0.0f,  0.0f,  1.0f, // blue
-	  0.0f,  1.0f,  0.0f, // green
-	  0.0f,  1.0f,  1.0f, // cyan
-	  // top
-	  0.0f,  1.0f,  1.0f, // cyan
-	  1.0f,  1.0f,  1.0f, // white
-	  0.0f,  1.0f,  0.0f, // green
-	  1.0f,  1.0f,  0.0f, // yellow
-	  // bottom
-	  0.0f,  0.0f,  0.0f, // black
-	  1.0f,  0.0f,  0.0f, // red
-	  0.0f,  0.0f,  1.0f, // blue
-	  1.0f,  0.0f,  1.0f  // magenta
-	};
-
-	GLfloat vNormals[] = {
-	  // front
-	  +0.0f, +0.0f, +1.0f, // forward
-	  +0.0f, +0.0f, +1.0f, // forward
-	  +0.0f, +0.0f, +1.0f, // forward
-	  +0.0f, +0.0f, +1.0f, // forward
-	  // back
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  // top
-	  +0.0f, +1.0f, +0.0f, // up
-	  +0.0f, +1.0f, +0.0f, // up
-	  +0.0f, +1.0f, +0.0f, // up
-	  +0.0f, +1.0f, +0.0f, // up
-	  // bottom
-	  +0.0f, -1.0f, +0.0f, // down
-	  +0.0f, -1.0f, +0.0f, // down
-	  +0.0f, -1.0f, +0.0f, // down
-	  +0.0f, -1.0f, +0.0f  // down
-	};
-
 	state = limare_init();
 	if (!state)
 		return -1;
@@ -186,9 +88,12 @@ main(int argc, char *argv[])
 
 	limare_link(state);
 
-	limare_attribute_pointer(state, "in_position", 4, 3, 24, vVertices);
-	limare_attribute_pointer(state, "in_color", 4, 3, 24, vColors);
-	limare_attribute_pointer(state, "in_normal", 4, 3, 24, vNormals);
+	limare_attribute_pointer(state, "in_position", 4,
+				 3, CUBE_VERTEX_COUNT, cube_vertices);
+	limare_attribute_pointer(state, "in_color", 4,
+				 3, CUBE_VERTEX_COUNT, cube_colors);
+	limare_attribute_pointer(state, "in_normal", 4,
+				 3, CUBE_VERTEX_COUNT, cube_normals);
 
 	ESMatrix modelview;
 	esMatrixLoadIdentity(&modelview);

@@ -30,6 +30,7 @@
 #include "formats.h"
 
 #include "esUtil.h"
+#include "cube_mesh.h"
 #include "companion.h"
 
 #define WIDTH 800
@@ -80,105 +81,6 @@ main(int argc, char *argv[])
 	  "    gl_FragColor = vVaryingColor * texture2D(in_texture, coord);\n"
 	  "}                            \n";
 
-	GLfloat vVertices[] = {
-	  // front
-	  -1.0f, -1.0f, +1.0f, // point blue
-	  +1.0f, -1.0f, +1.0f, // point magenta
-	  -1.0f, +1.0f, +1.0f, // point cyan
-	  +1.0f, +1.0f, +1.0f, // point white
-	  // back
-	  +1.0f, -1.0f, -1.0f, // point red
-	  -1.0f, -1.0f, -1.0f, // point black
-	  +1.0f, +1.0f, -1.0f, // point yellow
-	  -1.0f, +1.0f, -1.0f, // point green
-	  // right
-	  +1.0f, -1.0f, +1.0f, // point magenta
-	  +1.0f, -1.0f, -1.0f, // point red
-	  +1.0f, +1.0f, +1.0f, // point white
-	  +1.0f, +1.0f, -1.0f, // point yellow
-	  // left
-	  -1.0f, -1.0f, -1.0f, // point black
-	  -1.0f, -1.0f, +1.0f, // point blue
-	  -1.0f, +1.0f, -1.0f, // point green
-	  -1.0f, +1.0f, +1.0f, // point cyan
-	  // top
-	  -1.0f, +1.0f, +1.0f, // point cyan
-	  +1.0f, +1.0f, +1.0f, // point white
-	  -1.0f, +1.0f, -1.0f, // point green
-	  +1.0f, +1.0f, -1.0f, // point yellow
-	  // bottom
-	  -1.0f, -1.0f, -1.0f, // point black
-	  +1.0f, -1.0f, -1.0f, // point red
-	  -1.0f, -1.0f, +1.0f, // point blue
-	  +1.0f, -1.0f, +1.0f  // point magenta
-	};
-
-	GLfloat vCoords[] = {
-	  // front
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // back
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // right
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // left
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // top
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	  // bottom
-	  0.0f, 1.0f,
-	  1.0f, 1.0f,
-	  0.0f, 0.0f,
-	  1.0f, 0.0f,
-	};
-
-	GLfloat vNormals[] = {
-	  // front
-	  +0.0f, +0.0f, +1.0f, // forward
-	  +0.0f, +0.0f, +1.0f, // forward
-	  +0.0f, +0.0f, +1.0f, // forward
-	  +0.0f, +0.0f, +1.0f, // forward
-	  // back
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  +0.0f, +0.0f, -1.0f, // backbard
-	  // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  +1.0f, +0.0f, +0.0f, // right
-	  // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  -1.0f, +0.0f, +0.0f, // left
-	  // top
-	  +0.0f, +1.0f, +0.0f, // up
-	  +0.0f, +1.0f, +0.0f, // up
-	  +0.0f, +1.0f, +0.0f, // up
-	  +0.0f, +1.0f, +0.0f, // up
-	  // bottom
-	  +0.0f, -1.0f, +0.0f, // down
-	  +0.0f, -1.0f, +0.0f, // down
-	  +0.0f, -1.0f, +0.0f, // down
-	  +0.0f, -1.0f, +0.0f  // down
-	};
-
 	state = limare_init();
 	if (!state)
 		return -1;
@@ -194,9 +96,13 @@ main(int argc, char *argv[])
 
 	limare_link(state);
 
-	limare_attribute_pointer(state, "in_position", 4, 3, 24, vVertices);
-	limare_attribute_pointer(state, "in_coord", 4, 2, 24, vCoords);
-	limare_attribute_pointer(state, "in_normal", 4, 3, 24, vNormals);
+	limare_attribute_pointer(state, "in_position", 4,
+				 3, CUBE_VERTEX_COUNT, cube_vertices);
+	limare_attribute_pointer(state, "in_coord", 4,
+				 2, CUBE_VERTEX_COUNT,
+				 cube_texture_coordinates);
+	limare_attribute_pointer(state, "in_normal", 4,
+				 3, CUBE_VERTEX_COUNT, cube_normals);
 
 	limare_texture_attach(state, "in_texture", companion_texture_flat,
 			      COMPANION_TEXTURE_WIDTH, COMPANION_TEXTURE_HEIGHT,
