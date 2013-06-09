@@ -4,9 +4,13 @@
 static inline unsigned int
 from_float(float x)
 {
-	unsigned int i;
-	memcpy(&i, &x, 4);
-	return i;
+	union cv {
+		unsigned int i;
+		float f;
+	} cv;
+
+	cv.f = x;
+	return cv.i;
 }
 
 #endif /* LIMARE_FROM_FLOAT_H */

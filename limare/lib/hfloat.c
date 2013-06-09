@@ -36,8 +36,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include <string.h>
-
 #include "from_float.h"
 #include "hfloat.h"
 
@@ -50,7 +48,6 @@ float_to_hfloat(float fp)
 	unsigned int mantissa = x & 0x007FFFFF;
 	unsigned int exp = (x >> 23) & 0xFF;
 	unsigned short result;
-	hfloat ret;
 
 	if (exp > 0x8F) { /* max of float -> hfloat */
 		if (mantissa && (exp == 0xFF)) /* single max */
@@ -72,7 +69,6 @@ float_to_hfloat(float fp)
 	}
 
 	result = (sign << 15) | (exp << 10) | (mantissa);
-	memcpy(&ret, &result, 2);
 
-	return ret;
+	return (hfloat)result;
 }
