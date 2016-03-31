@@ -121,7 +121,7 @@ fb_open(struct limare_state *state)
 	else
 		fbdev_dev = "/dev/fb0";
 #else
-	fbdev_dev = "/dev/graphics/fb0"
+	fbdev_dev = "/dev/graphics/fb0";
 #endif /* ANDROID */
 
 	fb->fd = open(fbdev_dev, O_RDWR);
