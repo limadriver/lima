@@ -8,7 +8,7 @@ LIMARE_OBJS = limare.o $(objs)
 limare: limare_$(NAME)
 
 limare_$(NAME): $(LIMARE_OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ -L$(TOP)/limare/lib/ -llimare
+	$(CC) $(CFLAGS) -o $@ $^ -L$(TOP)/limare/lib/ -llimare -lm
 
 limare_install: limare_$(NAME)
 	$(INSTALL) limare_$(NAME) $(INSTALL_DIR)/limare/$(NAME)
