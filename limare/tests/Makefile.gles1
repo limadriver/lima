@@ -22,11 +22,11 @@ gles1_wrap:
 ifeq ($(OS),android)
 	$(ADB) shell "rm $(GLES1_BMP)"
 	$(ADB) shell "rm $(GLES1_LOG).0000"
-	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(GLES1_LOG) $(INSTALL_DIR)/gles1/$(NAME)"
+	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(GLES1_LOG) LIMA_WRAP_BMP=$(GLES1_BMP) $(INSTALL_DIR)/gles1/$(NAME)"
 	$(ADB) pull $(GLES1_LOG).0000
 	$(ADB) pull $(GLES1_BMP)
 else
-	$(shell LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(GLES1_LOG) $(INSTALL_DIR)/gles1/$(NAME))
+	$(shell LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(GLES1_LOG) LIMA_WRAP_BMP=$(GLES1_BMP) $(INSTALL_DIR)/gles1/$(NAME))
 endif
 
 gles1_run: $(ADB)
