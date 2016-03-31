@@ -17,11 +17,11 @@ dump_wrap:
 ifeq ($(OS),android)
 	$(ADB) shell "rm $(DUMP_BMP)"
 	$(ADB) shell "rm $(DUMP_LOG)"
-	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(DUMP_LOG) $(INSTALL_DIR)/limare/dump"
+	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(DUMP_LOG) LIMA_WRAP_BMP=$(DUMP_BMP) $(INSTALL_DIR)/limare/dump"
 	$(ADB) pull $(DUMP_LOG)
 	$(ADB) pull $(DUMP_BMP)
 else
-	$(shell LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(DUMP_LOG) $(INSTALL_DIR)/limare/dump)
+	$(shell LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(DUMP_LOG) LIMA_WRAP_BMP=$(DUMP_BMP) $(INSTALL_DIR)/limare/dump)
 endif
 
 dump_run:
