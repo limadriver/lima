@@ -1969,14 +1969,19 @@ mali_memory_dump(void)
 static void
 mali_wrap_bmp_dump(void)
 {
+	char *filename;
 	void *address = mali_address_retrieve(render_address);
 	char buffer[1024];
 
 	printf("%s: dumping frame %04d from address 0x%08X (%dx%d)\n",
 	       __func__, frame_count, render_address, render_width, render_height);
 
-	snprintf(buffer, sizeof(buffer), "/home/libv/lima/dump/lima.wrap.%04d.bmp",
-		 frame_count);
+	filename = getenv("LIMA_WRAP_BMP");
+	if (!filename)
+		filename = "/home/libv/lima/dump/lima.wrap.bmp";
+
+	snprintf(buffer, sizeof(buffer), "%s.%04d",
+		 filename, frame_count);
 
 	if (!address) {
 		printf("%s: Failed to dump bmp at 0x%x\n",
