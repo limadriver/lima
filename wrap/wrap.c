@@ -657,6 +657,12 @@ dev_mali_memory_init_mem_post(void *data, int ret)
 }
 
 static void
+dev_mali_memory_term_mem_post(void *data, int ret)
+{
+	wrap_log("/* IOCTL MALI_IOC_MEM_TERM OUT */\n");
+}
+
+static void
 dev_mali_memory_attach_ump_mem_post(void *data, int ret)
 {
 	_mali_uk_attach_ump_mem_s *ump = data;
@@ -689,6 +695,44 @@ dev_mali_memory_unmap_ext_mem_post(void *data, int ret)
 }
 
 static void
+dev_mali_pp_number_of_cores_post(void *data, int ret)
+{
+	_mali_uk_get_pp_number_of_cores_s *number = data;
+
+	wrap_log("/* IOCTL MALI_IOC_PP_NUMBER_OF_CORES_GET OUT */\n");
+
+	wrap_log("#if 0 /* PP Number Of Cores */\n\n");
+
+	wrap_log("_mali_uk_get_pp_number_of_cores_s mali_pp_number_of_cores = {\n");
+	wrap_log("\t.number_of_cores = %d,\n", number->number_of_cores);
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* PP Number Of Cores */\n\n");
+
+	if (mali_type == 400)
+		wrap_log("#define LIMA_M400 1\n\n");
+}
+
+static void
+dev_mali_gp_number_of_cores_post(void *data, int ret)
+{
+	_mali_uk_get_gp_number_of_cores_s *number = data;
+
+	wrap_log("/* IOCTL MALI_IOC_GP_NUMBER_OF_CORES_GET OUT */\n");
+
+	wrap_log("#if 0 /* GP Number Of Cores */\n\n");
+
+	wrap_log("_mali_uk_get_gp_number_of_cores_s mali_gp_number_of_cores = {\n");
+	wrap_log("\t.number_of_cores = %d,\n", number->number_of_cores);
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* GP Number Of Cores */\n\n");
+
+	if (mali_type == 400)
+		wrap_log("#define LIMA_M400 1\n\n");
+}
+
+static void
 dev_mali_pp_core_version_post(void *data, int ret)
 {
 	_mali_uk_get_pp_core_version_s *version = data;
@@ -702,6 +746,25 @@ dev_mali_pp_core_version_post(void *data, int ret)
 	wrap_log("};\n\n");
 
 	wrap_log("#endif /* PP Core Version */\n\n");
+
+	if (mali_type == 400)
+		wrap_log("#define LIMA_M400 1\n\n");
+}
+
+static void
+dev_mali_gp_core_version_post(void *data, int ret)
+{
+	_mali_uk_get_gp_core_version_s *version = data;
+
+	wrap_log("/* IOCTL MALI_IOC_GP_CORE_VERSION_GET OUT */\n");
+
+	wrap_log("#if 0 /* GP Core Version */\n\n");
+
+	wrap_log("_mali_uk_get_gp_core_version_s mali_gp_version = {\n");
+	wrap_log("\t.version = 0x%x,\n", version->version);
+	wrap_log("};\n\n");
+
+	wrap_log("#endif /* GP Core Version */\n\n");
 
 	if (mali_type == 400)
 		wrap_log("#define LIMA_M400 1\n\n");
@@ -1468,6 +1531,8 @@ dev_mali_ioctls[] = {
 	 dev_mali_get_api_version_pre, dev_mali_get_api_version_post},
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM",
 	 NULL, dev_mali_memory_init_mem_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_TERM_MEM, "MEMORY, TERM_MEM",
+	 NULL, dev_mali_memory_term_mem_post},
 
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_MAP_EXT_MEM, "MEMORY, MAP_EXT_MEM",
 	 NULL, dev_mali_memory_map_ext_mem_post},
@@ -1475,12 +1540,53 @@ dev_mali_ioctls[] = {
 	 NULL, dev_mali_memory_unmap_ext_mem_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB",
 	 dev_mali_pp_job_start_pre, dev_mali_pp_job_start_post},
+	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES_R2P1, "PP, GET_NUMBER_OF_CORES_R2P1",
+	 NULL, dev_mali_pp_number_of_cores_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R2P1, "PP, GET_CORE_VERSION_R2P1",
 	 NULL, dev_mali_pp_core_version_post},
+	{MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, "GP, START_JOB",
+	 dev_mali_gp_job_start_pre, dev_mali_gp_job_start_post},
+	{MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES_R2P1, "GP, GET_NUMBER_OF_CORES_R2P1",
+	 NULL, dev_mali_gp_number_of_cores_post},
+	{MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION_R2P1, "GP, GET_CORE_VERSION_R2P1",
+	 NULL, dev_mali_gp_core_version_post},
+
+	{ 0, 0, NULL, NULL, NULL}
+};
+
+static struct dev_mali_ioctl_table
+dev_mali_ioctls_r3p0[] = {
+	{MALI_IOC_CORE_BASE, _MALI_UK_OPEN, "CORE, OPEN", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_CLOSE, "CORE, CLOSE", NULL, NULL},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO_SIZE, "CORE, GET_SYSTEM_INFO_SIZE",
+	 NULL, dev_mali_get_system_info_size_post},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO, "CORE, GET_SYSTEM_INFO",
+	 dev_mali_get_system_info_pre, dev_mali_get_system_info_post},
+	{MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION, "CORE, WAIT_FOR_NOTIFICATION",
+	 dev_mali_wait_for_notification_pre, dev_mali_wait_for_notification_post},
+	{MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION, "CORE, GET_API_VERSION",
+	 dev_mali_get_api_version_pre, dev_mali_get_api_version_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM",
+	 NULL, dev_mali_memory_init_mem_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_TERM_MEM, "MEMORY, TERM_MEM",
+	 NULL, dev_mali_memory_term_mem_post},
+
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_MAP_EXT_MEM, "MEMORY, MAP_EXT_MEM",
+	 NULL, dev_mali_memory_map_ext_mem_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_UNMAP_EXT_MEM, "MEMORY, UNMAP_EXT_MEM",
+	 NULL, dev_mali_memory_unmap_ext_mem_post},
+	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB",
+	 dev_mali_pp_job_start_pre, dev_mali_pp_job_start_post},
+	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES_R3P0, "PP, GET_NUMBER_OF_CORES_R3P0",
+	 NULL, dev_mali_pp_number_of_cores_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R3P0, "PP, GET_CORE_VERSION_R3P0",
 	 NULL, dev_mali_pp_core_version_post},
 	{MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, "GP, START_JOB",
 	 dev_mali_gp_job_start_pre, dev_mali_gp_job_start_post},
+	{MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES_R3P0, "GP, GET_NUMBER_OF_CORES_R3P0",
+	 NULL, dev_mali_gp_number_of_cores_post},
+	{MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION_R3P0, "GP, GET_CORE_VERSION_R3P0",
+	 NULL, dev_mali_gp_core_version_post},
 
 	{ 0, 0, NULL, NULL, NULL}
 };
@@ -1495,6 +1601,8 @@ dev_mali_ioctls_r3p1[] = {
 	 dev_mali_get_api_version_pre, dev_mali_get_api_version_post},
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, "MEMORY, INIT_MEM",
 	 NULL, dev_mali_memory_init_mem_post},
+	{MALI_IOC_MEMORY_BASE, _MALI_UK_TERM_MEM, "MEMORY, TERM_MEM",
+	 NULL, dev_mali_memory_term_mem_post},
 
 	{MALI_IOC_MEMORY_BASE, _MALI_UK_ATTACH_UMP_MEM_R3P1, "MEMORY, ATTACH_UMP_MEM",
 	 NULL, dev_mali_memory_attach_ump_mem_post},
@@ -1505,10 +1613,16 @@ dev_mali_ioctls_r3p1[] = {
 	 NULL, dev_mali_memory_unmap_ext_mem_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, "PP, START_JOB",
 	 dev_mali_pp_job_start_pre, dev_mali_pp_job_start_post},
+	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES_R3P0, "PP, GET_NUMBER_OF_CORES_R3P0",
+	 NULL, dev_mali_pp_number_of_cores_post},
 	{MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R3P0, "PP, GET_CORE_VERSION_R3P0",
 	 NULL, dev_mali_pp_core_version_post},
 	{MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, "GP, START_JOB",
 	 dev_mali_gp_job_start_pre, dev_mali_gp_job_start_post},
+	{MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES_R3P0, "GP, GET_NUMBER_OF_CORES_R3P0",
+	 NULL, dev_mali_gp_number_of_cores_post},
+	{MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION_R3P0, "GP, GET_CORE_VERSION_R3P0",
+	 NULL, dev_mali_gp_core_version_post},
 
 	{ 0, 0, NULL, NULL, NULL}
 };
@@ -1578,6 +1692,11 @@ mali_ioctl(int request, void *data)
 
 	if (ioctl && ioctl->post)
 		ioctl->post(data, ret);
+
+	if ((ioc_type == MALI_IOC_CORE_BASE) &&
+		(ioc_nr == _MALI_UK_GET_API_VERSION) &&
+		(mali_version == MALI_DRIVER_VERSION_R3P0))
+		ioctl_table = dev_mali_ioctls_r3p0;
 
 	return ret;
 }
