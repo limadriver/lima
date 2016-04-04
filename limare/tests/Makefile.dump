@@ -28,7 +28,7 @@ dump_run:
 ifeq ($(OS),android)
 	$(ADB) shell $(INSTALL_DIR)limare/dump
 else
-	$(shell $(INSTALL_DIR)/limare/dump"
+	$(shell) $(INSTALL_DIR)/limare/dump
 endif
 
 dump_clean:

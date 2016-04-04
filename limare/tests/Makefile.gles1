@@ -33,7 +33,7 @@ gles1_run: $(ADB)
 ifeq ($(OS),android)
 	$(ADB) shell $(INSTALL_DIR)gles1/$(NAME)
 else
-	$(shell $(INSTALL_DIR)/gles1/$(NAME)"
+	$(shell) $(INSTALL_DIR)/gles1/$(NAME)
 endif
 
 gles1_clean:
