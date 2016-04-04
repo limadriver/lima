@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,81 +23,34 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-static EGLint const config_attribute_list[] = {
-	EGL_RED_SIZE, 8,
-	EGL_GREEN_SIZE, 8,
-	EGL_BLUE_SIZE, 8,
-	EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
-	EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-	EGL_DEPTH_SIZE, 8,
-	EGL_SAMPLES, 4,
-	EGL_NONE
-};
-
-static EGLint const pbuffer_attribute_list[] = {
-	EGL_WIDTH, 400,
-	EGL_HEIGHT, 240,
-	EGL_LARGEST_PBUFFER, EGL_TRUE,
-	EGL_NONE
-};
-
-static const EGLint context_attribute_list[] = {
-	EGL_CONTEXT_CLIENT_VERSION, 2,
-	EGL_NONE
-};
-
-char *
-eglStrError(EGLint error)
-{
-	printf("Error: %d\n", error);
-
-	switch (error) {
-	case EGL_SUCCESS:
-		return "EGL_SUCCESS";
-	case EGL_BAD_ALLOC:
-		return "EGL_BAD_ALLOC";
-	case EGL_BAD_CONFIG:
-		return "EGL_BAD_CONFIG";
-	case EGL_BAD_PARAMETER:
-		return "EGL_BAD_PARAMETER";
-	case EGL_BAD_MATCH:
-		return "EGL_BAD_MATCH";
-	case EGL_BAD_ATTRIBUTE:
-		return "EGL_BAD_ATTRIBUTE";
-	default:
-		return "UNKNOWN";
-	}
-}
+#include "egl_common.h"
 
 int
 main(int argc, char *argv[])
 {
 	EGLDisplay display;
-	EGLint egl_major, egl_minor;
-	EGLConfig config;
-	EGLint num_config;
-	EGLContext context;
 	EGLSurface surface;
 	GLuint vertex_shader;
 	GLuint fragment_shader;
 	GLuint program;
 	GLint ret;
 	GLint width, height;
-	int uniform_location;
+
 	const char *vertex_shader_source =
-		"precision mediump float;     \n"
 		"attribute vec4 aPosition;    \n"
 		"                             \n"
                 "void main()                  \n"
                 "{                            \n"
                 "    gl_Position = aPosition; \n"
                 "}                            \n";
-
 	const char *fragment_shader_source =
 		"precision mediump float;     \n"
+		"                             \n"
 		"uniform vec4 uColor;         \n"
 		"                             \n"
 		"void main()                  \n"
@@ -107,120 +60,31 @@ main(int argc, char *argv[])
 
 	GLfloat vertices[] = {
 		/* triangle */
-		-0.8,  0.50, 0.0,
-		-0.2,  0.50, 0.0,
-		-0.5, -0.50, 0.0,
+		-0.8, -0.50, 0.0,
+		-0.2, -0.50, 0.0,
+		-0.5,  0.50, 0.0,
 		/* quad */
-		0.2, -0.50, 0.0,
-		0.8, -0.50, 0.0,
-		0.2,  0.50, 0.0,
-		0.8,  0.50, 0.0 };
-	GLfloat triangle_color[] = {0.0, 1.0, 0.0, 1.0 };
-	GLfloat quad_color[] = {1.0, 0.0, 0.0, 1.0 };
+		 0.2, -0.50, 0.0,
+		 0.8, -0.50, 0.0,
+		 0.2,  0.50, 0.0,
+		 0.8,  0.50, 0.0};
+	GLfloat triangle_color[] = {0.0, 1.0, 0.0, 1.0};
+	GLfloat quad_color[] = {1.0, 0.0, 0.0, 1.0};
 
-	display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-	if (display == EGL_NO_DISPLAY) {
-		printf("Error: No display found!\n");
-		return -1;
-	}
+	buffer_size(&width, &height);
 
-	if (!eglInitialize(display, &egl_major, &egl_minor)) {
-		printf("Error: eglInitialise failed!\n");
-		return -1;
-	}
+	printf("Buffer dimensions %dx%d\n", width, height);
 
-	printf("Using display %p with EGL version %d.%d\n",
-	       display, egl_major, egl_minor);
+	display = egl_display_init();
+	surface = egl_surface_init(display, 2, width, height);
 
-	printf("EGL Version \"%s\"\n", eglQueryString(display, EGL_VERSION));
-	printf("EGL Vendor \"%s\"\n", eglQueryString(display, EGL_VENDOR));
-	printf("EGL Extensions \"%s\"\n", eglQueryString(display, EGL_EXTENSIONS));
+	glViewport(0, 0, width, height);
 
-	/* get an appropriate EGL frame buffer configuration */
-	eglChooseConfig(display, config_attribute_list, &config, 1, &num_config);
+	glClearColor(0.5, 0.5, 0.5, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
 
-	/* create an EGL rendering context */
-	context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribute_list);
-	if (context == EGL_NO_CONTEXT) {
-		printf("Error: eglCreateContext failed: %d\n", eglGetError());
-		return -1;
-	}
-
-	surface = eglCreatePbufferSurface(display, config, pbuffer_attribute_list);
-	if (surface == EGL_NO_SURFACE) {
-		printf("Error: eglCreatePbufferSurface failed: %d (%s)\n",
-		       eglGetError(), eglStrError(eglGetError()));
-		return -1;
-	}
-
-	if (!eglQuerySurface(display, surface, EGL_WIDTH, &width) ||
-	    !eglQuerySurface(display, surface, EGL_HEIGHT, &height)) {
-		printf("Error: eglQuerySurface failed: %d (%s)\n",
-		       eglGetError(), eglStrError(eglGetError()));
-		return -1;
-	}
-	printf("PBuffer: %dx%d\n", width, height);
-
-	/* connect the context to the surface */
-	if (!eglMakeCurrent(display, surface, surface, context)) {
-		printf("Error: eglMakeCurrent() failed: %d (%s)\n",
-		       eglGetError(), eglStrError(eglGetError()));
-		return -1;
-	}
-
-	vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-	if (!vertex_shader) {
-		printf("Error: glCreateShader(GL_VERTEX_SHADER) failed: %d (%s)\n",
-		       eglGetError(), eglStrError(eglGetError()));
-		return -1;
-	}
-
-
-	glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
-	glCompileShader(vertex_shader);
-
-	glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &ret);
-	if (!ret) {
-		char *log;
-
-		printf("Error: vertex shader compilation failed!:\n");
-		glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &ret);
-
-		if (ret > 1) {
-			log = malloc(ret);
-			glGetShaderInfoLog(vertex_shader, ret, NULL, log);
-			printf("%s", log);
-		}
-		return -1;
-	} else
-		printf("Vertex shader compilation succeeded!\n");
-
-	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-	if (!fragment_shader) {
-		printf("Error: glCreateShader(GL_FRAGMENT_SHADER) failed: %d (%s)\n",
-		       eglGetError(), eglStrError(eglGetError()));
-		return -1;
-	}
-
-
-	glShaderSource(fragment_shader, 1, &fragment_shader_source, NULL);
-	glCompileShader(fragment_shader);
-
-	glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &ret);
-	if (!ret) {
-		char *log;
-
-		printf("Error: fragment shader compilation failed!:\n");
-		glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &ret);
-
-		if (ret > 1) {
-			log = malloc(ret);
-			glGetShaderInfoLog(fragment_shader, ret, NULL, log);
-			printf("%s", log);
-		}
-		return -1;
-	} else
-		printf("Fragment shader compilation succeeded!\n");
+	vertex_shader = vertex_shader_compile(vertex_shader_source);
+	fragment_shader = fragment_shader_compile(fragment_shader_source);
 
 	program = glCreateProgram();
 	if (!program) {
@@ -248,31 +112,20 @@ main(int argc, char *argv[])
 			printf("%s", log);
 		}
 		return -1;
-	} else
-		printf("program linking succeeded!\n");
+	}
 
 	glUseProgram(program);
-
-	glViewport(0, 0, width, height);
-
-	/* clear the color buffer */
-	glClearColor(0.3125, 0.3125, 0.3125, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
 	glEnableVertexAttribArray(0);
 
-	/* now set up our uniform. */
-	uniform_location = glGetUniformLocation(program, "uColor");
+	int uniform_location = glGetUniformLocation(program, "uColor");
 
 	glUniform4fv(uniform_location, 1, triangle_color);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	glUniform4fv(uniform_location, 1, quad_color);
 	glDrawArrays(GL_TRIANGLE_STRIP, 3, 4);
-
-
-	glFlush();
 
 	eglSwapBuffers(display, surface);
 

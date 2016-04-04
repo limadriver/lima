@@ -2,41 +2,23 @@ TOP = ../../
 
 include $(TOP)Makefile.inc
 
-CFLAGS += -I$(TOP)include
+CFLAGS += -I$(TOP)include -fPIC
 
 all: liblimare.so
 
+OBJS = bmp.o fb.o plb.o hfloat.o symbols.o jobs.o dump.o gp.o render_state.o \
+	pp.o program.o texture.o limare.o
+
 clean:
+	rm -f *.P
 	rm -f *.o
 	rm -f *.so
 
-bmp.o: bmp.c bmp.h
+liblimare.so: $(OBJS)
+	$(CC) -shared -Wall -o $@ $^ -lMali -lrt
 
-fb.o: fb.c fb.h
-
-hfloat.o: hfloat.c hfloat.h
-
-symbols.o: symbols.c symbols.h
-
-plb.o: plb.c plb.h limare.h
-
-jobs.o: jobs.c jobs.h limare.h
-
-dump.o: dump.c dump.h limare.h
-
-gp.o: gp.c gp.h limare.h plb.h symbols.h
-
-pp.o: pp.c pp.h limare.h plb.h
-
-program.o: program.c program.h gp.h
-
-limare.o: limare.c limare.h
-
-liblimare.so: bmp.o fb.o plb.o hfloat.o symbols.o jobs.o dump.o gp.o pp.o program.o limare.o
-	$(CC) -shared -Wall -o $@ $^ -lMali
-
-install: $(ADB) liblimare.so
-	cp liblimare.so $(SYSROOT)usr/lib/
-	$(ADB) push liblimare.so /system/lib/
+install: liblimare.so
+	$(INSTALL) liblimare.so $(prefix)/lib/
+	$(INSTALL) limare.h $(prefix)/include/
 
 include $(TOP)Makefile.post

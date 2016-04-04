@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -31,65 +31,131 @@
 #include "limare.h"
 #include "plb.h"
 
-/*
- * Generate the plb address stream for the plbu.
- */
 static void
-plb_plbu_stream_create(struct plb *plb)
+hilbert_rotate(int n, int *x, int *y, int rx, int ry)
 {
-	int i, size = plb->width * plb->height;
-	unsigned int address = plb->mem_physical + plb->plb_offset;
-	unsigned int *stream = plb->mem_address + plb->plbu_offset;
+	if (ry == 0) {
+		if (rx == 1) {
+			*x = n-1 - *x;
+			*y = n-1 - *y;
+		}
 
-	for (i = 0; i < size; i++)
-		stream[i] = address + (i * plb->block_size);
+		/* Swap x and y */
+		int t  = *x;
+		*x = *y;
+		*y = t;
+	}
+}
+
+static void
+hilbert_coords(int n, int d, int *x, int *y)
+{
+	int rx, ry, i, t=d;
+
+	*x = *y = 0;
+
+	for (i = 0; (1 << i) < n; i++) {
+
+		rx = 1 & (t / 2);
+		ry = 1 & (t ^ rx);
+
+		hilbert_rotate(1 << i, x, y, rx, ry);
+
+		*x += rx << i;
+		*y += ry << i;
+
+		t /= 4;
+	}
 }
 
 /*
- * Generate the PLB desciptors for the PP.
+ * Pre-generate the PLB desciptors for the PP.
  */
+
+
 static void
-plb_pp_stream_create(struct plb *plb)
+plb_pp_template_create(struct limare_state *state, struct plb_info *plb)
 {
-	int x, y, i, j;
-	int offset = 0, index = 0;
-	int step_x = 1 << plb->shift_w;
-	int step_y = 1 << plb->shift_h;
-	unsigned int address = plb->mem_physical + plb->plb_offset;
-	unsigned int *stream = plb->mem_address + plb->pp_offset;
+	struct pp_pattern {
+		int x;
+		int y;
+		unsigned int offset;
+	};
+	struct pp_pattern *pattern;
+	unsigned int *stream;
+	int size = plb->tiled_w * plb->tiled_h;
+	int max, dim, count, i, index, core;
 
-	for (y = 0; y < plb->height; y += step_y) {
-		for (x = 0; x < plb->width; x += step_x) {
-			for (j = 0; j < step_y; j++) {
-				for (i = 0; i < step_x; i++) {
-					stream[index + 0] = 0;
-					stream[index + 1] = 0xB8000000 | (x + i) | ((y + j) << 8);
-					stream[index + 2] = 0xE0000002 | (((address + offset) >> 3) & ~0xE0000003);
-					stream[index + 3] = 0xB0000000;
+	pattern = calloc(size, sizeof(struct pp_pattern));
 
-					index += 4;
-				}
-			}
+	if (plb->tiled_w < plb->tiled_h)
+		max = plb->tiled_h;
+	else
+		max = plb->tiled_w;
 
-			offset += plb->block_size;
+	for (dim = 0; (1 << dim) < max; dim++)
+		;
+	count = 1 << (dim + dim);
+
+	for (i = 0, index = 0; i < count; i++) {
+		int x, y;
+
+		hilbert_coords(max, i, &x, &y);
+
+		if ((x < plb->tiled_w) && (y < plb->tiled_h)) {
+			pattern[index].x = x;
+			pattern[index].y = y;
+			pattern[index].offset =
+				((y >> plb->shift_h) * plb->block_w +
+				 (x >> plb->shift_w)) * plb->block_size;
+
+			index++;
 		}
 	}
 
-	stream[index + 0] = 0;
-	stream[index + 1] = 0xBC000000;
+	plb->pp_size = size / state->pp_core_count;
+	for (core = 0; core < state->pp_core_count; core++) {
+		stream = calloc(plb->pp_size, 4 * sizeof(unsigned int));
+
+		for (i = core, index = 0; i < size; i += state->pp_core_count) {
+			stream[index + 0] = 0;
+			stream[index + 1] = 0xB8000000 |
+				pattern[i].x | (pattern[i].y << 8);
+			stream[index + 2] = 0xE0000002 |
+				((pattern[i].offset >> 3) & ~0xE0000003);
+			stream[index + 3] = 0xB0000000;
+
+			index += 4;
+		}
+
+		plb->pp_template[core] = stream;
+	}
 }
 
-struct plb *
-plb_create(struct limare_state *state, unsigned int physical, void *address, int offset, int size)
+struct plb_info *
+plb_info_create(struct limare_state *state)
 {
-	struct plb *plb = calloc(1, sizeof(struct plb));
-	int width, height;
+	struct plb_info *plb = calloc(1, sizeof(struct plb_info));
+	int width, height, limit;
+	int max;
 
 	width = ALIGN(state->width, 16) >> 4;
 	height = ALIGN(state->height, 16) >> 4;
 
-	/* limit the amount of plb's the pp has to chew through */
-	while ((width * height) > 320) {
+	plb->tiled_w = width;
+	plb->tiled_h = height;
+
+	/* limit the amount of plb's the gp has to generate */
+	/* For performance, 250 seems preferred on mali200.
+	 * 300 is the hard limit for mali200.
+	 * 512 is the hard limit for mali400.
+	 */
+	if (state->type == LIMARE_TYPE_M400)
+		limit = 500;
+	else
+		limit = 250;
+
+	while ((width * height) > limit) {
 		if (width >= height) {
 			width = (width + 1) >> 1;
 			plb->shift_w++;
@@ -101,34 +167,115 @@ plb_create(struct limare_state *state, unsigned int physical, void *address, int
 
 	plb->block_size = 0x200;
 
-	plb->width = width << plb->shift_w;
-	plb->height = height << plb->shift_h;
+	plb->block_w = width;
+	plb->block_h = height;
 
+	if (plb->shift_h > plb->shift_w)
+		max = plb->shift_h;
+	else
+		max = plb->shift_w;
+
+	if (max > 2)
+		plb->shift_max = 2;
+	else if (max)
+		plb->shift_max = 1;
+
+#if 0
 	printf("%s: (%dx%d) == (%d << %d, %d << %d);\n", __func__,
-	       plb->width, plb->height, width, plb->shift_w, height, plb->shift_h);
+	       plb->tiled_w, plb->tiled_h,
+	       plb->block_w, plb->shift_w, plb->block_h, plb->shift_h);
+#endif
 
-	plb->plb_size = plb->block_size * width * height;
-	plb->plb_offset = 0;
+	plb->plb_size = plb->block_size * plb->block_w * plb->block_h;
 
-	plb->plbu_size = 4 * plb->width * plb->height;
-	plb->plbu_offset = ALIGN(plb->plb_size, 0x40);
+	if (state->type == LIMARE_TYPE_M400)
+		plb->plbu_size = 4 * plb->block_w * plb->block_h;
+	else
+		/* fixed size on mali200 */
+		plb->plbu_size = 4 * 300;
 
-	plb->pp_size = 16 * (plb->width * plb->height + 1);
-	plb->pp_offset = ALIGN(plb->plbu_offset + plb->plbu_size, 0x40);
-
-	plb->mem_address = address + offset;
-	plb->mem_physical = physical + offset;
-	/* just align to page size for convenience */
-	plb->mem_size = ALIGN(plb->pp_offset + plb->pp_size, 0x1000);
-
-	if (plb->mem_size > size) {
-		printf("Error: plb size exceeds available space.\n");
-		free(plb);
-		plb = NULL;
-	}
-
-	plb_plbu_stream_create(plb);
-	plb_pp_stream_create(plb);
+	plb_pp_template_create(state, plb);
 
 	return plb;
+}
+
+void
+plb_info_destroy(struct plb_info *plb)
+{
+	free(plb);
+}
+
+/*
+ * Generate the plb address stream for the plbu.
+ */
+static void
+plb_plbu_stream_create(struct limare_frame *frame, struct plb_info *plb)
+{
+	unsigned int address = frame->mem_physical + frame->plb_offset;
+	unsigned int *stream = frame->mem_address + frame->plb_plbu_offset;
+	int i, size = plb->block_w * plb->block_h;
+
+	for (i = 0; i < size; i++)
+		stream[i] = address + (i * plb->block_size);
+}
+
+/*
+ * Generate the PLB desciptors for the PP.
+ */
+static void
+plb_pp_stream_create(struct limare_frame *frame, struct plb_info *plb, int core)
+{
+	unsigned int address = frame->mem_physical + frame->plb_offset;
+	unsigned int *stream = frame->mem_address + frame->plb_pp_offset[core];
+	int i;
+	unsigned int *p, *q;
+
+	address >>= 3;
+	p = stream;
+	q = plb->pp_template[core];
+
+	for (i = 0; i < plb->pp_size; i++) {
+		p[0] = 0;
+		p[1] = q[1];
+		p[2] = q[2] + address;
+		p[3] = 0xB0000000;
+		p += 4;
+		q += 4;
+	}
+
+	p[0] = 0;
+	p[1] = 0xBC000000;
+}
+
+int
+frame_plb_create(struct limare_state *state, struct limare_frame *frame)
+{
+	struct plb_info *plb = state->plb;
+	int mem_used = 0;
+	int i;
+
+	frame->plb_offset = frame->mem_used + mem_used;
+	mem_used += ALIGN(plb->plb_size, 0x40);
+
+	frame->plb_plbu_offset = frame->mem_used + mem_used;
+	mem_used += ALIGN(plb->plbu_size, 0x40);
+
+	for (i = 0; i < state->pp_core_count; i++) {
+		frame->plb_pp_offset[i] = frame->mem_used + mem_used;
+		mem_used += ALIGN(0x10 * (plb->pp_size + 1), 0x40);
+
+		if ((frame->mem_used + mem_used) > frame->mem_size) {
+			printf("%s: no space for the plb areas\n", __func__);
+			return -1;
+		}
+
+		frame->mem_used += mem_used;
+	}
+
+	plb_plbu_stream_create(frame, plb);
+
+	for (i = 0; i < state->pp_core_count; i++)
+		plb_pp_stream_create(frame, plb, i);
+
+	return 0;
 }

@@ -1,2 +1,14 @@
-remount: $(SDK)/platform-tools/adb
-	 $(SDK)/platform-tools/adb remount
+
+remount:
+ifeq ($(OS),android)
+	adb remount
+endif
+
+%.o : %.c
+	$(COMPILE.c) -MD -o $@ $<
+	@cp $*.d $*.P; \
+	    sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+		-e '/^$$/ d' -e 's/$$/ :/' < $*.d >> $*.P; \
+	    rm -f $*.d
+
+-include $(OBJS:%.o=%.P)

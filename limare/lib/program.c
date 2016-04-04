@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -24,14 +24,21 @@
 /*
  * Dealing with shader programs, from compilation to linking.
  */
-
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 
+/* for mbs reading */
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+
+#include "version.h"
 #include "limare.h"
 #include "plb.h"
-#include "linux/ioctl.h"
 #include "gp.h"
 #include "program.h"
 #include "compiler.h"
@@ -75,6 +82,13 @@
  * defined in the uniform link stream.
  *
  */
+#define STREAM_TAG_MBS1 0x3153424d
+#define STREAM_TAG_CVER 0x52455643
+#define STREAM_TAG_CFRA 0x41524643
+#define STREAM_TAG_FINS 0x534e4946
+#define STREAM_TAG_FSTA 0x41545346
+#define STREAM_TAG_FDIS 0x53494446
+#define STREAM_TAG_FBUU 0x55554246
 
 #define STREAM_TAG_STRI 0x49525453
 
@@ -84,6 +98,13 @@
 
 #define STREAM_TAG_SATT 0x54544153
 #define STREAM_TAG_VATT 0x54544156
+
+#define STREAM_TAG_VIDX 0x58444956
+#define STREAM_TAG_ITDR 0x52445449
+#define STREAM_TAG_IYUV 0x56555949
+#define STREAM_TAG_IGRD 0x44524749
+
+#define STREAM_TAG_DBIN 0x4E494244
 
 struct stream_string {
 	unsigned int tag; /* STRI */
@@ -104,8 +125,8 @@ struct stream_uniform_start {
 };
 
 struct stream_uniform_data { /* 0x14 */
-	unsigned char type; /* 0x00 */
-	unsigned char unknown01; /* 0x01 */
+	unsigned char blank; /* 0x00 */
+	unsigned char type; /* 0x01 */
 	unsigned short component_count; /* 0x02 */
 	unsigned short component_size; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
@@ -128,22 +149,23 @@ struct stream_uniform_init {
 struct stream_uniform {
 	struct stream_uniform *next;
 
-	struct stream_uniform_start *start;
-	struct stream_string *string;
-	struct stream_uniform_data *data;
-	struct stream_uniform_init *init;
+	const struct stream_uniform_start *start;
+	const struct stream_string *string;
+	const struct stream_uniform_data *data;
+	const struct stream_uniform_init *init;
 };
 
 struct stream_uniform_table {
-	struct stream_uniform_table_start *start;
+	const struct stream_uniform_table_start *start;
 
 	struct stream_uniform *uniforms;
 };
 
 static int
-stream_uniform_table_start_read(void *stream, struct stream_uniform_table *table)
+stream_uniform_table_start_read(const void *stream,
+				struct stream_uniform_table *table)
 {
-	struct stream_uniform_table_start *start = stream;
+	const struct stream_uniform_table_start *start = stream;
 
 	if (start->tag != STREAM_TAG_SUNI)
 		return 0;
@@ -153,9 +175,23 @@ stream_uniform_table_start_read(void *stream, struct stream_uniform_table *table
 }
 
 static int
-stream_uniform_start_read(void *stream, struct stream_uniform *uniform)
+stream_uniform_table_size_read(const void *stream, int *size)
 {
-	struct stream_uniform_start *start = stream;
+	const struct stream_uniform_table_start *start = stream;
+
+	*size = 0;
+	if (start->tag != STREAM_TAG_SUNI)
+		return 0;
+
+	*size = start->size + 8;
+
+	return sizeof(struct stream_uniform_table_start);
+}
+
+static int
+stream_uniform_start_read(const void *stream, struct stream_uniform *uniform)
+{
+	const struct stream_uniform_start *start = stream;
 
 	if (start->tag != STREAM_TAG_VUNI)
 		return 0;
@@ -165,7 +201,7 @@ stream_uniform_start_read(void *stream, struct stream_uniform *uniform)
 }
 
 static int
-stream_string_read(void *stream, struct stream_string **string)
+stream_string_read(const void *stream, const struct stream_string **string)
 {
 	*string = stream;
 
@@ -177,7 +213,7 @@ stream_string_read(void *stream, struct stream_string **string)
 }
 
 static int
-stream_uniform_data_read(void *stream, struct stream_uniform *uniform)
+stream_uniform_data_read(const void *stream, struct stream_uniform *uniform)
 {
 	uniform->data = stream;
 
@@ -185,9 +221,9 @@ stream_uniform_data_read(void *stream, struct stream_uniform *uniform)
 }
 
 static int
-stream_uniform_init_read(void *stream, struct stream_uniform *uniform)
+stream_uniform_init_read(const void *stream, struct stream_uniform *uniform)
 {
-	struct stream_uniform_init *init = stream;
+	const struct stream_uniform_init *init = stream;
 
 	if (init->tag != STREAM_TAG_VINI)
 		return 0;
@@ -195,6 +231,26 @@ stream_uniform_init_read(void *stream, struct stream_uniform *uniform)
 	uniform->init = init;
 
 	return 8 + init->size;
+}
+
+/*
+ * Tags that are currently unused.
+ */
+static int
+stream_uniform_skip(const void *stream)
+{
+	const unsigned int *tag = stream;
+
+	switch (*tag) {
+	case STREAM_TAG_VIDX:
+		return 8;
+	case STREAM_TAG_ITDR:
+	case STREAM_TAG_IYUV:
+	case STREAM_TAG_IGRD:
+		return 12;
+	default:
+		return 0;
+	}
 }
 
 static void
@@ -213,7 +269,7 @@ stream_uniform_table_destroy(struct stream_uniform_table *table)
 }
 
 static struct stream_uniform_table *
-stream_uniform_table_create(void *stream, int size)
+stream_uniform_table_create(const void *stream, int size)
 {
 	struct stream_uniform_table *table;
 	struct stream_uniform *uniform;
@@ -264,7 +320,19 @@ stream_uniform_table_create(void *stream, int size)
 			goto corrupt;
 		}
 
-		offset += stream_uniform_init_read(stream + offset, uniform);
+		/* skip some tags that might be there */
+		if (offset < size)
+			offset += stream_uniform_skip(stream + offset);
+		if (offset < size)
+			offset += stream_uniform_skip(stream + offset);
+		if (offset < size)
+			offset += stream_uniform_skip(stream + offset);
+		if (offset < size)
+			offset += stream_uniform_skip(stream + offset);
+
+		if (offset < size)
+			offset += stream_uniform_init_read(stream + offset,
+							   uniform);
 		/* it is legal to not have an init block */
 
 		uniform->next = table->uniforms;
@@ -280,6 +348,7 @@ stream_uniform_table_create(void *stream, int size)
 	return NULL;
 }
 
+#if 0
 void
 stream_uniform_table_print(struct stream_uniform_table *table)
 {
@@ -290,9 +359,8 @@ stream_uniform_table_print(struct stream_uniform_table *table)
 	uniform = table->uniforms;
 	while (uniform) {
 		printf("uniform \"%s\" = {\n", uniform->string->string);
-		printf("\t type 0x%02x, unknown01 0x%02x, component_count 0x%04x\n",
-		       uniform->data->type, uniform->data->unknown01,
-		       uniform->data->component_count);
+		printf("\t type 0x%04x, component_count 0x%04x\n",
+		       uniform->data->type, uniform->data->component_count);
 		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
 		       uniform->data->component_size, uniform->data->entry_count);
 		printf("\t src_stride 0x%04x, dst_stride 0x%02x, precision 0x%02x\n",
@@ -306,6 +374,7 @@ stream_uniform_table_print(struct stream_uniform_table *table)
 		uniform = uniform->next;
 	}
 }
+#endif
 
 static struct symbol **
 stream_uniform_table_to_symbols(struct stream_uniform_table *table,
@@ -334,30 +403,27 @@ stream_uniform_table_to_symbols(struct stream_uniform_table *table,
 	for (i = 0, uniform = table->uniforms;
 	     (i < table->start->count) && uniform;
 	     i++, uniform = uniform->next) {
-		int component_count = uniform->data->component_count;
-		int matrix = 0;
-
-		if (uniform->data->unknown01 == 4)
-			matrix = 1;
-
 		if (uniform->init)
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
-					      uniform->data->component_size,
-					      component_count,
+					      uniform->data->type,
+					      uniform->data->precision,
+					      uniform->data->component_count,
 					      uniform->data->entry_count,
 					      uniform->data->src_stride,
 					      uniform->data->dst_stride,
-					      uniform->init->data, 1, matrix);
+					      uniform->init->data, 1, 0);
 		else
 			symbols[i] =
 				symbol_create(uniform->string->string, SYMBOL_UNIFORM,
-					      uniform->data->component_size,
-					      component_count,
+					      uniform->data->type,
+					      uniform->data->precision,
+					      uniform->data->component_count,
 					      uniform->data->entry_count,
 					      uniform->data->src_stride,
 					      uniform->data->dst_stride,
-					      NULL, 0, matrix);
+					      NULL, 0, 0);
+
 		if (!symbols[i]) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, uniform->string->string, strerror(errno));
@@ -397,8 +463,8 @@ struct stream_attribute_start {
 };
 
 struct stream_attribute_data { /* 0x14 */
-	unsigned char type; /* 0x00 */
-	unsigned char unknown01; /* 0x01 */
+	unsigned char blank; /*0x00 */
+	unsigned char type; /* 0x01 */
 	unsigned short component_count; /* 0x02 */
 	unsigned short component_size; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
@@ -412,21 +478,22 @@ struct stream_attribute_data { /* 0x14 */
 struct stream_attribute {
 	struct stream_attribute *next;
 
-	struct stream_attribute_start *start;
-	struct stream_string *string;
-	struct stream_attribute_data *data;
+	const struct stream_attribute_start *start;
+	const struct stream_string *string;
+	const struct stream_attribute_data *data;
 };
 
 struct stream_attribute_table {
-	struct stream_attribute_table_start *start;
+	const struct stream_attribute_table_start *start;
 
 	struct stream_attribute *attributes;
 };
 
 static int
-stream_attribute_table_start_read(void *stream, struct stream_attribute_table *table)
+stream_attribute_table_start_read(const void *stream,
+				  struct stream_attribute_table *table)
 {
-	struct stream_attribute_table_start *start = stream;
+	const struct stream_attribute_table_start *start = stream;
 
 	if (start->tag != STREAM_TAG_SATT)
 		return 0;
@@ -435,10 +502,25 @@ stream_attribute_table_start_read(void *stream, struct stream_attribute_table *t
 	return sizeof(struct stream_attribute_table_start);
 }
 
+
 static int
-stream_attribute_start_read(void *stream, struct stream_attribute *attribute)
+stream_attribute_table_size_read(const void *stream, int *size)
 {
-	struct stream_attribute_start *start = stream;
+	const struct stream_attribute_table_start *start = stream;
+
+	*size = 0;
+	if (start->tag != STREAM_TAG_SATT)
+		return 0;
+
+	*size = start->size + 8;
+	return sizeof(struct stream_attribute_table_start);
+}
+
+static int
+stream_attribute_start_read(const void *stream,
+			    struct stream_attribute *attribute)
+{
+	const struct stream_attribute_start *start = stream;
 
 	if (start->tag != STREAM_TAG_VATT)
 		return 0;
@@ -448,7 +530,8 @@ stream_attribute_start_read(void *stream, struct stream_attribute *attribute)
 }
 
 static int
-stream_attribute_data_read(void *stream, struct stream_attribute *attribute)
+stream_attribute_data_read(const void *stream,
+			   struct stream_attribute *attribute)
 {
 	attribute->data = stream;
 
@@ -471,7 +554,7 @@ stream_attribute_table_destroy(struct stream_attribute_table *table)
 }
 
 static struct stream_attribute_table *
-stream_attribute_table_create(void *stream, int size)
+stream_attribute_table_create(const void *stream, int size)
 {
 	struct stream_attribute_table *table;
 	struct stream_attribute *attribute;
@@ -544,9 +627,8 @@ stream_attribute_table_print(struct stream_attribute_table *table)
 	attribute = table->attributes;
 	while (attribute) {
 		printf("attribute \"%s\" = {\n", attribute->string->string);
-		printf("\t type 0x%02x, unknown01 0x%02x, component_count 0x%04x\n",
-		       attribute->data->type, attribute->data->unknown01,
-		       attribute->data->component_count);
+		printf("\t type 0x%02x, component_count 0x%04x\n",
+		       attribute->data->type, attribute->data->component_count);
 		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
 		       attribute->data->component_size, attribute->data->entry_count);
 		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
@@ -566,7 +648,7 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 {
 	struct stream_attribute *attribute;
 	struct symbol **symbols;
-	int i;
+	int i, j = 0;
 
 	if (!table || !count)
 		return NULL;
@@ -589,7 +671,8 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 		struct symbol *symbol;
 		symbol =
 			symbol_create(attribute->string->string, SYMBOL_ATTRIBUTE,
-				      attribute->data->component_size,
+				      attribute->data->type,
+				      attribute->data->precision,
 				      attribute->data->component_count,
 				      attribute->data->entry_count,
 				      0, 0, NULL, 0, 0);
@@ -601,7 +684,8 @@ stream_attribute_table_to_symbols(struct stream_attribute_table *table,
 
 		symbol->offset = attribute->data->offset;
 
-		symbols[symbol->offset / 4] = symbol;
+		symbols[j] = symbol;
+		j++;
 	}
 
 	return symbols;
@@ -636,15 +720,15 @@ struct stream_varying_start {
 };
 
 struct stream_varying_data { /* 0x14 */
-	unsigned char type; /* 0x00 */
-	unsigned char unknown01; /* 0x01 */
+	unsigned char blank; /* 0x00 */
+	unsigned char type; /* 0x01 */
 	unsigned short component_count; /* 0x02 */
-	unsigned short component_size; /* 0x04 */
+	unsigned short stride0; /* 0x04 */
 	unsigned short entry_count; /* 0x06. 0 == 1 */
-	unsigned short stride; /* 0x08 */
-	unsigned char unknown0A; /* 0x0A */
+	unsigned short stride1; /* 0x08 */
+	unsigned char flags; /* 0x0A */
 	unsigned char precision; /* 0x0B */
-	unsigned short unknown0C; /* 0x0C */
+	unsigned short invariant; /* 0x0C */
 	unsigned short unknown0E; /* 0x0E */
 	unsigned short offset; /* 0x10 */
 	unsigned short index; /* 0x12 */
@@ -653,21 +737,22 @@ struct stream_varying_data { /* 0x14 */
 struct stream_varying {
 	struct stream_varying *next;
 
-	struct stream_varying_start *start;
-	struct stream_string *string;
-	struct stream_varying_data *data;
+	const struct stream_varying_start *start;
+	const struct stream_string *string;
+	const struct stream_varying_data *data;
 };
 
 struct stream_varying_table {
-	struct stream_varying_table_start *start;
+	const struct stream_varying_table_start *start;
 
 	struct stream_varying *varyings;
 };
 
 static int
-stream_varying_table_start_read(void *stream, struct stream_varying_table *table)
+stream_varying_table_start_read(const void *stream,
+				struct stream_varying_table *table)
 {
-	struct stream_varying_table_start *start = stream;
+	const struct stream_varying_table_start *start = stream;
 
 	if (start->tag != STREAM_TAG_SVAR)
 		return 0;
@@ -677,9 +762,21 @@ stream_varying_table_start_read(void *stream, struct stream_varying_table *table
 }
 
 static int
-stream_varying_start_read(void *stream, struct stream_varying *varying)
+stream_varying_table_size_read(const void *stream, int *size)
 {
-	struct stream_varying_start *start = stream;
+	const struct stream_varying_table_start *start = stream;
+
+	if (start->tag != STREAM_TAG_SVAR)
+		return 0;
+
+	*size = start->size + 8;
+	return sizeof(struct stream_varying_table_start);
+}
+
+static int
+stream_varying_start_read(const void *stream, struct stream_varying *varying)
+{
+	const struct stream_varying_start *start = stream;
 
 	if (start->tag != STREAM_TAG_VVAR)
 		return 0;
@@ -689,7 +786,7 @@ stream_varying_start_read(void *stream, struct stream_varying *varying)
 }
 
 static int
-stream_varying_data_read(void *stream, struct stream_varying *varying)
+stream_varying_data_read(const void *stream, struct stream_varying *varying)
 {
 	varying->data = stream;
 
@@ -712,7 +809,7 @@ stream_varying_table_destroy(struct stream_varying_table *table)
 }
 
 static struct stream_varying_table *
-stream_varying_table_create(void *stream, int size)
+stream_varying_table_create(const void *stream, int size)
 {
 	struct stream_varying_table *table;
 	struct stream_varying *varying;
@@ -785,16 +882,15 @@ stream_varying_table_print(struct stream_varying_table *table)
 	varying = table->varyings;
 	while (varying) {
 		printf("varying \"%s\" = {\n", varying->string->string);
-		printf("\t type 0x%02x, unknown01 0x%02x, component_count 0x%04x\n",
-		       varying->data->type, varying->data->unknown01,
-		       varying->data->component_count);
+		printf("\t type 0x%02x, component_count 0x%04x\n",
+		       varying->data->type, varying->data->component_count);
 		printf("\t component_size 0x%04x, entry_count 0x%04x\n",
-		       varying->data->component_size, varying->data->entry_count);
-		printf("\t stride 0x%04x, unknown0A 0x%02x, precision 0x%02x\n",
-		       varying->data->stride, varying->data->unknown0A,
+		       varying->data->stride0, varying->data->entry_count);
+		printf("\t stride 0x%04x, ranking 0x%02x, precision 0x%02x\n",
+		       varying->data->stride1, varying->data->ranking,
 		       varying->data->precision);
-		printf("\t unknown0C 0x%04x, offset 0x%04x\n",
-		       varying->data->unknown0C, varying->data->offset);
+		printf("\t flag 0x%04x, offset 0x%04x\n",
+		       varying->data->flag, varying->data->offset);
 		printf("}\n");
 		varying = varying->next;
 	}
@@ -807,7 +903,7 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 {
 	struct stream_varying *varying;
 	struct symbol **symbols;
-	int i;
+	int i, j;
 
 	if (!table || !count)
 		return NULL;
@@ -824,10 +920,16 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 		goto error;
 	}
 
-	for (i = 0, varying = table->varyings;
+	for (i = 0, j = 0, varying = table->varyings;
 	     (i < table->start->count) && varying;
 	     i++, varying = varying->next) {
 		struct symbol *symbol;
+		int flag;
+
+		if (varying->data->flags & 0x08)
+			flag = SYMBOL_USE_VERTEX_SIZE;
+		else
+			flag = 0;
 
 		if (varying->data->offset == 0xFFFF) {
 			(*count)--;
@@ -835,20 +937,21 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 		}
 
 		symbol = symbol_create(varying->string->string, SYMBOL_VARYING,
-				       varying->data->component_size,
+				       varying->data->type,
+				       varying->data->precision,
 				       varying->data->component_count,
 				       varying->data->entry_count,
-				       0, 0, NULL, 0, 0);
+				       0, 0, NULL, 0, flag);
 		if (!symbol) {
 			printf("%s: Error: failed to create symbol %s: %s\n",
 			       __func__, varying->string->string, strerror(errno));
 			goto error;
 		}
 
-
 		symbol->offset = varying->data->offset;
 
-		symbols[symbol->offset / 4] = symbol;
+		symbols[j] = symbol;
+		j++;
 	}
 
 	return symbols;
@@ -865,10 +968,11 @@ stream_varying_table_to_symbols(struct stream_varying_table *table,
 	return NULL;
 }
 
+#if 0
 /*
  *
  */
-void
+static void
 vertex_shader_attributes_patch(unsigned int *shader, int size)
 {
 	int i;
@@ -891,6 +995,7 @@ vertex_shader_attributes_patch(unsigned int *shader, int size)
 		shader[4 * i + 1] |= tmp << 26;
 	}
 }
+#endif
 
 static int
 vertex_shader_varyings_patch(unsigned int *shader, int size, int *indices)
@@ -941,19 +1046,19 @@ vertex_shader_varyings_patch(unsigned int *shader, int size, int *indices)
 	return 0;
 }
 
-void
+static void
 limare_shader_binary_free(struct lima_shader_binary *binary)
 {
-	free(binary->error_log);
-	free(binary->shader);
-	free(binary->varying_stream);
-	free(binary->uniform_stream);
-	free(binary->attribute_stream);
+	free((void *) binary->error_log);
+	free((void *) binary->shader);
+	free((void *) binary->varying_stream);
+	free((void *) binary->uniform_stream);
+	free((void *) binary->attribute_stream);
 	free(binary);
 }
 
 struct lima_shader_binary *
-limare_shader_compile(int type, const char *source)
+limare_shader_compile(struct limare_state *state, int type, const char *source)
 {
 	struct lima_shader_binary *binary;
 	int length = strlen(source);
@@ -966,43 +1071,117 @@ limare_shader_compile(int type, const char *source)
 		return NULL;
 	}
 
-	ret = __mali_compile_essl_shader(binary, type,
-					 source, &length, 1);
-	if (ret) {
-		if (binary->error_log)
-			printf("%s: compilation failed: %s\n",
-			       __func__, binary->error_log);
-		else
-			printf("%s: compilation failed: %s\n",
-			       __func__, binary->oom_log);
+	if (state->kernel_version >= MALI_DRIVER_VERSION_R3P2) {
+		struct lima_shader_binary_r3p2 mbs_binary[1] = {{ 0 }};
 
-		limare_shader_binary_free(binary);
-		return NULL;
+		ret = __mali_compile_essl_shader((struct lima_shader_binary *)
+						 mbs_binary, type, source,
+						 &length, 1);
+		if (ret) {
+			if (mbs_binary->error_log)
+				printf("%s: compilation failed: %s\n",
+				       __func__, mbs_binary->error_log);
+			else
+				printf("%s: compilation failed: %s\n",
+				       __func__, mbs_binary->oom_log);
+
+			free((void *) mbs_binary->error_log);
+			free(mbs_binary->shader);
+			free((void *) mbs_binary->mbs_stream);
+			free((void *) mbs_binary->varying_stream);
+			free((void *) mbs_binary->uniform_stream);
+			free((void *) mbs_binary->attribute_stream);
+			return NULL;
+		}
+
+		/* we are not using the mbs */
+		free((void *) mbs_binary->mbs_stream);
+
+		binary->compile_status = mbs_binary->compile_status;
+		binary->shader = mbs_binary->shader;
+		binary->shader_size = mbs_binary->shader_size;
+		binary->varying_stream = mbs_binary->varying_stream;
+		binary->varying_stream_size = mbs_binary->varying_stream_size;
+		binary->uniform_stream = mbs_binary->uniform_stream;
+		binary->uniform_stream_size = mbs_binary->uniform_stream_size;
+		binary->attribute_stream = mbs_binary->attribute_stream;
+		binary->attribute_stream_size = mbs_binary->attribute_stream_size;
+
+		binary->parameters.fragment = mbs_binary->parameters.fragment;
+	} else if (state->kernel_version >= MALI_DRIVER_VERSION_R3P0) {
+		struct lima_shader_binary_mbs mbs_binary[1] = {{ 0 }};
+
+		ret = __mali_compile_essl_shader((struct lima_shader_binary *)
+						 mbs_binary, type, source,
+						 &length, 1);
+		if (ret) {
+			if (mbs_binary->error_log)
+				printf("%s: compilation failed: %s\n",
+				       __func__, mbs_binary->error_log);
+			else
+				printf("%s: compilation failed: %s\n",
+				       __func__, mbs_binary->oom_log);
+
+			free((void *) mbs_binary->error_log);
+			free(mbs_binary->shader);
+			free((void *) mbs_binary->mbs_stream);
+			free((void *) mbs_binary->varying_stream);
+			free((void *) mbs_binary->uniform_stream);
+			free((void *) mbs_binary->attribute_stream);
+			return NULL;
+		}
+
+		/* we are not using the mbs */
+		free((void *) mbs_binary->mbs_stream);
+
+		binary->compile_status = mbs_binary->compile_status;
+		binary->shader = mbs_binary->shader;
+		binary->shader_size = mbs_binary->shader_size;
+		binary->varying_stream = mbs_binary->varying_stream;
+		binary->varying_stream_size = mbs_binary->varying_stream_size;
+		binary->uniform_stream = mbs_binary->uniform_stream;
+		binary->uniform_stream_size = mbs_binary->uniform_stream_size;
+		binary->attribute_stream = mbs_binary->attribute_stream;
+		binary->attribute_stream_size = mbs_binary->attribute_stream_size;
+
+		binary->parameters.fragment = mbs_binary->parameters.fragment;
+	} else {
+		ret = __mali_compile_essl_shader(binary, type,
+						 source, &length, 1);
+		if (ret) {
+			if (binary->error_log)
+				printf("%s: compilation failed: %s\n",
+				       __func__, binary->error_log);
+			else
+				printf("%s: compilation failed: %s\n",
+				       __func__, binary->oom_log);
+
+			limare_shader_binary_free(binary);
+			return NULL;
+		}
 	}
+
+
 
 	return binary;
 }
 
-int
-vertex_shader_attach(struct limare_state *state, const char *source)
+static int
+program_vertex_shader_symbols_attach(struct limare_program *program,
+				     struct lima_shader_binary *binary)
 {
-	struct lima_shader_binary *binary;
 	struct stream_uniform_table *uniform_table;
 	struct stream_attribute_table *attribute_table;
 	struct stream_varying_table *varying_table;
-
-	binary = limare_shader_compile(LIMA_SHADER_VERTEX, source);
-	if (!binary)
-		return -1;
 
 	uniform_table =
 		stream_uniform_table_create(binary->uniform_stream,
 					    binary->uniform_stream_size);
 	if (uniform_table) {
-		state->vertex_uniforms =
+		program->vertex_uniforms =
 			stream_uniform_table_to_symbols(uniform_table,
-							&state->vertex_uniform_count,
-							&state->vertex_uniform_size);
+							&program->vertex_uniform_count,
+							&program->vertex_uniform_size);
 		stream_uniform_table_destroy(uniform_table);
 	}
 
@@ -1010,9 +1189,9 @@ vertex_shader_attach(struct limare_state *state, const char *source)
 		stream_attribute_table_create(binary->attribute_stream,
 					      binary->attribute_stream_size);
 	if (attribute_table) {
-		state->vertex_attributes =
+		program->vertex_attributes =
 			stream_attribute_table_to_symbols(attribute_table,
-							  &state->vertex_attribute_count);
+							  &program->vertex_attribute_count);
 		stream_attribute_table_destroy(attribute_table);
 	}
 
@@ -1020,38 +1199,61 @@ vertex_shader_attach(struct limare_state *state, const char *source)
 		stream_varying_table_create(binary->varying_stream,
 					    binary->varying_stream_size);
 	if (varying_table) {
-		state->vertex_varyings =
+		program->vertex_varyings =
 			stream_varying_table_to_symbols(varying_table,
-							&state->vertex_varying_count);
+							&program->vertex_varying_count);
 		stream_varying_table_destroy(varying_table);
 	}
-
-	state->vertex_varying_something = binary->parameters.vertex.varying_something;
-
-	state->vertex_binary = binary;
 
 	return 0;
 }
 
 int
-fragment_shader_attach(struct limare_state *state, const char *source)
+limare_program_vertex_shader_attach(struct limare_state *state,
+				    struct limare_program *program,
+				    const char *source)
 {
 	struct lima_shader_binary *binary;
-	struct stream_uniform_table *uniform_table;
-	struct stream_varying_table *varying_table;
 
-	binary = limare_shader_compile(LIMA_SHADER_FRAGMENT, source);
+	binary = limare_shader_compile(state, LIMA_SHADER_VERTEX, source);
 	if (!binary)
 		return -1;
+
+	if (binary->shader_size > program->vertex_mem_size) {
+		printf("%s: Vertex shader is too large: %d\n",
+		       __func__, binary->shader_size);
+		limare_shader_binary_free(binary);
+		return -1;
+	}
+
+	program->vertex_shader = binary->shader;
+	binary->shader = NULL;
+	program->vertex_shader_size = binary->shader_size;
+	program->vertex_attribute_prefetch =
+		binary->parameters.vertex.attribute_prefetch;
+
+	program_vertex_shader_symbols_attach(program, binary);
+
+	limare_shader_binary_free(binary);
+
+	return 0;
+}
+
+static int
+program_fragment_shader_symbols_attach(struct limare_program *program,
+				       struct lima_shader_binary *binary)
+{
+	struct stream_uniform_table *uniform_table;
+	struct stream_varying_table *varying_table;
 
 	uniform_table =
 		stream_uniform_table_create(binary->uniform_stream,
 					    binary->uniform_stream_size);
 	if (uniform_table) {
-		state->fragment_uniforms =
+		program->fragment_uniforms =
 			stream_uniform_table_to_symbols(uniform_table,
-							&state->fragment_uniform_count,
-							&state->fragment_uniform_size);
+							&program->fragment_uniform_count,
+							&program->fragment_uniform_size);
 		stream_uniform_table_destroy(uniform_table);
 	}
 
@@ -1059,110 +1261,641 @@ fragment_shader_attach(struct limare_state *state, const char *source)
 		stream_varying_table_create(binary->varying_stream,
 					    binary->varying_stream_size);
 	if (varying_table) {
-		state->fragment_varyings =
+		program->fragment_varyings =
 			stream_varying_table_to_symbols(varying_table,
-							&state->fragment_varying_count);
+							&program->fragment_varying_count);
 		stream_varying_table_destroy(varying_table);
 	}
-
-	state->fragment_binary = binary;
 
 	return 0;
 }
 
-void
-state_symbols_print(struct limare_state *state)
+int
+limare_program_fragment_shader_attach(struct limare_state *state,
+				      struct limare_program *program,
+				      const char *source)
+{
+	struct lima_shader_binary *binary;
+
+	binary = limare_shader_compile(state, LIMA_SHADER_FRAGMENT, source);
+	if (!binary)
+		return -1;
+
+	if (binary->shader_size > program->fragment_mem_size) {
+		printf("%s: Fragment shader is too large: %d\n",
+		       __func__, binary->shader_size);
+		limare_shader_binary_free(binary);
+		return -1;
+	}
+
+	program->fragment_shader = binary->shader;
+	binary->shader = NULL;
+	program->fragment_shader_size = binary->shader_size;
+	program->fragment_first_instruction_size =
+		binary->parameters.fragment.first_instruction_size;
+
+	program_fragment_shader_symbols_attach(program, binary);
+
+	limare_shader_binary_free(binary);
+
+	return 0;
+}
+
+struct stream_mbs_start
+{
+	unsigned int tag; /* MBS1 */
+	int size;
+};
+
+struct stream_mbs_cver
+{
+	unsigned int tag; /* CVER */
+	int size;
+	int version;
+};
+
+struct stream_mbs_cfra
+{
+	unsigned int tag; /* CFRA */
+	int size;
+	int version;
+};
+
+struct stream_mbs_fins
+{
+	unsigned int tag; /* FINS */
+	int size;
+	int unknown0;
+	int code_size;
+	int attribute_prefetch;
+};
+
+struct stream_mbs_fsta
+{
+	unsigned int tag; /* FSTA */
+	int size;
+	int unknown0;
+	int unknown1;
+};
+
+struct stream_mbs_fdis
+{
+	unsigned int tag; /* FDIS */
+	int size;
+	int unknown0;
+};
+
+struct stream_mbs_fbuu
+{
+	unsigned int tag; /* FBUU */
+	int size;
+	int unknown0;
+	int unknown1;
+};
+
+struct stream_mbs_dbin
+{
+	unsigned int tag; /* DBIN */
+	int size;
+};
+
+static int
+stream_mbs_start_read(const void *stream, int *size)
+{
+	const struct stream_mbs_start *start = stream;
+
+	if (start->tag != STREAM_TAG_MBS1)
+		return 0;
+
+	*size = start->size;
+	return sizeof(struct stream_mbs_start);
+}
+
+static int
+stream_mbs_cver_read(const void *stream, int *version)
+{
+	const struct stream_mbs_cver *cver = stream;
+
+	if (cver->tag != STREAM_TAG_CVER)
+		return 0;
+
+	*version = cver->version;
+
+	return sizeof(struct stream_mbs_cver);
+}
+
+static int
+stream_mbs_cfra_read(const void *stream, int *version)
+{
+	const struct stream_mbs_cfra *cfra = stream;
+
+	if (cfra->tag != STREAM_TAG_CFRA)
+		return 0;
+
+	*version = cfra->version;
+
+	return sizeof(struct stream_mbs_cfra);
+}
+
+static int
+stream_mbs_fins_read(const void *stream, int *code_size,
+		     int *attribute_prefetch)
+{
+	const struct stream_mbs_fins *fins = stream;
+
+	if (fins->tag != STREAM_TAG_FINS)
+		return 0;
+
+	*code_size = fins->code_size;
+	*attribute_prefetch = fins->attribute_prefetch;
+
+	return sizeof(struct stream_mbs_fins);
+}
+
+static int
+stream_mbs_fsta_read(const void *stream)
+{
+	const struct stream_mbs_fsta *fsta = stream;
+
+	if (fsta->tag != STREAM_TAG_FSTA)
+		return 0;
+
+	if ((fsta->unknown0 != 1) || (fsta->unknown1 != 1))
+		printf("%s: Error: wrong parameters\n", __func__);
+
+	return sizeof(struct stream_mbs_fsta);
+}
+
+static int
+stream_mbs_fdis_read(const void *stream)
+{
+	const struct stream_mbs_fdis *fdis = stream;
+
+	if (fdis->tag != STREAM_TAG_FDIS)
+		return 0;
+
+	return sizeof(struct stream_mbs_fdis);
+}
+
+static int
+stream_mbs_fbuu_read(const void *stream)
+{
+	const struct stream_mbs_fbuu *fbuu = stream;
+
+	if (fbuu->tag != STREAM_TAG_FBUU)
+		return 0;
+
+	if ((fbuu->unknown0 != 0x100) || (fbuu->unknown1 != 0))
+		printf("%s: Error: wrong parameters\n", __func__);
+
+	return sizeof(struct stream_mbs_fbuu);
+}
+
+static int
+stream_mbs_dbin_read(const void *stream, int *size)
+{
+	const struct stream_mbs_dbin *dbin = stream;
+
+	if (dbin->tag != STREAM_TAG_DBIN)
+		return 0;
+
+	*size = dbin->size;
+	return sizeof(struct stream_mbs_dbin);
+}
+
+int
+limare_program_vertex_shader_attach_mbs_stream(struct limare_state *state,
+					       struct limare_program *program,
+					       const void *stream, int size)
+{
+	struct lima_shader_binary *binary = NULL;
+	int ret = 0, offset = 0;
+	int stream_size = 0, version = 0, code_size = 0;
+	int attribute_prefetch = 0;
+
+	offset += stream_mbs_start_read(stream + offset, &stream_size);
+	if (stream_size <= 0) {
+		printf("%s: Error: missing or invalid MBS start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+
+	if ((offset + stream_size) != size) {
+		printf("%s: Error: MBS size mismatch.\n", __func__);
+		goto end;
+	}
+
+	offset += stream_mbs_cver_read(stream + offset, &version);
+	if (version <= 0) {
+		printf("%s: Error: missing or invalid MBS start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+
+	switch (version) {
+	case 2:
+	case 6:
+		/* vertex shader */
+
+		break;
+	case 5:
+	case 7:
+		/* fragment shader */
+		printf("%s: Error: this mbs is a fragment shader\n", __func__);
+		return -1;
+	default:
+		printf("%s: Error: unknown mbs version %d\n",
+		       __func__, version);
+		return -1;
+	}
+
+	ret = stream_mbs_fins_read(stream + offset,
+				   &code_size, &attribute_prefetch);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid FINS start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+	offset += ret;
+
+	binary = calloc(1, sizeof(struct lima_shader_binary));
+	if (!binary) {
+		printf("%s: Error: allocation failed: %s\n",
+		       __func__, strerror(errno));
+		goto end;
+	}
+
+	binary->uniform_stream = stream + offset;
+
+	ret = stream_uniform_table_size_read(stream + offset,
+					     &binary->uniform_stream_size);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid uniform table start at"
+		       " 0x%x\n", __func__, offset);
+		goto end;
+	}
+	offset += binary->uniform_stream_size;
+
+	binary->attribute_stream = stream + offset;
+
+	ret = stream_attribute_table_size_read(stream + offset,
+					       &binary->attribute_stream_size);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid attribute table start "
+		       "at 0x%x\n", __func__, offset);
+		goto end;
+	}
+	offset += binary->attribute_stream_size;
+
+	binary->varying_stream = stream + offset;
+	ret = stream_varying_table_size_read(stream + offset,
+					     &binary->varying_stream_size);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid varying table start "
+		       "at 0x%x\n", __func__, offset);
+		goto end;
+	}
+	offset += binary->varying_stream_size;
+
+	ret = stream_mbs_dbin_read(stream + offset,
+				   &binary->shader_size);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid DBIN at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+
+	if (binary->shader_size > program->vertex_mem_size) {
+		printf("%s: Vertex shader is too large: %d\n",
+		       __func__, binary->shader_size);
+		goto end;
+	}
+
+	program->vertex_shader = malloc(binary->shader_size);
+	if (!program->vertex_shader) {
+		printf("%s: Error: shader memory allocation failed: %s\n",
+		       __func__, strerror(errno));
+		goto end;
+	}
+	memcpy(program->vertex_shader, stream + offset + 8,
+	       binary->shader_size);
+	program->vertex_shader_size = binary->shader_size;
+	program->vertex_attribute_prefetch = attribute_prefetch;
+
+	program_vertex_shader_symbols_attach(program, binary);
+
+	ret = 0;
+ end:
+	free(binary);
+	return ret;
+}
+
+
+int
+limare_program_vertex_shader_attach_mbs_file(struct limare_state *state,
+					     struct limare_program *program,
+					     const char *filename)
+{
+	int fd, size, ret;
+	const void *stream;
+
+	fd = open(filename, O_RDONLY);
+        if (fd < 0) {
+                printf("Error: failed to open %s: %s\n",
+		       filename, strerror(errno));
+                return errno;
+        }
+
+	{
+                struct stat buf;
+
+                if (stat(filename, &buf)) {
+                        printf("Error: failed to fstat %s: %s\n",
+                               filename, strerror(errno));
+			close(fd);
+                        return errno;
+                }
+
+                size = buf.st_size;
+                if (!size) {
+                        fprintf(stderr, "Error: %s is empty.\n", filename);
+			close(fd);
+                        return 0;
+                }
+        }
+
+	stream = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+        if (stream == MAP_FAILED) {
+                printf("Error: failed to mmap %s: %s\n",
+                       filename, strerror(errno));
+		close(fd);
+                return errno;
+        }
+
+	ret = limare_program_vertex_shader_attach_mbs_stream(state, program,
+							     stream, size);
+
+	munmap((void *) stream, size);
+	close(fd);
+
+	return ret;
+}
+
+int
+limare_program_fragment_shader_attach_mbs_stream(struct limare_state *state,
+					       struct limare_program *program,
+					       const void *stream, int size)
+{
+	struct lima_shader_binary *binary = NULL;
+	int ret = 0, offset = 0;
+	int stream_size = 0, version = 0;
+
+	offset += stream_mbs_start_read(stream + offset, &stream_size);
+	if (stream_size <= 0) {
+		printf("%s: Error: missing or invalid MBS start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+
+	if ((offset + stream_size) != size) {
+		printf("%s: Error: MBS size mismatch.\n", __func__);
+		goto end;
+	}
+
+	offset += stream_mbs_cfra_read(stream + offset, &version);
+	if (version <= 0) {
+		printf("%s: Error: missing or invalid MBS start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+
+	switch (version) {
+	case 2:
+	case 6:
+		/* vertex shader */
+		printf("%s: Error: this mbs is a fragment shader\n", __func__);
+		return -1;
+	case 5:
+	case 7:
+		break;
+	default:
+		printf("%s: Error: unknown mbs version %d\n",
+		       __func__, version);
+		return -1;
+	}
+
+	ret = stream_mbs_fsta_read(stream + offset);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid FSTA start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+	offset += ret;
+
+	ret = stream_mbs_fdis_read(stream + offset);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid FDIS start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+	offset += ret;
+
+	ret = stream_mbs_fbuu_read(stream + offset);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid FBUU start at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+	offset += ret;
+
+	binary = calloc(1, sizeof(struct lima_shader_binary));
+	if (!binary) {
+		printf("%s: Error: allocation failed: %s\n",
+		       __func__, strerror(errno));
+		goto end;
+	}
+
+	binary->uniform_stream = stream + offset;
+
+	ret = stream_uniform_table_size_read(stream + offset,
+					     &binary->uniform_stream_size);
+	if (ret < 0) {
+		printf("%s: Error: missing or invalid uniform table start at"
+		       " 0x%x\n", __func__, offset);
+		goto end;
+	}
+	offset += binary->uniform_stream_size;
+
+	binary->varying_stream = stream + offset;
+	ret = stream_varying_table_size_read(stream + offset,
+					     &binary->varying_stream_size);
+	if (ret < 0) {
+		printf("%s: Error: missing or invalid varying table start "
+		       "at 0x%x\n", __func__, offset);
+		goto end;
+	}
+	offset += binary->varying_stream_size;
+
+	ret = stream_mbs_dbin_read(stream + offset,
+				   &binary->shader_size);
+	if (ret <= 0) {
+		printf("%s: Error: missing or invalid DBIN at 0x%x\n",
+		       __func__, offset);
+		goto end;
+	}
+
+	if (binary->shader_size > program->fragment_mem_size) {
+		printf("%s: Fragment shader is too large: %d\n",
+		       __func__, binary->shader_size);
+		goto end;
+	}
+
+	program->fragment_shader = malloc(binary->shader_size);
+	if (!program->fragment_shader) {
+		printf("%s: Error: shader memory allocation failed: %s\n",
+		       __func__, strerror(errno));
+		goto end;
+	}
+	memcpy(program->fragment_shader, stream + offset + 8,
+	       binary->shader_size);
+	program->fragment_shader_size = binary->shader_size;
+	program->fragment_first_instruction_size =
+		((unsigned int *) program->fragment_shader)[0] & 0x1F;
+
+	program_fragment_shader_symbols_attach(program, binary);
+
+	ret = 0;
+ end:
+	free(binary);
+	return ret;
+}
+
+int
+limare_program_fragment_shader_attach_mbs_file(struct limare_state *state,
+					       struct limare_program *program,
+					       const char *filename)
+{
+	int fd, size, ret;
+	const void *stream;
+
+	fd = open(filename, O_RDONLY);
+        if (fd < 0) {
+                printf("Error: failed to open %s: %s\n",
+		       filename, strerror(errno));
+                return errno;
+        }
+
+	{
+                struct stat buf;
+
+                if (stat(filename, &buf)) {
+                        printf("Error: failed to fstat %s: %s\n",
+                               filename, strerror(errno));
+			close(fd);
+                        return errno;
+                }
+
+                size = buf.st_size;
+                if (!size) {
+                        fprintf(stderr, "Error: %s is empty.\n", filename);
+			close(fd);
+                        return 0;
+                }
+        }
+
+	stream = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+        if (stream == MAP_FAILED) {
+                printf("Error: failed to mmap %s: %s\n",
+                       filename, strerror(errno));
+		close(fd);
+                return errno;
+        }
+
+	ret = limare_program_fragment_shader_attach_mbs_stream(state, program,
+							       stream, size);
+
+	munmap((void *) stream, size);
+	close(fd);
+
+	return ret;
+}
+
+#if 0
+static void
+program_symbols_print(struct limare_program *program)
 {
 	int i;
 
 	printf("Vertex symbols:\n");
-	printf("\tAttributes: %d\n", state->vertex_attribute_count);
-	for (i = 0; i < state->vertex_attribute_count; i++)
-		symbol_print(state->vertex_attributes[i]);
-	printf("\tVaryings: %d\n", state->vertex_varying_count);
-	for (i = 0; i < state->vertex_varying_count; i++)
-		symbol_print(state->vertex_varyings[i]);
-	printf("\tUniforms: %d\n", state->vertex_uniform_count);
-	for (i = 0; i < state->vertex_uniform_count; i++)
-		symbol_print(state->vertex_uniforms[i]);
+
+	printf("\tAttributes: %d\n", program->vertex_attribute_count);
+	for (i = 0; i < program->vertex_attribute_count; i++)
+		symbol_print(program->vertex_attributes[i]);
+
+	printf("\tVaryings: %d\n", program->vertex_varying_count);
+	for (i = 0; i < program->vertex_varying_count; i++)
+		symbol_print(program->vertex_varyings[i]);
+	if (program->gl_Position)
+		symbol_print(program->gl_Position);
+	if (program->gl_PointSize)
+		symbol_print(program->gl_PointSize);
+
+	printf("\tUniforms: %d\n", program->vertex_uniform_count);
+	for (i = 0; i < program->vertex_uniform_count; i++)
+		symbol_print(program->vertex_uniforms[i]);
 
 	printf("Fragment symbols:\n");
-	printf("\tVaryings: %d\n", state->fragment_varying_count);
-	for (i = 0; i < state->fragment_varying_count; i++)
-		symbol_print(state->fragment_varyings[i]);
-	printf("\tUniforms: %d\n", state->fragment_uniform_count);
-	for (i = 0; i < state->fragment_uniform_count; i++)
-		symbol_print(state->fragment_uniforms[i]);
+
+	printf("\tVaryings: %d\n", program->fragment_varying_count);
+	for (i = 0; i < program->fragment_varying_count; i++)
+		symbol_print(program->fragment_varyings[i]);
+
+	printf("\tUniforms: %d\n", program->fragment_uniform_count);
+	for (i = 0; i < program->fragment_uniform_count; i++)
+		symbol_print(program->fragment_uniforms[i]);
 }
+#endif
 
 /*
- * Checks whether vertex and fragment attributes match.
+ * Checks whether vertex and fragment varyings match.
  */
 static int
-limare_link_varyings_match(struct limare_state *state)
+link_varyings_match(struct limare_program *program)
 {
-	int i, j;
+	int i;
 
-	/* now make sure that our varyings are present in both */
-	for (i = 0; i < state->fragment_varying_count; i++) {
-		struct symbol *fragment = state->fragment_varyings[i];
+	/* make sure that our varyings are present in both */
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		struct symbol *fragment = program->fragment_varyings[i];
+		struct symbol *vertex = program->vertex_varyings[i];
 
-		for (j = 0; j < state->vertex_varying_count; j++) {
-			struct symbol *vertex = state->vertex_varyings[j];
-
-			if (!strcmp(fragment->name, vertex->name)) {
-				if (fragment->component_size != vertex->component_size) {
-					printf("%s: Error: component_size mismatch for varying \"%s\".\n",
-					       __func__, fragment->name);
-					return -1;
-				}
-
-				if (fragment->component_count != vertex->component_count) {
-					printf("%s: Error: component_count mismatch for varying \"%s\".\n",
-					       __func__, fragment->name);
-					return -1;
-				}
-
-				if (fragment->entry_count != vertex->entry_count) {
-					printf("%s: Error: entry_count mismatch for varying \"%s\".\n",
-					       __func__, fragment->name);
-					return -1;
-				}
-
-				if (fragment->size != vertex->size) {
-					printf("%s: Error: size mismatch for varying \"%s\".\n",
-					       __func__, fragment->name);
-					return -1;
-				}
-
-				break;
-			}
-		}
-
-		if (j == state->vertex_varying_count) {
-			printf("%s: Error: vertex shader does not provide "
-			       "varying \"%s\".\n", __func__, fragment->name);
+		if ((fragment->component_size << vertex->precision) !=
+		    (vertex->component_size << fragment->precision)) {
+			printf("%s: Error: component_size mismatch for varying \"%s\".\n",
+			       __func__, fragment->name);
 			return -1;
 		}
-	}
 
-	/* now check for standard varyings, which might not be defined in
-	 * the fragment symbol list */
-	if (state->fragment_varying_count != state->vertex_varying_count) {
-		for (i = 0, j = 0; i < state->vertex_varying_count; i++) {
-			struct symbol *vertex = state->vertex_varyings[i];
-
-			if (!strncmp(vertex->name, "gl_", 3))
-				j++;
+		if (fragment->component_count != vertex->component_count) {
+			printf("%s: Error: component_count mismatch for varying \"%s\".\n",
+			       __func__, fragment->name);
+			return -1;
 		}
 
-		if (state->fragment_varying_count >
-		    (state->vertex_varying_count + j)) {
-			printf("%s: superfluous vertex shader varyings detected.\n",
-			       __func__);
-			/* no error... yet... */
+		if (fragment->entry_count != vertex->entry_count) {
+			printf("%s: Error: entry_count mismatch for varying \"%s\".\n",
+			       __func__, fragment->name);
+			return -1;
 		}
 
+		if ((fragment->size << vertex->precision) !=
+		    (vertex->size << fragment->precision)) {
+			printf("%s: Error: size mismatch for varying \"%s\".\n",
+			       __func__, fragment->name);
+			return -1;
+		}
+
+		break;
 	}
 
 	return 0;
@@ -1173,70 +1906,287 @@ limare_link_varyings_match(struct limare_state *state)
  * how do we order then? Most likely from symbol->offset too.
  */
 static void
-limare_link_varyings_indices_get(struct limare_state *state, int *varyings)
+link_varyings_indices_get(struct limare_program *program, int *varyings)
 {
-	int i, j;
-
-	for (i = 0; i < state->fragment_varying_count; i++) {
-		struct symbol *fragment = state->fragment_varyings[i];
-
-		for (j = 0; j < state->vertex_varying_count; j++) {
-			struct symbol *vertex = state->vertex_varyings[j];
-
-			if (!strcmp(fragment->name, vertex->name))
-				varyings[vertex->offset / 4] = i;
-		}
-	}
-
-	for (j = 0; j < state->vertex_varying_count; j++) {
-		if (varyings[j] == -1) {
-			struct symbol *vertex = state->vertex_varyings[j];
-
-			if (!strcmp(vertex->name, "gl_Position")) {
-				varyings[vertex->offset / 4] = state->fragment_varying_count;
-				break;
-			}
-		}
-	}
-
-#if 0
-	for (i = 0; i < 16; i++)
-		printf("varyings[%d] = %d\n", i, varyings[i]);
-#endif
-}
-
-void
-vertex_shader_varyings_reorder(struct limare_state *state, int *varyings)
-{
-	struct symbol *symbol;
-	struct symbol *symbols[16] = { 0 };
 	int i;
 
-	for (i = 0; i < state->vertex_varying_count; i++) {
-		symbol = state->vertex_varyings[i];
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		struct symbol *fragment = program->fragment_varyings[i];
+		struct symbol *vertex = program->vertex_varyings[i];
 
-		symbol->offset = varyings[i] * 4;
-		symbols[varyings[i]] = symbol;
+		varyings[vertex->offset / 4] = fragment->offset / 4;
 	}
 
-	memcpy(state->vertex_varyings, symbols,
-	       state->vertex_varying_count * sizeof(struct symbol *));
+	if (program->gl_Position)
+		varyings[program->gl_Position->offset / 4] =
+			program->varying_map_count;
 }
 
-int
-limare_link(struct limare_state *state)
+static void
+vertex_shader_varyings_rewrite(struct limare_program *program)
 {
 	int varyings[16] = { -1, -1, -1, -1, -1, -1, -1, -1,
 			     -1, -1, -1, -1, -1, -1, -1, -1 };
 
-	if (limare_link_varyings_match(state))
-		return -1;
-
-	limare_link_varyings_indices_get(state, varyings);
-	vertex_shader_varyings_patch(state->vertex_binary->shader,
-				     state->vertex_binary->shader_size / 16,
+	link_varyings_indices_get(program, varyings);
+	vertex_shader_varyings_patch(program->vertex_shader,
+				     program->vertex_shader_size / 16,
 				     varyings);
-	vertex_shader_varyings_reorder(state, varyings);
+}
+
+static int
+vertex_varyings_reorder(struct limare_program *program)
+{
+	struct symbol *new[16] = {0};
+	int i, j;
+
+	for (i = 0; i < program->vertex_varying_count; i++) {
+		if (!program->vertex_varyings[i]) {
+			printf("%s: empty vertex varying slot %d\n",
+			       __func__, i);
+			continue;
+		}
+
+		if (!strcmp(program->vertex_varyings[i]->name, "gl_Position")) {
+			program->gl_Position = program->vertex_varyings[i];
+			continue;
+		} else if (!strcmp(program->vertex_varyings[i]->name,
+				 "gl_PointSize")) {
+			program->gl_PointSize = program->vertex_varyings[i];
+			continue;
+		}
+
+		for (j = 0; j < program->fragment_varying_count; j++)
+			if (!strcmp(program->vertex_varyings[i]->name,
+				    program->fragment_varyings[j]->name))
+				break;
+
+		if (j < program->fragment_varying_count) {
+			new[j] = program->vertex_varyings[i];
+			continue;
+		}
+
+		printf("%s: unmatched vertex varying %s.\n",
+		       __func__, program->vertex_varyings[i]->name);
+		return -1;
+	}
+
+	/* now the table should be dense, and the size should match the
+	   fragment varying count */
+	for (i = 0; i < 16; i++)
+		if (!new[i])
+			break;
+
+	if (i != program->fragment_varying_count) {
+		printf("%s: unmatched fragment varying %s.\n",
+		       __func__, program->fragment_varyings[i]->name);
+		return -1;
+	}
+
+	memcpy(program->vertex_varyings, new,
+	       program->vertex_varying_count * sizeof(struct symbol *));
+	program->vertex_varying_count = program->fragment_varying_count;
 
 	return 0;
+}
+
+#if 0
+static void
+varying_map_print(struct limare_program *program)
+{
+	int i;
+
+	printf("Varying map (0x%03X):\n", program->varying_map_size);
+	for (i = 0; i < 12; i++)
+		printf("\t%2d: offset 0x%02X, entries %d, entry_size %d\n",
+		       i, program->varying_map[i].offset,
+		       program->varying_map[i].entries,
+		       program->varying_map[i].entry_size);
+}
+#endif
+
+static int
+varying_map_create(struct limare_program *program)
+{
+	int table[12 * 4] = {0};
+	int i, j, size, offset = 0;
+
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		struct symbol *symbol = program->fragment_varyings[i];
+
+		if (program->vertex_varyings &&
+		    (program->fragment_varyings[i]->flag &
+		     SYMBOL_USE_VERTEX_SIZE))
+			size = program->vertex_varyings[i]->component_size;
+		else
+			size = symbol->component_size;
+
+		for (j = 0; j < symbol->component_count; j++)
+			table[symbol->offset + j] = size;
+	}
+
+	for (i = 0; i < 12; i++) {
+		if (table[4 * i + 2] || table[4 * i + 3])
+			program->varying_map[i].entries = 4;
+		else if (table[4 * i + 0] || table[4 * i + 1])
+			program->varying_map[i].entries = 2;
+
+		if (program->varying_map[i].entries) {
+			if ((table[4 * i + 0] == 4) ||
+			    (table[4 * i + 1] == 4) ||
+			    (table[4 * i + 2] == 4) ||
+			    (table[4 * i + 3] == 4))
+				program->varying_map[i].entry_size = 4;
+			else
+				program->varying_map[i].entry_size = 2;
+		}
+	}
+
+	for (i = 0; i < 12; i++) {
+		if (!program->varying_map[i].entries)
+			break;
+
+		size = program->varying_map[i].entries *
+			program->varying_map[i].entry_size;
+		size = ALIGN(size, 8);
+
+		if (size == 16)
+			offset = ALIGN(offset, 16);
+
+		program->varying_map[i].offset = offset;
+
+		offset += size;
+	}
+
+	program->varying_map_count = i;
+	program->varying_map_size = ALIGN(offset, 8);
+
+	return 0;
+}
+
+int
+limare_program_link(struct limare_program *program)
+{
+	int ret;
+	int i;
+
+	ret = vertex_varyings_reorder(program);
+	if (ret)
+		return ret;
+
+	ret = link_varyings_match(program);
+	if (ret)
+		return ret;
+
+	/* temporary safeguard */
+	for (i = 0; i < program->vertex_varying_count; i++) {
+		if (program->fragment_varyings[i]->value_type != 1) {
+			printf("%s: Vertex Varying %s has unhandled type %d\n",
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->value_type);
+			return -1;
+		} else if (program->fragment_varyings[i]->entry_count != 1) {
+			printf("%s: Vertex Varying %s has unhandled count %d\n",
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->entry_count);
+			return -1;
+		}
+	}
+
+	/* temporary safeguard */
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		if (program->fragment_varyings[i]->value_type != 1) {
+			printf("%s: Fragment Varying %s has unhandled type %d\n",
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->value_type);
+			return -1;
+		} else if (program->fragment_varyings[i]->entry_count != 1) {
+			printf("%s: Fragment Varying %s has unhandled count %d\n",
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->entry_count);
+			return -1;
+		}
+	}
+
+	ret = varying_map_create(program);
+	if (ret)
+		return ret;
+
+	vertex_shader_varyings_rewrite(program);
+
+	/* now throw the shaders into mali mem. */
+	memcpy(program->mem_address + program->vertex_mem_offset,
+	       program->vertex_shader, program->vertex_shader_size);
+
+	memcpy(program->mem_address + program->fragment_mem_offset,
+	       program->fragment_shader, program->fragment_shader_size);
+
+	return ret;
+}
+
+/*
+ *
+ *
+ */
+struct limare_program *
+limare_program_create(void *address, unsigned int physical,
+		      int offset, int size)
+{
+	struct limare_program *program =
+		calloc(1, sizeof(struct limare_program));
+
+	if (!program) {
+		printf("%s: allocation failed\n", __func__);
+		return NULL;
+	}
+
+	program->mem_address = address + offset;
+	program->mem_physical = physical + offset;
+	program->mem_size = size;
+
+	/* when we have proper memory management... */
+	program->vertex_mem_offset = 0;
+	program->vertex_mem_size = ALIGN(program->mem_size / 2, 0x40);
+
+	program->fragment_mem_offset = program->vertex_mem_size;
+	program->fragment_mem_size =
+		program->mem_size - program->vertex_mem_size;
+
+	return program;
+}
+
+/*
+ * Do half the linking work ourselves instead of using standard
+ * infrastructure.
+ */
+int
+limare_depth_clear_link(struct limare_state *state,
+			struct limare_program *program)
+{
+	int ret, i;
+
+	/* temporary safeguard */
+	for (i = 0; i < program->fragment_varying_count; i++) {
+		if (program->fragment_varyings[i]->value_type != 1) {
+			printf("%s: Fragment Varying %s has unhandled type %d\n",
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->value_type);
+			return -1;
+		} else if (program->fragment_varyings[i]->entry_count != 1) {
+			printf("%s: Fragment Varying %s has unhandled count %d\n",
+			       __func__, program->fragment_varyings[i]->name,
+			       program->fragment_varyings[i]->entry_count);
+			return -1;
+		}
+	}
+
+	ret = varying_map_create(program);
+	if (ret)
+		return ret;
+
+	/* now throw the shader into mali mem. */
+	memcpy(program->mem_address + program->fragment_mem_offset,
+	       program->fragment_shader, program->fragment_shader_size);
+
+	return ret;
 }

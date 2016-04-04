@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -27,9 +27,95 @@
 #ifndef LIMARE_PROGRAM_H
 #define LIMARE_PROGRAM_H 1
 
-int vertex_shader_attach(struct limare_state *state, const char *source);
-int fragment_shader_attach(struct limare_state *state, const char *source);
+struct varying_map {
+	int offset;
+	int entries;
+	int entry_size;
+};
 
-int limare_link(struct limare_state *state);
+struct limare_program {
+	int handle;
+
+	unsigned int mem_physical;
+	unsigned int mem_size;
+	void *mem_address;
+
+	void *vertex_shader;
+	int vertex_shader_size;
+	int vertex_attribute_prefetch;
+
+	int vertex_mem_offset;
+	int vertex_mem_size;
+
+	struct symbol **vertex_uniforms;
+	int vertex_uniform_count;
+	int vertex_uniform_size;
+
+	struct symbol **vertex_attributes;
+	int vertex_attribute_count;
+
+	struct symbol **vertex_varyings;
+	int vertex_varying_count;
+
+	void *fragment_shader;
+	int fragment_shader_size;
+	int fragment_first_instruction_size;
+
+	int fragment_mem_offset;
+	int fragment_mem_size;
+
+	struct symbol **fragment_uniforms;
+	int fragment_uniform_count;
+	int fragment_uniform_size;
+
+	struct symbol **fragment_varyings;
+	int fragment_varying_count;
+
+	struct symbol *gl_Position;
+	struct symbol *gl_PointSize;
+
+	struct varying_map varying_map[12];
+	int varying_map_count;
+	int varying_map_size;
+};
+
+struct limare_program *
+limare_program_create(void *address, unsigned int physical,
+		      int offset, int size);
+
+int
+limare_program_vertex_shader_attach(struct limare_state *state,
+				    struct limare_program *program,
+				    const char *source);
+
+int
+limare_program_fragment_shader_attach(struct limare_state *state,
+				      struct limare_program *program,
+				      const char *source);
+
+int
+limare_program_vertex_shader_attach_mbs_file(struct limare_state *state,
+					     struct limare_program *program,
+					     const char *filename);
+int
+limare_program_vertex_shader_attach_mbs_stream(struct limare_state *state,
+					       struct limare_program *program,
+					       const void *stream, int size);
+
+int
+limare_program_fragment_shader_attach_mbs_stream(struct limare_state *state,
+						 struct limare_program *program,
+						 const void *stream, int size);
+
+int
+limare_program_fragment_shader_attach_mbs_file(struct limare_state *state,
+					       struct limare_program *program,
+					       const char *filename);
+
+int limare_program_link(struct limare_program *program);
+
+/* special case */
+int limare_depth_clear_link(struct limare_state *state,
+			    struct limare_program *program);
 
 #endif /* LIMARE_PROGRAM_H */

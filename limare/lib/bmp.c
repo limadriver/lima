@@ -1,5 +1,5 @@
 /*
- * Copyright 2011      Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -91,35 +91,53 @@ bmp_header_write(int fd, int width, int height, int bgra)
 		.alpha_mask = 0xFF000000,
 		.colour_space = 0x57696E20,
 	};
+	int ret;
 
 	if (bgra) {
 		dib_header.red_mask = 0x00FF0000;
 		dib_header.blue_mask = 0x000000FF;
 	}
 
-	write(fd, &bmp_header, sizeof(struct bmp_header));
-	write(fd, &dib_header, sizeof(struct dib_header));
+	ret = write(fd, &bmp_header, sizeof(struct bmp_header));
+	if (ret != sizeof(struct bmp_header)) {
+		fprintf(stderr, "%s: failed to write bmp header: %s\n",
+			__func__, strerror(errno));
+		return errno;
+	}
+
+	ret = write(fd, &dib_header, sizeof(struct dib_header));
+	if (ret != sizeof(struct dib_header)) {
+		fprintf(stderr, "%s: failed to write bmp header: %s\n",
+			__func__, strerror(errno));
+		return errno;
+	}
 
 	return 0;
 }
 
 void
-bmp_dump(char *buffer, struct limare_state *state, char *filename)
+bmp_dump(unsigned char *buffer, struct limare_state *state,
+	 int width, int height, int cpp, char *filename)
 {
-	int fd;
+	int ret, fd;
 
-	fd = open(filename, O_WRONLY| O_TRUNC | O_CREAT);
+	fd = open(filename, O_WRONLY| O_TRUNC | O_CREAT, 0644);
 	if (fd == -1) {
 		printf("Failed to open %s: %s\n", filename, strerror(errno));
 		return;
 	}
 
 	/* HORRIBLE HACK */
-	if (state->type == 400)
-		bmp_header_write(fd, state->width, state->height, 0);
+	if (state && state->type == 400)
+		bmp_header_write(fd, width, height, 1);
 	else
-		bmp_header_write(fd, state->width, state->height, 1);
+		bmp_header_write(fd, width, height, 1);
 
-	write(fd, buffer, state->width * state->height * 4);
+	ret = write(fd, buffer, width * height * cpp);
+	if (ret != (width * height * cpp)) {
+		fprintf(stderr, "%s: failed to write bmp data: %s\n",
+			__func__, strerror(errno));
+		return;
+	}
 }
 

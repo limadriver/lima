@@ -1,8 +1,5 @@
-include ../Makefile.top
-
 NAME = triangle_quad
 
-all: limare egl
+targets = egl limare
 
-include ../Makefile.limare
-include ../Makefile.egl
+include ../Makefile.test

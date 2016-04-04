@@ -1,5 +1,5 @@
 /*
- * Copyright 2011      Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -62,53 +62,89 @@ struct dib_header {
 } __attribute__((__packed__));
 
 static int
-bmp_header_write(int fd, int width, int height)
+bmp_header_write(int fd, int width, int height, int format)
 {
 	struct bmp_header bmp_header = {
 		.magic = 0x4d42,
-		.size = (width * height * 4) +
-		sizeof(struct bmp_header) + sizeof(struct dib_header),
+		.size = sizeof(struct bmp_header) + sizeof(struct dib_header),
 		.start = sizeof(struct bmp_header) + sizeof(struct dib_header),
 	};
 	struct dib_header dib_header = {
 		.size = sizeof(struct dib_header),
 		.width = width,
-		.height = height,
+		.height = -height,
 		.planes = 1,
-		.bpp = 32,
 		.compression = 3,
-		.data_size = 4 * width * height,
 		.h_res = 0xB13,
 		.v_res = 0xB13,
 		.colours = 0,
 		.important_colours = 0,
-		.red_mask = 0x00FF0000,
-		.green_mask = 0x0000FF00,
-		.blue_mask = 0x000000FF,
-		.alpha_mask = 0xFF000000,
 		.colour_space = 0x57696E20,
 	};
+	int ret;
 
-	write(fd, &bmp_header, sizeof(struct bmp_header));
-	write(fd, &dib_header, sizeof(struct dib_header));
+	if (!format) { /* RGB565 */
+		bmp_header.size += 2 * width * height;
+
+		dib_header.bpp = 16;
+		dib_header.data_size = 2 * width * height;
+		dib_header.red_mask = 0x0000F800;
+		dib_header.green_mask = 0x00007E0;
+		dib_header.blue_mask = 0x0000001F;
+		dib_header.alpha_mask = 0x00000000;
+	} else { /* RGB8888 */
+		bmp_header.size += 4 * width * height;
+
+		dib_header.bpp = 32;
+		dib_header.data_size = 4 * width * height;
+		dib_header.red_mask = 0x00FF0000;
+		dib_header.green_mask = 0x0000FF00;
+		dib_header.blue_mask = 0x000000FF;
+		dib_header.alpha_mask = 0xFF000000;
+	}
+
+	ret = write(fd, &bmp_header, sizeof(struct bmp_header));
+	if (ret != sizeof(struct bmp_header)) {
+		fprintf(stderr, "%s: failed to write bmp header: %s\n",
+			__func__, strerror(errno));
+		return errno;
+	}
+
+	ret = write(fd, &dib_header, sizeof(struct dib_header));
+	if (ret != sizeof(struct dib_header)) {
+		fprintf(stderr, "%s: failed to write bmp header: %s\n",
+			__func__, strerror(errno));
+		return errno;
+	}
 
 	return 0;
 }
 
-void
-wrap_bmp_dump(char *buffer, int size, int width, int height, char *filename)
+int
+wrap_bmp_dump(char *buffer, int width, int height, int format, char *filename)
 {
-	int fd;
+	int ret, fd, size;
 
-	fd = open(filename, O_WRONLY| O_TRUNC | O_CREAT);
+	fd = open(filename, O_WRONLY| O_TRUNC | O_CREAT, 0644);
 	if (fd == -1) {
 		printf("Failed to open %s: %s\n", filename, strerror(errno));
-		return;
+		return errno;
 	}
 
-	bmp_header_write(fd, width, height);
+	bmp_header_write(fd, width, height, format);
 
-	write(fd, buffer, width * height * 4);
+	if (!format)
+		size = width * height * 2;
+	else
+		size = width * height * 4;
 
+	ret = write(fd, buffer, size);
+	if (ret != (size)) {
+		fprintf(stderr, "%s: failed to write bmp data: %s\n",
+			__func__, strerror(errno));
+		return errno;
+	}
+
+	return 0;
 }
 

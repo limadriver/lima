@@ -33,49 +33,72 @@ typedef enum
 	/** Core functions */
 
     _MALI_UK_OPEN                    = 0, /**< _mali_ukk_open() */
-    _MALI_UK_CLOSE,                       /**< _mali_ukk_close() */
-    _MALI_UK_GET_SYSTEM_INFO_SIZE,        /**< _mali_ukk_get_system_info_size() */
-    _MALI_UK_GET_SYSTEM_INFO,             /**< _mali_ukk_get_system_info() */
-    _MALI_UK_WAIT_FOR_NOTIFICATION,       /**< _mali_ukk_wait_for_notification() */
-    _MALI_UK_GET_API_VERSION,             /**< _mali_ukk_get_api_version() */
+    _MALI_UK_CLOSE                   = 1, /**< _mali_ukk_close() */
+    _MALI_UK_GET_SYSTEM_INFO_SIZE    = 2, /**< _mali_ukk_get_system_info_size() */
+    _MALI_UK_GET_SYSTEM_INFO         = 3, /**< _mali_ukk_get_system_info() */
+    _MALI_UK_WAIT_FOR_NOTIFICATION   = 4, /**< _mali_ukk_wait_for_notification() */
+    _MALI_UK_GET_API_VERSION         = 5, /**< _mali_ukk_get_api_version() */
+
+    /* Why one shouldn't use enums _everywhere_ */
+    _MALI_UK_WAIT_FOR_NOTIFICATION_R3P1 = 2, /**< _mali_ukk_wait_for_notification() */
+    _MALI_UK_GET_API_VERSION_R3P1    = 3, /**< _mali_ukk_get_api_version() */
 
 	/** Memory functions */
 
     _MALI_UK_INIT_MEM                = 0, /**< _mali_ukk_init_mem() */
-    _MALI_UK_TERM_MEM,                    /**< _mali_ukk_term_mem() */
-    _MALI_UK_GET_BIG_BLOCK,               /**< _mali_ukk_get_big_block() */
-    _MALI_UK_FREE_BIG_BLOCK,              /**< _mali_ukk_free_big_block() */
-    _MALI_UK_MAP_MEM,                     /**< _mali_ukk_mem_mmap() */
-    _MALI_UK_UNMAP_MEM,                   /**< _mali_ukk_mem_munmap() */
-    _MALI_UK_QUERY_MMU_PAGE_TABLE_DUMP_SIZE, /**< _mali_ukk_mem_get_mmu_page_table_dump_size() */
-    _MALI_UK_DUMP_MMU_PAGE_TABLE,         /**< _mali_ukk_mem_dump_mmu_page_table() */
-    _MALI_UK_ATTACH_UMP_MEM,             /**< _mali_ukk_attach_ump_mem() */
-    _MALI_UK_RELEASE_UMP_MEM,           /**< _mali_ukk_release_ump_mem() */
-    _MALI_UK_MAP_EXT_MEM,                 /**< _mali_uku_map_external_mem() */
-    _MALI_UK_UNMAP_EXT_MEM,               /**< _mali_uku_unmap_external_mem() */
-    _MALI_UK_VA_TO_MALI_PA,               /**< _mali_uku_va_to_mali_pa() */
+    _MALI_UK_TERM_MEM                = 1, /**< _mali_ukk_term_mem() */
+    _MALI_UK_GET_BIG_BLOCK           = 2, /**< _mali_ukk_get_big_block() */
+    _MALI_UK_FREE_BIG_BLOCK          = 3, /**< _mali_ukk_free_big_block() */
+    _MALI_UK_MAP_MEM                 = 4, /**< _mali_ukk_mem_mmap() */
+    _MALI_UK_UNMAP_MEM               = 5, /**< _mali_ukk_mem_munmap() */
+    _MALI_UK_QUERY_MMU_PAGE_TABLE_DUMP_SIZE = 6, /**< _mali_ukk_mem_get_mmu_page_table_dump_size() */
+    _MALI_UK_DUMP_MMU_PAGE_TABLE     = 7, /**< _mali_ukk_mem_dump_mmu_page_table() */
+
+    _MALI_UK_ATTACH_UMP_MEM          = 8, /**< _mali_ukk_attach_ump_mem() */
+    _MALI_UK_RELEASE_UMP_MEM         = 9, /**< _mali_ukk_release_ump_mem() */
+    _MALI_UK_MAP_EXT_MEM             = 10, /**< _mali_uku_map_external_mem() */
+    _MALI_UK_UNMAP_EXT_MEM           = 11, /**< _mali_uku_unmap_external_mem() */
+    _MALI_UK_VA_TO_MALI_PA           = 12, /**< _mali_uku_va_to_mali_pa() */
+
+    _MALI_UK_ATTACH_DMA_BUF_R3P1     = 8, /**< _mali_ukk_attach_dma_buf() */
+    _MALI_UK_RELEASE_DMA_BUF_R3P1    = 9, /**< _mali_ukk_release_dma_buf() */
+    _MALI_UK_DMA_BUF_GET_SIZE_R3P1   = 10, /**< _mali_ukk_dma_buf_get_size() */
+    _MALI_UK_ATTACH_UMP_MEM_R3P1     = 11, /**< _mali_ukk_attach_ump_mem() */
+    _MALI_UK_RELEASE_UMP_MEM_R3P1    = 12, /**< _mali_ukk_release_ump_mem() */
+    _MALI_UK_MAP_EXT_MEM_R3P1        = 13, /**< _mali_uku_map_external_mem() */
+    _MALI_UK_UNMAP_EXT_MEM_R3P1      = 14, /**< _mali_uku_unmap_external_mem() */
+    _MALI_UK_VA_TO_MALI_PA_R3P1      = 15, /**< _mali_uku_va_to_mali_pa() */
 
     /** Common functions for each core */
 
     _MALI_UK_START_JOB           = 0,     /**< Start a Fragment/Vertex Processor Job on a core */
 	_MALI_UK_ABORT_JOB,                   /**< Abort a job */
-    _MALI_UK_GET_NUMBER_OF_CORES,         /**< Get the number of Fragment/Vertex Processor cores */
-    _MALI_UK_GET_CORE_VERSION,            /**< Get the Fragment/Vertex Processor version compatible with all cores */
+    _MALI_UK_GET_NUMBER_OF_CORES_R2P1,         /**< Get the number of Fragment/Vertex Processor cores */
+    _MALI_UK_GET_CORE_VERSION_R2P1,            /**< Get the Fragment/Vertex Processor version compatible with all cores */
+
+    _MALI_UK_GET_NUMBER_OF_CORES_R3P0 = 1,
+    _MALI_UK_GET_CORE_VERSION_R3P0 = 2,
 
     /** Fragment Processor Functions  */
 
     _MALI_UK_PP_START_JOB            = _MALI_UK_START_JOB,            /**< _mali_ukk_pp_start_job() */
     _MALI_UK_PP_ABORT_JOB            = _MALI_UK_ABORT_JOB,            /**< _mali_ukk_pp_abort_job() */
-    _MALI_UK_GET_PP_NUMBER_OF_CORES  = _MALI_UK_GET_NUMBER_OF_CORES,  /**< _mali_ukk_get_pp_number_of_cores() */
-    _MALI_UK_GET_PP_CORE_VERSION     = _MALI_UK_GET_CORE_VERSION,     /**< _mali_ukk_get_pp_core_version() */
+    _MALI_UK_GET_PP_NUMBER_OF_CORES_R2P1  = _MALI_UK_GET_NUMBER_OF_CORES_R2P1,  /**< _mali_ukk_get_pp_number_of_cores() */
+    _MALI_UK_GET_PP_CORE_VERSION_R2P1     = _MALI_UK_GET_CORE_VERSION_R2P1,     /**< _mali_ukk_get_pp_core_version() */
+
+    _MALI_UK_GET_PP_NUMBER_OF_CORES_R3P0  = _MALI_UK_GET_NUMBER_OF_CORES_R3P0,
+    _MALI_UK_GET_PP_CORE_VERSION_R3P0     = _MALI_UK_GET_CORE_VERSION_R3P0,
 
     /** Vertex Processor Functions  */
 
     _MALI_UK_GP_START_JOB            = _MALI_UK_START_JOB,            /**< _mali_ukk_gp_start_job() */
     _MALI_UK_GP_ABORT_JOB            = _MALI_UK_ABORT_JOB,            /**< _mali_ukk_gp_abort_job() */
-    _MALI_UK_GET_GP_NUMBER_OF_CORES  = _MALI_UK_GET_NUMBER_OF_CORES,  /**< _mali_ukk_get_gp_number_of_cores() */
-    _MALI_UK_GET_GP_CORE_VERSION     = _MALI_UK_GET_CORE_VERSION,     /**< _mali_ukk_get_gp_core_version() */
-    _MALI_UK_GP_SUSPEND_RESPONSE,                                     /**< _mali_ukk_gp_suspend_response() */
+    _MALI_UK_GET_GP_NUMBER_OF_CORES_R2P1  = _MALI_UK_GET_NUMBER_OF_CORES_R2P1,  /**< _mali_ukk_get_gp_number_of_cores() */
+    _MALI_UK_GET_GP_CORE_VERSION_R2P1     = _MALI_UK_GET_CORE_VERSION_R2P1,     /**< _mali_ukk_get_gp_core_version() */
+
+    _MALI_UK_GET_GP_NUMBER_OF_CORES_R3P0  = _MALI_UK_GET_NUMBER_OF_CORES_R3P0,
+    _MALI_UK_GET_GP_CORE_VERSION_R3P0     = _MALI_UK_GET_CORE_VERSION_R3P0,
+
 
 	/** Profiling functions */
 
@@ -109,26 +132,37 @@ typedef enum
 #define MALI_IOC_GET_SYSTEM_INFO_SIZE       _IOR (MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO_SIZE, _mali_uk_get_system_info_s *)
 #define MALI_IOC_GET_SYSTEM_INFO            _IOR (MALI_IOC_CORE_BASE, _MALI_UK_GET_SYSTEM_INFO, _mali_uk_get_system_info_s *)
 #define MALI_IOC_WAIT_FOR_NOTIFICATION      _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION, _mali_uk_wait_for_notification_s *)
+#define MALI_IOC_WAIT_FOR_NOTIFICATION_R3P1 _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION_R3P1, _mali_uk_wait_for_notification_s *)
 #define MALI_IOC_GET_API_VERSION            _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION, _mali_uk_get_api_version_s *)
+#define MALI_IOC_GET_API_VERSION_R3P1       _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION_R3P1, _mali_uk_get_api_version_s *)
+
 #define MALI_IOC_MEM_GET_BIG_BLOCK          _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_GET_BIG_BLOCK, _mali_uk_get_big_block_s *)
 #define MALI_IOC_MEM_FREE_BIG_BLOCK         _IOW (MALI_IOC_MEMORY_BASE, _MALI_UK_FREE_BIG_BLOCK, _mali_uk_free_big_block_s *)
 #define MALI_IOC_MEM_INIT                   _IOR (MALI_IOC_MEMORY_BASE, _MALI_UK_INIT_MEM, _mali_uk_init_mem_s *)
 #define MALI_IOC_MEM_TERM                   _IOW (MALI_IOC_MEMORY_BASE, _MALI_UK_TERM_MEM, _mali_uk_term_mem_s *)
 #define MALI_IOC_MEM_MAP_EXT                _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_MAP_EXT_MEM, _mali_uk_map_external_mem_s *)
+#define MALI_IOC_MEM_MAP_EXT_R3P1           _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_MAP_EXT_MEM_R3P1, _mali_uk_map_external_mem_s *)
 #define MALI_IOC_MEM_UNMAP_EXT              _IOW (MALI_IOC_MEMORY_BASE, _MALI_UK_UNMAP_EXT_MEM, _mali_uk_unmap_external_mem_s *)
+#define MALI_IOC_MEM_UNMAP_EXT_R3P1         _IOW (MALI_IOC_MEMORY_BASE, _MALI_UK_UNMAP_EXT_MEM_R3P1, _mali_uk_unmap_external_mem_s *)
 #define MALI_IOC_MEM_QUERY_MMU_PAGE_TABLE_DUMP_SIZE _IOR (MALI_IOC_MEMORY_BASE, _MALI_UK_QUERY_MMU_PAGE_TABLE_DUMP_SIZE, _mali_uk_query_mmu_page_table_dump_size_s *)
 #define MALI_IOC_MEM_DUMP_MMU_PAGE_TABLE    _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_DUMP_MMU_PAGE_TABLE, _mali_uk_dump_mmu_page_table_s *)
 #define MALI_IOC_MEM_ATTACH_UMP             _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_ATTACH_UMP_MEM, _mali_uk_attach_ump_mem_s *)
+#define MALI_IOC_MEM_ATTACH_UMP_R3P1         _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_ATTACH_UMP_MEM_R3P1, _mali_uk_attach_ump_mem_s *)
 #define MALI_IOC_MEM_RELEASE_UMP            _IOW(MALI_IOC_MEMORY_BASE, _MALI_UK_RELEASE_UMP_MEM, _mali_uk_release_ump_mem_s *)
+#define MALI_IOC_MEM_RELEASE_UMP_R3P1       _IOW(MALI_IOC_MEMORY_BASE, _MALI_UK_RELEASE_UMP_MEM_R3P1, _mali_uk_release_ump_mem_s *)
 #define MALI_IOC_PP_START_JOB               _IOWR(MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, _mali_uk_pp_start_job_s *)
-#define MALI_IOC_PP_NUMBER_OF_CORES_GET	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES, _mali_uk_get_pp_number_of_cores_s *)
-#define MALI_IOC_PP_CORE_VERSION_GET	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION, _mali_uk_get_pp_core_version_s * )
+#define MALI_IOC_PP_NUMBER_OF_CORES_GET_R2P1	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES_R2P1, _mali_uk_get_pp_number_of_cores_s *)
+#define MALI_IOC_PP_CORE_VERSION_GET_R2P1	    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R2P1, _mali_uk_get_pp_core_version_s * )
 #define MALI_IOC_PP_ABORT_JOB	            _IOW (MALI_IOC_PP_BASE, _MALI_UK_PP_ABORT_JOB, _mali_uk_pp_abort_job_s * )
+#define MALI_IOC_PP_NUMBER_OF_CORES_GET_R3P0 _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES_R3P0, _mali_uk_get_pp_number_of_cores_s *)
+#define MALI_IOC_PP_CORE_VERSION_GET_R3P0    _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_CORE_VERSION_R3P0, _mali_uk_get_pp_core_version_s * )
 #define MALI_IOC_GP2_START_JOB              _IOWR(MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, _mali_uk_gp_start_job_s *)
 #define MALI_IOC_GP2_ABORT_JOB              _IOWR(MALI_IOC_GP_BASE, _MALI_UK_GP_ABORT_JOB, _mali_uk_gp_abort_job_s *)
-#define MALI_IOC_GP2_NUMBER_OF_CORES_GET    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES, _mali_uk_get_gp_number_of_cores_s *)
-#define MALI_IOC_GP2_CORE_VERSION_GET	    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION, _mali_uk_get_gp_core_version_s *)
-#define MALI_IOC_GP2_SUSPEND_RESPONSE	    _IOW (MALI_IOC_GP_BASE, _MALI_UK_GP_SUSPEND_RESPONSE,_mali_uk_gp_suspend_response_s *)
+#define MALI_IOC_GP2_NUMBER_OF_CORES_GET_R2P1    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES_R2P1, _mali_uk_get_gp_number_of_cores_s *)
+#define MALI_IOC_GP2_CORE_VERSION_GET_R2P1	    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION_R2P1, _mali_uk_get_gp_core_version_s *)
+#define MALI_IOC_GP2_NUMBER_OF_CORES_GET_R3P0 _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES_R3P0, _mali_uk_get_gp_number_of_cores_s *)
+#define MALI_IOC_GP2_CORE_VERSION_GET_R3P0    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION_R3P0, _mali_uk_get_gp_core_version_s *)
+
 #define MALI_IOC_PROFILING_START            _IOWR(MALI_IOC_PROFILING_BASE, _MALI_UK_PROFILING_START, _mali_uk_profiling_start_s *)
 #define MALI_IOC_PROFILING_ADD_EVENT        _IOWR(MALI_IOC_PROFILING_BASE, _MALI_UK_PROFILING_ADD_EVENT, _mali_uk_profiling_add_event_s*)
 #define MALI_IOC_PROFILING_STOP             _IOWR(MALI_IOC_PROFILING_BASE, _MALI_UK_PROFILING_STOP, _mali_uk_profiling_stop_s *)
@@ -401,19 +435,6 @@ typedef struct
 	u32 mali_address_base;          /**< [out] start of MALI address space */
 	u32 memory_size;                /**< [out] total MALI address space available */
 } _mali_uk_init_mem_s;
-
-
-/** @brief Arguments for _mali_ukk_get_pp_core_version()
- *
- * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
- * - Upon successful return from _mali_ukk_get_pp_core_version(), @c version contains
- * the version that all Fragment Processor cores are compatible with.
- */
-typedef struct
-{
-    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
-    _mali_core_version version;     /**< [out] version returned from core, see \ref _mali_core_version  */
-} _mali_uk_get_pp_core_version_s;
 
 /** @defgroup _mali_uk_gpstartjob_s Vertex Processor Start Job
  * @{ */
@@ -757,5 +778,95 @@ typedef struct
         _mali_uk_gp_job_finished_s  gp_job_finished; /**< [out] Notification data for _MALI_NOTIFICATION_GP_FINISHED notification type */
         _mali_uk_pp_job_finished_s  pp_job_finished; /**< [out] Notification data for _MALI_NOTIFICATION_PP_FINISHED notification type */
     } data;
+	unsigned int pad0;
+	unsigned int pad1;
 } _mali_uk_wait_for_notification_s;
 /** @} */ /* end group _mali_uk_waitfornotification_s */
+
+
+/** @brief Arguments for _mali_ukk_get_pp_number_of_cores()
+ *
+ * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
+ * - Upon successful return from _mali_ukk_get_pp_number_of_cores(), @c number_of_cores
+ * will contain the number of Fragment Processor cores in the system.
+ */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+    u32 number_of_cores;            /**< [out] number of Fragment Processor cores in the system */
+} _mali_uk_get_pp_number_of_cores_s;
+
+/** @brief Arguments for _mali_ukk_get_pp_core_version()
+ *
+ * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
+ * - Upon successful return from _mali_ukk_get_pp_core_version(), @c version contains
+ * the version that all Fragment Processor cores are compatible with.
+ */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+    _mali_core_version version;     /**< [out] version returned from core, see \ref _mali_core_version  */
+} _mali_uk_get_pp_core_version_s;
+
+/** @brief Arguments for _mali_ukk_get_gp_number_of_cores()
+ *
+ * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
+ * - Upon successful return from _mali_ukk_get_gp_number_of_cores(), @c number_of_cores
+ * will contain the number of Vertex Processor cores in the system.
+ */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+    u32 number_of_cores;            /**< [out] number of Vertex Processor cores in the system */
+} _mali_uk_get_gp_number_of_cores_s;
+
+/** @brief Arguments for _mali_ukk_get_gp_core_version()
+ *
+ * - pass in the user-kernel context @c ctx that was returned from _mali_ukk_open()
+ * - Upon successful return from _mali_ukk_get_gp_core_version(), @c version contains
+ * the version that all Vertex Processor cores are compatible with.
+ */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+    _mali_core_version version;     /**< [out] version returned from core, see \ref _mali_core_version */
+} _mali_uk_get_gp_core_version_s;
+
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+	u32 phys_addr;                  /**< [in] physical address */
+	u32 size;                       /**< [in] size */
+	u32 mali_address;               /**< [in] mali address to map the physical memory to */
+	u32 rights;                     /**< [in] rights necessary for accessing memory */
+	u32 flags;                      /**< [in] flags, see \ref _MALI_MAP_EXTERNAL_MAP_GUARD_PAGE */
+	u32 cookie;                     /**< [out] identifier for mapped memory object in kernel space  */
+} _mali_uk_map_external_mem_s;
+
+/** Flag for _mali_uk_map_external_mem_s and _mali_uk_attach_ump_mem_s */
+#define _MALI_MAP_EXTERNAL_MAP_GUARD_PAGE (1<<0)
+
+/** @note Mali-MMU only */
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+	u32 cookie;                     /**< [out] identifier for mapped memory object in kernel space  */
+} _mali_uk_unmap_external_mem_s;
+
+/** @note This is identical to _mali_uk_map_external_mem_s above, however phys_addr is replaced by secure_id */
+typedef struct
+{
+	void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+	u32 secure_id;                  /**< [in] secure id */
+	u32 size;                       /**< [in] size */
+	u32 mali_address;               /**< [in] mali address to map the physical memory to */
+	u32 rights;                     /**< [in] rights necessary for accessing memory (see \ref mali_mem_rights) */
+	u32 flags;                      /**< [in] flags, see \ref _MALI_MAP_EXTERNAL_FLAG macro definitions */
+	u32 cookie;                     /**< [out] identifier for mapped memory object in kernel space  */
+} _mali_uk_attach_ump_mem_s;
+
+typedef struct
+{
+    void *ctx;                      /**< [in,out] user-kernel context (trashed on output) */
+	u32 cookie;                     /**< [in] identifier for mapped memory object in kernel space  */
+} _mali_uk_release_ump_mem_s;

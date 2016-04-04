@@ -1,6 +1,7 @@
-include ../Makefile.top
-
 NAME = ___TEMPLATE___
 
-include ../Makefile.dump
-include ../Makefile.egl
+objs = extraobj.o
+
+targets = egl dump
+
+include ../Makefile.test

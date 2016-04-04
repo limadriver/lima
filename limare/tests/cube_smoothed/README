@@ -1,0 +1,4 @@
+Shows a smoothed cube with phong lighting on a grey background.
+
+Smoothed means: each vertex has a colour, and the body of the square
+transitions smoothly between the colours.

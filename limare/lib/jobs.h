@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -28,11 +28,43 @@
 #ifndef LIMARE_JOBS_H
 #define LIMARE_JOBS_H 1
 
-void limare_jobs_wait(void);
-void wait_for_notification_start(struct limare_state *state);
+int limare_m200_pp_job_start_direct(struct limare_state *state,
+				    struct limare_frame *frame,
+				    struct lima_m200_pp_frame_registers
+				    *frame_regs,
+				    struct lima_pp_wb_registers *wb_regs);
 
-int limare_gp_job_start_direct(struct limare_state *state, struct lima_gp_job_start *job);
-int limare_m200_pp_job_start_direct(struct limare_state *state, struct lima_m200_pp_job_start *job);
-int limare_m400_pp_job_start_direct(struct limare_state *state, struct lima_m400_pp_job_start *job);
+int limare_m400_pp_job_start_r2p1(struct limare_state *state,
+				  struct limare_frame *frame,
+				  struct lima_m400_pp_frame_registers *
+				  frame_regs,
+				  struct lima_pp_wb_registers *wb_regs);
+
+int limare_m400_pp_job_start_r3p0(struct limare_state *state,
+				  struct limare_frame *frame,
+				  struct lima_m400_pp_frame_registers *
+				  frame_regs,
+				  unsigned int addr_frame[7],
+				  unsigned int addr_stack[7],
+				  struct lima_pp_wb_registers *wb_regs);
+int limare_m400_pp_job_start_r3p1(struct limare_state *state,
+				  struct limare_frame *frame,
+				  struct lima_m400_pp_frame_registers *
+				  frame_regs,
+				  unsigned int addr_frame[7],
+				  unsigned int addr_stack[7],
+				  struct lima_pp_wb_registers *wb_regs);
+int limare_m400_pp_job_start_r3p2(struct limare_state *state,
+				  struct limare_frame *frame,
+				  struct lima_m400_pp_frame_registers *
+				  frame_regs,
+				  unsigned int addr_frame[7],
+				  unsigned int addr_stack[7],
+				  struct lima_pp_wb_registers *wb_regs);
+
+void limare_jobs_init(struct limare_state *state);
+void limare_jobs_end(struct limare_state *state);
+
+void limare_render_start(struct limare_frame *frame);
 
 #endif /* LIMARE_JOBS_H */

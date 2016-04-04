@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -29,6 +29,14 @@
 #ifndef LIMA_PLBU_H
 #define LIMA_PLBU_H 1
 
+#define LIMA_PLBU_CMD_DRAW               0x00000000
+
+#define LIMA_PLBU_CMD_DRAW_ARRAYS        0x00000000
+#define LIMA_PLBU_CMD_DRAW_ELEMENTS      0x00200000
+
+#define LIMA_PLBU_CMD_INDEXED_DEST       0x10000100
+#define LIMA_PLBU_CMD_INDICES            0x10000101
+
 #define LIMA_PLBU_CMD_TILE_HEAP_START    0x10000103
 #define LIMA_PLBU_CMD_TILE_HEAP_END      0x10000104
 
@@ -49,7 +57,11 @@
  *         Set these according to cull face mode, and front face value.
  */
 #define LIMA_PLBU_CMD_PRIMITIVE_SETUP    0x1000010B
+#define LIMA_PLBU_CMD_PRIMITIVE_GLES2            0x00002000
+#define LIMA_PLBU_CMD_PRIMITIVE_CULL_CW          0x00020000
 #define LIMA_PLBU_CMD_PRIMITIVE_CULL_CCW         0x00040000
+#define LIMA_PLBU_CMD_PRIMITIVE_INDEX_BYTE       0x00000000
+#define LIMA_PLBU_CMD_PRIMITIVE_INDEX_SHORT      0x00000400
 
 /* Determines how to map tiles to blocks, in shifted values.
  *
@@ -73,6 +85,12 @@
 #define LIMA_PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN       0x00010002
 #define LIMA_PLBU_CMD_ARRAYS_SEMAPHORE_END         0x00010001
 
+
+#define LIMA_PLBU_CMD_SCISSORS           0x70000000
+
 #define LIMA_PLBU_CMD_RSW_VERTEX_ARRAY   0x80000000
+
+#define LIMA_PLBU_CMD_CONTINUE           0xF0000000
+
 
 #endif /* LIMA_PLBU_H */

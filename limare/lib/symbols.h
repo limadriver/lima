@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -34,16 +34,29 @@ enum symbol_type {
 	SYMBOL_VARYING,
 };
 
+enum symbol_value_type {
+	SYMBOL_FLOAT = 1,
+	SYMBOL_MATRIX = 4,
+	SYMBOL_SAMPLER = 5,
+	SYMBOL_CUBEMAP = 6,
+};
+
 struct symbol {
 #define SYMBOL_STRING_SIZE 64
 	/* as referenced by the shaders and shader compiler binary streams */
 	char name[SYMBOL_STRING_SIZE + 1];
 
 	enum symbol_type type;
+	enum symbol_value_type value_type;
 
 	int component_size;
+	int precision;
 	int component_count;
 	int entry_count;
+
+	/* for attributes */
+	int component_type;
+	int entry_stride;
 
 	int src_stride;
 	int dst_stride;
@@ -51,17 +64,24 @@ struct symbol {
 	int size; /* size it takes in memory. */
 	short offset; /* offset from start of memory block */
 
-	void *address;
-	int physical; /* empty for uniforms */
+#define SYMBOL_USE_VERTEX_SIZE 0x01
+	int flag;
 
+	void *mem_address;
+	int mem_physical; /* empty for uniforms */
+
+	/* data can either be directly attached */
 	void *data;
 	int data_allocated;
+	/* Or can be a handle */
+	int data_handle;
 };
 
 struct symbol *symbol_create(const char *name, enum symbol_type type,
-			     int component_size, int component_count,
+			     enum symbol_value_type value_type,
+			     int precision, int component_count,
 			     int entry_count, int src_stride, int dst_stride,
-			     void *data, int copy, int matrix);
+			     const void *data, int copy, int flag);
 
 struct symbol *symbol_copy(struct symbol *original, int start, int count);
 

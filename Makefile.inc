@@ -1,14 +1,43 @@
-TOOLCHAIN ?= ~/android/toolchain/
-SDK ?= ~/android/android-sdk-linux/
-ANDROID_TARGET ?= android-10
+#
+# For Android, use:
+# make CROSS_COMPILE=~/android/toolchain/bin/arm-linux-androideabi-
+#
 
-CC = $(TOOLCHAIN)/bin/arm-linux-androideabi-gcc
-LD = $(TOOLCHAIN)/bin/arm-linux-androideabi-ld
-ADB = $(SDK)/platform-tools/adb
-SYSROOT = $(TOOLCHAIN)/sysroot/
+CFLAGS ?= -O0 -g -Wall
 
-SYSTEM = android
-ARCH = arm
+CROSS_COMPILE ?=
+CC = $(CROSS_COMPILE)gcc
+LD = $(CROSS_COMPILE)ld
 
-CFLAGS += -O0 -g -Wall
+triplet = $(shell $(CC) -dumpmachine)
+ifeq ($(triplet), arm-linux-androideabi)
+	CFLAGS += -DANDROID
+	OS = android
+else ifeq ($(triplet), arm-linux-gnueabi)
+	OS = gnu
+else ifeq ($(triplet), arm-linux-gnueabihf)
+	OS = gnu
+endif
 
+ifndef OS
+       $(error Unhandled architecture: $(triplet))
+endif
+
+ifeq ($(OS),android)
+	ADB ?= adb
+	DESTDIR ?=
+	ifneq ($(DESTDIR),)
+		INSTALL = install
+	else
+		INSTALL = $(ADB) push
+	endif
+	prefix ?= $(DESTDIR)/system/
+else
+	INSTALL = install
+	ifneq ($(CROSS_COMPILE),)
+		DESTDIR ?= /tmp/
+	else
+		DESTDIR ?=
+	endif
+	prefix ?= $(DESTDIR)/usr/
+endif

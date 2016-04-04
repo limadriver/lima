@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -28,33 +28,36 @@
 #ifndef LIMARE_PLB_H
 #define LIMARE_PLB_H 1
 
-struct plb {
+/*
+ * PLB info that doesn't change between frames.
+ * The actual space is allocated on the frame memory.
+ */
+struct plb_info {
 	int block_size; /* 0x200 */
 
-	int width; /* aligned already */
-	int height;
+	int tiled_w;
+	int tiled_h;
+
+	int block_w;
+	int block_h;
 
 	int shift_w;
 	int shift_h;
+	int shift_max;
 
 	/* holds the actual primitives */
-	int plb_offset;
 	int plb_size; /* 0x200 * (width >> (shift_w - 1)) * (height >> (shift_h - 1))) */
 
 	/* holds the addresses so the plbu knows where to store the primitives */
-	int plbu_offset;
 	int plbu_size; /* 4 * width * height */
 
 	/* holds the coordinates and addresses of the primitives for the PP */
-	int pp_offset;
-	int pp_size; /* 16 * (width * height + 1) */
-
-	void *mem_address;
-	int mem_physical;
-	int mem_size;
+	int pp_size;
+	unsigned int *pp_template[LIMA_PP_CORE_MAX];
 };
 
-struct plb *plb_create(struct limare_state *state, unsigned int physical,
-		       void *address, int offset, int size);
+struct plb_info *plb_info_create(struct limare_state *state);
+int frame_plb_create(struct limare_state *state, struct limare_frame *frame);
+void plb_destroy(struct plb_info *plb);
 
 #endif /* LIMARE_PLB_H */

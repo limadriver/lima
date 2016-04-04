@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -25,7 +25,40 @@
 #ifndef LIMARE_FB_H
 #define LIMARE_FB_H 1
 
-void fb_clear(void);
-void fb_dump(unsigned char *buffer, int size, int width, int height);
+struct limare_fb {
+	int fd;
+
+	/* one single fb */
+	int width;
+	int height;
+	int bpp;
+	int size;
+
+	int dual_buffer;
+
+	/* mapped fb */
+	void *map;
+	int map_size;
+
+	/* for when we do not have direct writing */
+	void *buffer;
+	int buffer_size;
+
+	int fb_physical;
+	int mali_physical[2];
+
+	unsigned int ump_id;
+
+	int mali_handle;
+
+	struct fb_var_screeninfo *fb_var;
+};
+
+int fb_open(struct limare_state *state);
+int fb_init(struct limare_state *state, int width, int height, int offset);
+void fb_clear(struct limare_state *state);
+void fb_dump_direct(struct limare_state *state, unsigned char *buffer,
+		    int width, int height);
+void limare_fb_flip(struct limare_state *state, struct limare_frame *frame);
 
 #endif /* LIMARE_FB_H */

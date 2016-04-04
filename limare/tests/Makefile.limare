@@ -1,24 +1,37 @@
-.PHONY : limare install run wrap
+.PHONY : limare limare_install limare_run limare_wrap
 
-LIMARE_LOG = /sdcard/limare.wrap.log
+LIMARE_LOG = /sdcard/limare.wrap.c
+LIMARE_BMP = /sdcard/limare.wrap.bmp
+LIMARE_OBJS = limare.o $(objs)
+
 
 limare: limare_$(NAME)
 
-limare_$(NAME): limare.c
-	$(CC) $(CFLAGS) -o $@ $^ -llimare
+limare_$(NAME): $(LIMARE_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ -L$(TOP)/limare/lib/ -llimare -lm
 
-install: $(ADB) limare_$(NAME)
-	$(ADB) push limare_$(NAME) $(INSTALL_DIR)/limare/$(NAME)
+limare_install: limare_$(NAME)
+	$(INSTALL) limare_$(NAME) $(INSTALL_DIR)/limare/$(NAME)
 
-wrap: $(ADB)
-	$(ADB) shell "rm /sdcard/limare.bmp"
-	$(ADB) shell "rm $(LIMARE_LOG)"
-	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(LIMARE_LOG) $(INSTALL_DIR)/limare/$(NAME)"
-	$(ADB) pull $(LIMARE_LOG)
-	$(ADB) pull /sdcard/limare.bmp
+limare_wrap:
+ifeq ($(OS),android)
+	$(ADB) shell "rm $(LIMARE_BMP)"
+	$(ADB) shell "rm $(LIMARE_LOG).0000"
+	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(LIMARE_LOG) LIMA_WRAP_BMP=$(LIMARE_BMP) $(INSTALL_DIR)/limare/$(NAME)"
+	$(ADB) pull $(LIMARE_LOG).0000
+	$(ADB) pull $(LIMARE_BMP)
+else
+	$(shell LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(LIMARE_LOG) LIMA_WRAP_BMP=$(LIMARE_BMP) $(INSTALL_DIR)/limare/$(NAME))
+endif
 
-run: $(ADB)
+limare_run:
+ifeq ($(OS),android)
 	$(ADB) shell $(INSTALL_DIR)limare/$(NAME)
+else
+	$(shell) $(INSTALL_DIR)/limare/$(NAME)
+endif
 
-clean:
+limare_clean:
 	rm -f limare_$(NAME)
+
+-include $(LIMARE_OBJS:%.o=%.P)

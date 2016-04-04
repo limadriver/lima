@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -33,18 +33,21 @@
 
 struct symbol *
 symbol_create(const char *name, enum symbol_type type,
-	      int component_size, int component_count,
+	      enum symbol_value_type value_type,
+	      int precision, int component_count,
 	      int entry_count, int src_stride, int dst_stride,
-	      void *data, int copy, int matrix)
+	      const void *data, int copy, int flag)
 {
 	struct symbol *symbol;
-	int size;
+	int size, component_size;
 
 	if (!entry_count)
 		entry_count = 1;
 
-	if (matrix)
+	if (value_type == SYMBOL_MATRIX)
 		component_count *= component_count;
+
+	component_size = 1 << (precision - 1);
 
 	size = component_size * component_count * entry_count;
 
@@ -67,12 +70,15 @@ symbol_create(const char *name, enum symbol_type type,
 
 	strncpy(symbol->name, name, SYMBOL_STRING_SIZE);
 	symbol->type = type;
+	symbol->flag = flag;
+	symbol->value_type = value_type;
 
 	symbol->component_size = component_size;
+	symbol->precision = precision;
 	symbol->component_count = component_count;
 	symbol->entry_count = entry_count;
 
-	if (matrix) {
+	if (value_type == SYMBOL_MATRIX) {
 		symbol->src_stride = src_stride;
 		symbol->dst_stride = dst_stride;
 	}
@@ -82,7 +88,7 @@ symbol_create(const char *name, enum symbol_type type,
 	if (copy)
 		memcpy(symbol->data, data, size);
 	else
-		symbol->data = data;
+		symbol->data = (void *) data;
 
 	return symbol;
 }
@@ -141,15 +147,21 @@ symbol_print(struct symbol *symbol)
 	}
 
 	printf("Symbol %s (%s) = {\n", symbol->name, type);
+	printf("\t.value_type = %d,\n", symbol->value_type);
 	printf("\t.component_size = %d,\n", symbol->component_size);
+	printf("\t.precision = %d,\n", symbol->precision);
 	printf("\t.component_count = %d,\n", symbol->component_count);
 	printf("\t.entry_count = %d,\n", symbol->entry_count);
 	printf("\t.src_stride = %d,\n", symbol->src_stride);
 	printf("\t.dst_stride = %d,\n", symbol->dst_stride);
 	printf("\t.size = %d,\n", symbol->size);
 	printf("\t.offset = %d,\n", symbol->offset);
-	printf("\t.address = %p,\n", symbol->address);
-	printf("\t.physical = 0x%x,\n", symbol->physical);
+	printf("\t.mem_address = %p,\n", symbol->mem_address);
+	printf("\t.mem_physical = 0x%x,\n", symbol->mem_physical);
+	printf("\t.flag = 0x%x,\n", symbol->flag);
+	printf("\t.data = %p,\n", symbol->data);
+	printf("\t.data_allocated = %d,\n", symbol->data_allocated);
+	printf("\t.data_handle = 0x%X,\n", symbol->data_handle);
 
 	if (symbol->data) {
 		float *data = symbol->data;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -43,10 +43,13 @@
 #define LIMA_PIXEL_FORMAT_DEPTH_STENCIL		0x0E /* depth 16 bits, stencil 8 bits */
 #define LIMA_PIXEL_FORMAT_DEPTH_STENCIL_32	0x0F /* depth 24 bits, stencil 8 bits */
 
-#define LIMA_TEXEL_FORMAT_RGB_555		0x0E
+#define LIMA_TEXEL_FORMAT_BGR_565		0x0E
 #define LIMA_TEXEL_FORMAT_RGBA_5551		0x0F
 #define LIMA_TEXEL_FORMAT_RGBA_4444		0x10
+#define LIMA_TEXEL_FORMAT_LA_88			0x11
+#define LIMA_TEXEL_FORMAT_RGB_888		0x15
 #define LIMA_TEXEL_FORMAT_RGBA_8888		0x16
+//#define LIMA_TEXEL_FORMAT_BGRA_8888             0x17 /* check ordering */
 #define LIMA_TEXEL_FORMAT_RGBA64		0x26
 #define LIMA_TEXEL_FORMAT_DEPTH_STENCIL_32	0x2C
 #define LIMA_TEXEL_FORMAT_INVALID		0x3F

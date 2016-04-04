@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -27,9 +27,10 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 
-#include "ioctl.h"
+#include "linux/ioctl.h"
 #include "dump.h"
 #include "limare.h"
 #include "jobs.h"
@@ -68,13 +69,15 @@ main(int argc, char *argv[])
 
 	limare_jobs_wait();
 
-	bmp_dump(mem_0x40080000.address, 0,
-		 dump_render_width, dump_render_height, "/sdcard/limare.bmp");
+	usleep(100000);
+
+	bmp_dump(mem_0x40080000.address, state, dump_render_width,
+		 dump_render_height, 4, "/sdcard/limare.bmp");
 
 	fb_dump(mem_0x40080000.address, 0,
 		dump_render_width, dump_render_height);
 
-	limare_finish();
+	limare_finish(state);
 
 	return 0;
 }

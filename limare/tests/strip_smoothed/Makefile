@@ -1,8 +1,6 @@
-include ../Makefile.top
-
 NAME = strip_smoothed
 
-all: limare egl
+targets = egl limare
 
-include ../Makefile.limare
-include ../Makefile.egl
+include ../Makefile.test
+

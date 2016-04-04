@@ -1,0 +1,20 @@
+TOP = ../../../
+
+include $(TOP)Makefile.inc
+
+CFLAGS += -I$(TOP)include -I../../lib/ -I../common
+
+INSTALL_DIR = $(prefix)/bin/limare/
+
+all: $(targets:=_$(NAME))
+install: $(targets:=_install)
+
+clean: $(targets:=_clean)
+	rm -f *.P
+	rm -f *.o
+
+include $(TOP)Makefile.post
+include ../Makefile.limare
+include ../Makefile.egl
+include ../Makefile.gles1
+include ../Makefile.dump

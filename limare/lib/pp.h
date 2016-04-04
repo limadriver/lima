@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -30,38 +30,28 @@
 
 struct pp_info
 {
-	union {
-		struct lima_m200_pp_job_start *m200;
-		struct lima_m400_pp_job_start *m400;
-	} job;
-
 	int width;
 	int height;
 	int pitch;
 
-	unsigned int plb_physical;
 	int plb_shift_w;
 	int plb_shift_h;
 
 	unsigned int clear_color;
 
-	unsigned int *quad_address;
-	unsigned int quad_physical;
-	int quad_size;
+	void *shader_address;
+	unsigned int shader_physical;
+	int shader_size;
 
-	unsigned int *render_address;
+	void *render_address;
 	unsigned int render_physical;
 	int render_size;
-
-	/* final render, separately mapped */
-	void *frame_address;
-	unsigned int frame_physical;
-	int frame_size;
 };
 
-struct pp_info *pp_info_create(struct limare_state *state, void *address,
-			       unsigned int physical, int size,
-			       unsigned int frame_physical);
-int limare_pp_job_start(struct limare_state *state, struct pp_info *info);
+struct pp_info *pp_info_create(struct limare_state *state,
+			       struct limare_frame *frame);
+void pp_info_destroy(struct pp_info *pp);
+
+int limare_pp_job_start(struct limare_state *state, struct limare_frame *frame);
 
 #endif /* LIMARE_PP_H */

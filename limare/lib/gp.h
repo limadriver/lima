@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2013 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -57,72 +57,94 @@ struct vs_info {
 	int attribute_count;
 
 	/* fragment shader can only take up to 13 varyings. */
-	struct symbol *varyings[13];
-	int varying_count;
-	int varying_element_size;
+	int varying_offset;
+	int varying_size;
 
-	unsigned int *shader;
-	int shader_offset;
-	int shader_size;
+	int gl_Position_offset;
+	int gl_Position_size;
 };
 
-int vs_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
-			    int count, int size);
+int vs_info_attach_uniforms(struct limare_frame *frame, struct draw_info *draw,
+			    struct symbol **uniforms, int count, int size);
 
-int vs_info_attach_attribute(struct draw_info *draw, struct symbol *attribute);
-int vs_info_attach_varying(struct draw_info *draw, struct symbol *varying);
-int vs_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size);
+int vs_info_attach_attribute(struct limare_frame *frame,
+			     struct draw_info *draw, struct symbol *attribute);
+int vs_info_attach_varyings(struct limare_program *program,
+			    struct limare_frame *frame, struct draw_info *draw);
 
-void vs_commands_draw_add(struct limare_state *state, struct draw_info *draw);
-void vs_info_finalize(struct limare_state *state, struct vs_info *info);
+void vs_commands_draw_add(struct limare_state *state,
+			  struct limare_frame *frame,
+			  struct limare_program *program,
+			  struct draw_info *draw);
+void vs_info_finalize(struct limare_state *state, struct limare_frame *frame,
+		      struct limare_program *program,
+		      struct draw_info *draw, struct vs_info *info);
 
 struct plbu_info {
 	struct render_state *render_state;
 	int render_state_offset;
 	int render_state_size;
 
-	unsigned int *shader;
-	int shader_offset;
-	int shader_size;
-
 	int uniform_array_offset;
 	int uniform_array_size;
 
 	int uniform_offset;
 	int uniform_size;
+
+	int indices_mem_physical;
+	int indices_type;
 };
 
-int vs_command_queue_create(struct limare_state *state, int offset, int size);
-int plbu_command_queue_create(struct limare_state *state, int offset, int size);
+int vs_command_queue_create(struct limare_frame *frame, int size);
+int plbu_command_queue_create(struct limare_state *state,
+			      struct limare_frame *frame,
+			      int size, int heap_size);
 
-void plbu_commands_draw_add(struct limare_state *state, struct draw_info *draw);
-void plbu_commands_finish(struct limare_state *state);
+void plbu_viewport_set(struct limare_frame *frame,
+		       float x, float y, float w, float h);
 
-int plbu_info_attach_shader(struct draw_info *draw, unsigned int *shader, int size);
-int plbu_info_attach_uniforms(struct draw_info *draw, struct symbol **uniforms,
-			    int count, int size);
+void plbu_commands_draw_add(struct limare_state *state,
+			    struct limare_frame *frame, struct draw_info *draw);
+void plbu_commands_depth_buffer_clear_draw_add(struct limare_state *state,
+					       struct limare_frame *frame,
+					       struct draw_info *draw, unsigned
+					       int varying_vertices_physical);
+void plbu_commands_finish(struct limare_frame *frame);
 
-int plbu_info_render_state_create(struct draw_info *draw);
+int plbu_info_attach_uniforms(struct limare_frame *frame,
+			      struct draw_info *draw, struct symbol **uniforms,
+			      int count, int size);
+void plbu_info_attach_indices(struct draw_info *draw, int indices_type,
+			      unsigned int mem_physical);
+int plbu_info_attach_textures(struct limare_state *state,
+			      struct limare_frame *frame,
+			      struct draw_info *draw);
 
 struct draw_info {
-	unsigned int mem_physical;
-	unsigned int mem_size;
-	int mem_used;
-	void *mem_address;
-
 	int draw_mode;
+
+	/* the number of vertices in the attributes. */
+	int attributes_vertex_count;
+
 	int vertex_start;
+	/* will be different from attribute when doing indexed draws */
 	int vertex_count;
 
 	struct vs_info vs[1];
 
 	struct plbu_info plbu[1];
+
+#define LIMARE_DRAW_TEXTURE_COUNT 8 /* per draw hw limit */
+	int texture_descriptor_count;
+	unsigned int texture_descriptor_list_offset;
+	int texture_handles[LIMARE_DRAW_TEXTURE_COUNT];
 };
 
-struct draw_info *draw_create_new(struct limare_state *state, int offset,
-				  int size, int draw_mode, int vertex_start,
-				  int vertex_count);
+struct draw_info *draw_create_new(struct limare_state *state,
+				  struct limare_frame *frame,
+				  int draw_mode, int attribute_vertex_count,
+				  int vertex_start, int vertex_count);
 
-int limare_gp_job_start(struct limare_state *state);
+void draw_info_destroy(struct draw_info *draw);
 
 #endif /* LIMARE_GP_H */

@@ -4,19 +4,24 @@ include $(TOP)/Makefile.inc
 
 CFLAGS += -I$(TOP)/include
 
+OBJS = compile.o
+
 all: mali_compile
 
 clean:
+	rm -f *.P
 	rm -f *.o
 	rm -f mali_compile
 
-mali_compile: compile.c
+mali_compile: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ -lMali
 
-install: $(ADB) mali_compile
-	$(ADB) push mali_compile /system/bin
+install: mali_compile
+	$(INSTALL) $^ $(prefix)/bin
 
-run:	$(ADB)
+run:
+ifeq ($(OS),android)
 	$(ADB) shell mali_compile -v /sdcard/shader.txt
+endif
 
 include $(TOP)/Makefile.post

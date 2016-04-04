@@ -2,22 +2,21 @@ include ../Makefile.inc
 
 TOP=..
 
-CFLAGS += -I$(TOP)/include
+CFLAGS += -I$(TOP)/include -fPIC
+
+OBJS = bmp.o wrap.o
 
 all: libMali_wrap.so
 
-bmp.o: bmp.c bmp.h
-
-wrap.o: wrap.c bmp.h
-
 clean:
+	rm -f *.P
 	rm -f *.o
 	rm -f *.so
 
-libMali_wrap.so: bmp.o wrap.o
-	$(CC) -shared -Wl -o $@ $^ -ldl
+libMali_wrap.so: $(OBJS)
+	$(CC) -shared -o $@ $^ -ldl
 
-install: $(ADB) libMali_wrap.so
-	$(ADB) push libMali_wrap.so /system/lib/
+install: libMali_wrap.so
+	$(INSTALL) libMali_wrap.so $(prefix)/lib/
 
 include ../Makefile.post

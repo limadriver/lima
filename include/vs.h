@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Luc Verhaegen <libv@codethink.co.uk>
+ * Copyright (c) 2011-2012 Luc Verhaegen <libv@skynet.be>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -31,6 +31,7 @@
 #define LIMA_VS_CMD_ARRAYS_SEMAPHORE   0x50000000
 #define LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1     0x00028000
 #define LIMA_VS_CMD_ARRAYS_SEMAPHORE_BEGIN_2     0x00000001
+#define LIMA_VS_CMD_ARRAYS_SEMAPHORE_NEXT        0x00018000
 #define LIMA_VS_CMD_ARRAYS_SEMAPHORE_END         0x00000000
 
 #define LIMA_VS_CMD_SHADER_ADDRESS     0x40000000
@@ -40,6 +41,11 @@
 #define LIMA_VS_CMD_ATTRIBUTES_ADDRESS 0x20000000 /* m400 */
 #define LIMA_VS_CMD_VARYINGS_ADDRESS   0x20000008 /* m400 */
 
+#define LIMA_VS_CMD_SHADER_INFO             0x10000040
 #define LIMA_VS_CMD_VARYING_ATTRIBUTE_COUNT 0x10000042
+
+#define LIMA_VS_CMD_DRAW                    0x00000000
+
+#define LIMA_VS_CMD_CONTINUE                0xF0000000
 
 #endif /* LIMA_VS_H */

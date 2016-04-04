@@ -1,0 +1,42 @@
+.PHONY : gles1 gles1_install gles1_run gles1_wrap
+
+GLES1_LOG = /sdcard/gles1.wrap.c
+GLES1_BMP = /sdcard/gles1.wrap.BMP
+GLES1_OBJS = gles1.o ../common/egl_common.o $(objs)
+
+ifeq ($(OS), android)
+	GLES1_LIBS = -lEGL_mali -lGLESv1_CM
+else
+	GLES1_LIBS = -lEGL -lGLESv1_CM -lrt -lX11
+endif
+
+gles1: gles1_$(NAME)
+
+gles1_$(NAME): $(GLES1_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(GLES1_LIBS)
+
+gles1_install: gles1_$(NAME)
+	$(INSTALL) gles1_$(NAME) $(INSTALL_DIR)/gles1/$(NAME)
+
+gles1_wrap:
+ifeq ($(OS),android)
+	$(ADB) shell "rm $(GLES1_BMP)"
+	$(ADB) shell "rm $(GLES1_LOG).0000"
+	$(ADB) shell "LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(GLES1_LOG) LIMA_WRAP_BMP=$(GLES1_BMP) $(INSTALL_DIR)/gles1/$(NAME)"
+	$(ADB) pull $(GLES1_LOG).0000
+	$(ADB) pull $(GLES1_BMP)
+else
+	$(shell LD_PRELOAD=libMali_wrap.so LIMA_WRAP_LOG=$(GLES1_LOG) LIMA_WRAP_BMP=$(GLES1_BMP) $(INSTALL_DIR)/gles1/$(NAME))
+endif
+
+gles1_run: $(ADB)
+ifeq ($(OS),android)
+	$(ADB) shell $(INSTALL_DIR)gles1/$(NAME)
+else
+	$(shell) $(INSTALL_DIR)/gles1/$(NAME)
+endif
+
+gles1_clean:
+	rm -f gles1_$(NAME)
+
+-include $(GLES1_OBJS:%.o=%.P)
