@@ -33,7 +33,7 @@ egl_run: $(ADB)
 ifeq ($(OS),android)
 	$(ADB) shell $(INSTALL_DIR)egl/$(NAME)
 else
-	$(shell $(INSTALL_DIR)/egl/$(NAME)"
+	$(shell) $(INSTALL_DIR)/egl/$(NAME)
 endif
 
 egl_clean:

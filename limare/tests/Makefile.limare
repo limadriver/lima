@@ -28,7 +28,7 @@ limare_run:
 ifeq ($(OS),android)
 	$(ADB) shell $(INSTALL_DIR)limare/$(NAME)
 else
-	$(shell $(INSTALL_DIR)/limare/$(NAME)"
+	$(shell) $(INSTALL_DIR)/limare/$(NAME)
 endif
 
 limare_clean:
